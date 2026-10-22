@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table `raw` {
+  field `type`: option<int | string>;
+  field `view`: set<record<person | post>>;
+};

@@ -1,0 +1,71 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+database db_1;
+
+/// Primary application database
+database db_10 {
+  changefeed {
+    expiry: 1w;
+  };
+};
+
+database db_11 {
+  changefeed {
+    expiry: 1h30m;
+    include original;
+  };
+};
+
+/// Primary application database
+database db_12 {
+  changefeed {
+    expiry: 1h30m;
+    include original;
+  };
+};
+
+/// Primary application database
+database db_2;
+
+database db_3 {
+  changefeed {
+    expiry: 1w;
+  };
+};
+
+/// Primary application database
+database db_4 {
+  changefeed {
+    expiry: 1w;
+  };
+};
+
+database db_5 {
+  changefeed {
+    expiry: 1h30m;
+    include original;
+  };
+};
+
+/// Primary application database
+database db_6 {
+  changefeed {
+    expiry: 1h30m;
+    include original;
+  };
+};
+
+database db_7;
+
+/// Primary application database
+database db_8;
+
+database db_9 {
+  changefeed {
+    expiry: 1w;
+  };
+};
+
+database scratch;

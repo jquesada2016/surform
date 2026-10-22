@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1004 (spec/README.md#design-rules-settled)
+
+  x expected a name
+   ,----
+ 1 | namespace ;
+   :           ^
+   :           `-- expected identifier here
+   `----
+  help: names are bare words or quoted identifiers (`` `backtick` `` or `⟨angle⟩`)

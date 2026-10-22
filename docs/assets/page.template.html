@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: {description}">
+<link rel="canonical" href="{canonical}">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+{nav}
+<main class="content">
+  <div class="breadcrumb">{breadcrumb}</div>
+  <article>
+{article}
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+{toc}
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit {commit} · examples ran against SurrealDB {version} when the site was built. {edit}</span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE ANALYZER OVERWRITE preprocessed FUNCTION fn::strip_markup TOKENIZERS BLANK FILTERS LOWERCASE;
+DEFINE ANALYZER OVERWRITE pathed FUNCTION fn::util::class::`9lives`;
+DEFINE ANALYZER OVERWRITE moduled FUNCTION mod::demo::some;

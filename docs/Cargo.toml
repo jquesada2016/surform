@@ -1,0 +1,32 @@
+[package]
+name = "surform-docs"
+version = "0.1.0"
+edition = "2024"
+publish = false
+# The docs-site generator (`docgen`): builds the GitHub Pages site from
+# docs/content/*.md, verifying every example against the compiler and
+# the embedded engine on the way (docs/README.md). Not part of the
+# shipped crate; it lives in the workspace so the compiled dependencies
+# (the compiler lib, the embedded engine) are shared instances.
+
+[dependencies]
+# The package is `surform` (its lib target is `surform` too — the
+# 2026-10-09 unification).
+# The parse oracle for the no-exec badges rides the lib now
+# (`codegen::validate_ddl` — one home with the wasm bindings' check);
+# the embed crates themselves come transitively.
+surform = { path = ".." }
+# Embedded engine for the example verification (docs/README.md's
+# pipeline mirrors tests/common/exec.rs). Same pin and feature set the
+# root crate's dev-dependency carries — one compiled instance.
+surrealdb = { version = "=3.3.0", default-features = false, features = [
+    "kv-mem",
+] }
+tokio = { version = "1", features = ["macros", "rt"] }
+# Diagnostic rendering for the error-example panels (same major the
+# compiler links; its GraphicalReportHandler is what the CLI shows).
+miette = { version = "7", features = ["fancy"] }
+
+[[bin]]
+name = "docgen"
+path = "src/main.rs"

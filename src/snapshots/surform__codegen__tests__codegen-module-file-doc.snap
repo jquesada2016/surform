@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE MODULE OVERWRITE mod::color FROM f"modules:/color.surli" UNSIGNED COMMENT 'Colour helpers';

@@ -1,0 +1,17 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+db_1: DEFINE DATABASE db_1
+db_10: DEFINE DATABASE db_10 COMMENT 'Primary application database' CHANGEFEED 1w
+db_11: DEFINE DATABASE db_11 CHANGEFEED 1h30m INCLUDE ORIGINAL
+db_12: DEFINE DATABASE db_12 COMMENT 'Primary application database' CHANGEFEED 1h30m INCLUDE ORIGINAL
+db_2: DEFINE DATABASE db_2 COMMENT 'Primary application database'
+db_3: DEFINE DATABASE db_3 CHANGEFEED 1w
+db_4: DEFINE DATABASE db_4 COMMENT 'Primary application database' CHANGEFEED 1w
+db_5: DEFINE DATABASE db_5 CHANGEFEED 1h30m INCLUDE ORIGINAL
+db_6: DEFINE DATABASE db_6 COMMENT 'Primary application database' CHANGEFEED 1h30m INCLUDE ORIGINAL
+db_7: DEFINE DATABASE db_7
+db_8: DEFINE DATABASE db_8 COMMENT 'Primary application database'
+db_9: DEFINE DATABASE db_9 CHANGEFEED 1w
+scratch: DEFINE DATABASE scratch

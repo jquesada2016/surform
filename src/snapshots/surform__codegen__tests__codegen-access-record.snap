@@ -1,0 +1,15 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE ACCESS OVERWRITE account ON DATABASE
+    TYPE RECORD
+    SIGNUP { CREATE user SET email = $email, password = crypto::argon2::generate($password) }
+    SIGNIN {
+        SELECT * FROM user WHERE email = $email AND crypto::argon2::compare(password, $password)
+    };
+DEFINE ACCESS OVERWRITE gated ON DATABASE
+    TYPE RECORD
+    SIGNIN (SELECT * FROM user WHERE email = $email)
+    AUTHENTICATE { IF $auth.blocked { THROW 'account suspended' } };

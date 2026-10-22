@@ -1,0 +1,5 @@
+# The module build's isolated-target form (the crate README's
+# CARGO_TARGET_DIR variant) writes the wasm graph here; the
+# repo-root form lands the .surli in the workspace target, which the
+# root .gitignore covers.
+/target

@@ -1,0 +1,12 @@
+SDL rejected: 1 diagnostics
+SDL-E1061 (spec/mixin.md)
+
+  x spread names no mixin of the document: `timestamped`
+   ,-[schema.surdl:4:5]
+ 3 | table post schemafull {
+ 4 |     ...timestamped;
+   :     ^^^^^^^|^^^^^^
+   :            `-- no mixin of this name in the document
+ 5 |     title: string;
+   `----
+  help: define the mixin anywhere in this document — spreads resolve against the whole composition, any file, any position; a spread that names nothing is an error, never a silent empty expansion

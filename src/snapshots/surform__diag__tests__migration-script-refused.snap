@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0017 (spec/README.md)
+
+  x this file is a generated migration script — fmt does not reflow migration scripts
+   ,-[1:1]
+ 1 | -- surform migration 0001 — add-users
+   : ^^^^^^^^^^^^^^^^^^|^^^^^^^^^^^^^^^^^^
+   :                   `-- the migration draft header
+ 2 | -- generated: 2026-10-07T18:04:05Z
+   `----
+  help: the migration pipeline owns this file — format the schema it converges to instead (the header's `-- source:` file), and run the script itself through any SurrealQL tooling

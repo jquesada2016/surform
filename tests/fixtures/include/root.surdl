@@ -1,0 +1,12 @@
+namespace acme;
+database shop;
+
+// shared mixin definitions
+include 'mixins.surdl';
+include 'tables/users.surdl';
+include 'tables/sessions.surdl';
+
+table account {
+    ...timestamps;
+    field owner: record<users>;
+};

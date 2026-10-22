@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1854
+expression: "render(src, &diag)"
+---
+SDL-E1039 (spec/access.md)
+
+  x invalid access verification source: a `url:` source takes no local key — remove `algorithm:` (and `key:`)
+   ,----
+ 1 | access sso { on: root; type: jwt; url: 'https://x/jwks'; algorithm: hs256; };
+   :                                                                   ^^^^|^^^^
+   :                                                                       `-- the verification source is malformed
+   `----
+  help: the verification source is exactly one of `url: <expr>;` (a JWKS endpoint) or `algorithm: <word>;` + `key: <expr>;` (a local key)

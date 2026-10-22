@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE FIELD OVERWRITE tags ON `post` TYPE array<string> DEFAULT ALWAYS [];
+DEFINE FIELD OVERWRITE display ON `user` TYPE string GRAPHQL_ALIAS 'displayName';
+DEFINE FIELD OVERWRITE legacy ON `user` TYPE string GRAPHQL_DEPRECATED 'use display';
+DEFINE FIELD OVERWRITE id ON `user` TYPE record<user> DEFAULT `rand`::id();

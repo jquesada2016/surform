@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Log every user creation
+event user_created {
+  on: `user`;
+  when: $event = 'CREATE';
+  then: { CREATE log SET user = $after.id };
+};

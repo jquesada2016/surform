@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE INDEX OVERWRITE body_fts ON `post` FIELDS body FULLTEXT;

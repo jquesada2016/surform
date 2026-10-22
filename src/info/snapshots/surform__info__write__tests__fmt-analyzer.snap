@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// English text search
+analyzer `english` {
+  function: fn::strip_markup;
+  tokenizers: blank, camel, class, punct;
+  filters: snowball(eng), edgengram(2, 10), lowercase;
+};

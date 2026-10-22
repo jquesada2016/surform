@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1046 (spec/table.md)
+
+  x a nested index cannot carry `on:` — it inherits its host table
+   ,----
+ 1 | table t { index u { on: t; fields: a; }; };
+   :               ^|
+   :                `-- a nested definition inherits its table
+   `----
+  help: remove the `on:` clause — this index inherits its host table from the `table` block; the standalone `on:` is for the top-level form

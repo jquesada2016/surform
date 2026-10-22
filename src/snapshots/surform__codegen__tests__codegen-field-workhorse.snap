@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE FIELD OVERWRITE email ON account TYPE string
+    ASSERT string::is_email($value)
+    DEFAULT 'unknown@example.com'
+    COMMENT 'Contact address for the account owner';
+DEFINE FIELD OVERWRITE locked ON account TYPE bool READONLY VALUE true;

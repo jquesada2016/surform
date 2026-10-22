@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE INDEX OVERWRITE by_account_thread ON message FIELDS account, thread_id
+    COMMENT 'Composite lookup for inbox queries';

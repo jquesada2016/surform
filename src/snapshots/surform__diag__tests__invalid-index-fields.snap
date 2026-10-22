@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1029 (spec/index.md)
+
+  x a hnsw index takes exactly one field — found 2
+   ,----
+ 1 | index hnsw v { on: t; fields: a, b; dimension: 8; };
+   :                      ^^^|^^
+   :                         `-- wrong field count for this index kind
+   `----
+  help: fulltext, hnsw, and diskann indexes each index exactly one field; plain and unique indexes take one or more — spec/index.md

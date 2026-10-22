@@ -1,0 +1,18 @@
+---
+source: src/codegen.rs
+assertion_line: 1812
+expression: ddl
+---
+DEFINE TABLE OVERWRITE `user` TYPE NORMAL SCHEMAFULL
+    PERMISSIONS FOR select FULL,
+    FOR create FULL,
+    FOR update WHERE $auth.id = id,
+    FOR delete NONE
+    COMMENT 'Application users';
+DEFINE FIELD OVERWRITE email ON `user` TYPE string
+    ASSERT string::is_email($value)
+    DEFAULT 'unknown@example.com';
+DEFINE INDEX OVERWRITE email_unique ON `user` FIELDS email UNIQUE;
+DEFINE EVENT OVERWRITE audit_email ON `user`
+    WHEN $event = 'UPDATE' AND $before.email != $after.email
+    THEN { CREATE audit SET at = time::now() };

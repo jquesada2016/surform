@@ -1,0 +1,13 @@
+---
+source: src/info/write.rs
+assertion_line: 1546
+expression: once
+---
+event webhook_fanout {
+  on: invoice;
+  then: (CREATE delivery SET invoice = $after.id), (UPDATE stats:webhooks SET fired = fired + 1);
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};

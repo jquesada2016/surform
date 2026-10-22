@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 2622
+expression: "render(src, &diag)"
+---
+SDL-E1057 (spec/table.md)
+
+  x table clause value out of domain: an INLINE cache cap cannot exceed 256 — `inline edges: 257;` is out of domain
+   ,----
+ 1 | table t { inline edges: 257; };
+   :                         ^|^
+   :                          `-- out of this clause's domain
+   `----
+  help: each `table` clause constrains its own value — the INLINE cache caps take 0–256 (the engine rejects anything larger at define time too)

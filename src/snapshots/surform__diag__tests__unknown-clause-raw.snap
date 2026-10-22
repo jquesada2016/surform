@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `raw` in table definition
+   ,----
+ 1 | table t { raw: string; };
+   :           ^|^
+   :            `-- unknown clause key
+   `----
+  help: `raw { … };` is a top-level statement — in block context `raw` is a reserved word; for a field named `raw` write the `field` prefix or quote it (`raw`: …)

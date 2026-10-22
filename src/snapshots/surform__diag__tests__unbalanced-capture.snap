@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0005 (spec/README.md#design-rules-settled)
+
+  x unbalanced `)` in capture: it closes nothing
+   ,----
+ 1 | assert: foo);
+   :            |
+   :            `-- closes nothing
+   `----
+  help: remove it, or move it inside a balanced bracket group

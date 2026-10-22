@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1037 (spec/api.md)
+
+  x at most one `any` block is allowed
+   ,----
+ 1 | api '/x' { any { then: 1; }; any { then: 2; }; };
+   :                              ^|^
+   :                               `-- `any` is already defined
+   `----
+  help: merge the blocks — `any` is endpoint-wide and appears at most once; SurrealQL folds a repeated `FOR ANY` config-last-wins, which SDL rejects as ambiguous

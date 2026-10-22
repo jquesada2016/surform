@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0001 (spec/README.md#design-rules-settled)
+
+  x unterminated string literal
+   ,-[1:9]
+ 1 | signup: 'oops
+   :         |
+   :         `-- string starts here
+ 2 | }
+   `----
+  help: add the closing quote; SurrealQL `\` escapes (including `\'`) are honored while scanning

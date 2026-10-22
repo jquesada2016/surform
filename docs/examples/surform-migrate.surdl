@@ -1,0 +1,57 @@
+// The Surform migration snippet — the zero-capability artifact's
+// wrappers ("Surform inside SurrealDB" in the docs). Append to your
+// schema file: the functions are ordinary schema and migrate like
+// everything else. This variant calls `mod::surform` (surform.surli)
+// and `migrate` returns the convergence script for you to run; the
+// apply artifact's twin (surform-migrate-apply.surdl) applies instead.
+
+fn surform::compile($sdl: string) -> string {
+  mod::surform::compile($sdl)
+};
+
+// The module's live-info carrier: the rendered INFO of the session's
+// database, minus the flow's own scaffolding — the registration (the
+// readers refuse its org::name keys), the bucket (the compare
+// would draft its removal), and the pipeline's ledger table (its
+// self-record creates it; the module drops the default name itself,
+// the wrapper's pruning is what makes the same capture file safe to
+// feed the CLI's `--info`, which does not) — with each table's
+// rendered INFO FOR TABLE under the reserved `@tables` key
+// (full-fidelity: field-level drift is visible).
+fn surform::capture() -> string {
+  let $info = object::remove((INFO FOR DB), ['modules', 'buckets']);
+  let $tables = object::remove($info.tables, ['_surform_migrations']);
+  let $children = object::from_entries(array::map(object::keys($tables), |$name| [$name, (INFO FOR TABLE $name)]));
+  <string>(object::extend(object::extend($info, { tables: $tables }), object::from_entries([['@tables', $children]])))
+};
+
+// The convergence script for this database (empty string: converged).
+fn surform::converge($sdl: string) -> string {
+  mod::surform::converge($sdl, fn::surform::capture())
+};
+
+// The /sql response body of the ledger SELECT, bridged in-database —
+// the module's `status` carrier. A database with no ledger yet (the
+// fresh case) bridges as the documented empty-ledger envelope.
+fn surform::ledger_rows() -> string {
+  let $names = object::keys((INFO FOR DB).tables);
+  if '_surform_migrations' in $names {
+    let $rows = (select value '{"number":' + <string>(number) + ',"name":"' + string::replace(string::replace(name, '\\', '\\\\'), '"', '\\"') + '","hash":"' + hash + '"}' from _surform_migrations order by number);
+    '[{"result":[' + array::join($rows, ',') + '],"status":"OK"}]'
+  } else {
+    '[{"status":"ERR","kind":"NotFound","details":{"kind":"Table"}}]'
+  }
+};
+
+// The migration classification (pass the migrations directory as the
+// serialized files carrier — see the docs page for its JSON shape).
+fn surform::status($files: string) -> string {
+  mod::surform::status($files, fn::surform::ledger_rows())
+};
+
+// The two-artifact contract, pure side: this artifact makes no host
+// calls, so migrate IS converge — the script comes back for you to
+// run yourself (empty string: already converged).
+fn surform::migrate($sdl: string) -> string {
+  fn::surform::converge($sdl)
+};

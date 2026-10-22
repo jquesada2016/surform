@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field author: record<user> {
+  on: `post`;
+  reference {
+    on delete: cascade;
+  };
+};

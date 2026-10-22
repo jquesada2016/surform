@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1043 (spec/table.md)
+
+  x malformed table relation header: the relation header needs its second arrow — write `table [<from>] -> <name> -> [<to>]`
+   ,----
+ 1 | table user -> wrote { enforced; };
+   :                    |
+   :                    `-- malformed relation header
+   `----
+  help: a relation header is `table [<from> | …] -> <name> -> [<to> | …]` — both arrows are mandatory, the name always between them

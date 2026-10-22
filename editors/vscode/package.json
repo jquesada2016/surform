@@ -1,0 +1,59 @@
+{
+  "name": "surform-sdl",
+  "displayName": "Surform (SDL)",
+  "description": "Syntax highlighting and canonical formatting for Surform's Schema Definition Language (.surdl; .sdl files highlight too) — Format Document pipes the buffer through the surform compiler. SurrealQL-verbatim regions delegate to SurrealDB's official SurrealQL grammar.",
+  "version": "0.1.2",
+  "license": "MIT OR Apache-2.0",
+  "publisher": "surform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jquesada2016/surform"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:surform"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "surform",
+        "aliases": [
+          "Surform",
+          "surform"
+        ],
+        "extensions": [
+          ".surdl",
+          ".sdl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "surform",
+        "scopeName": "source.surform",
+        "path": "./syntaxes/surform.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Surform",
+      "properties": {
+        "surform.path": {
+          "type": "string",
+          "default": "surform",
+          "markdownDescription": "Path to the `surform` binary that **Format Document** pipes the buffer through (`surform fmt`). Looked up on `PATH` unless the value carries a path separator; a relative path resolves against the workspace folder. Install the compiler from a repository clone with `cargo install --path .`."
+        }
+      }
+    }
+  },
+  "extensionPack": [
+    "surrealdb.surrealql"
+  ]
+}

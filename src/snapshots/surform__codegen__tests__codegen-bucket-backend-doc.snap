@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE BUCKET OVERWRITE scratch_uploads BACKEND 'memory' COMMENT 'Ephemeral test uploads';

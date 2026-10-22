@@ -1,0 +1,24 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+param_1: DEFINE PARAM $param_1 VALUE NONE PERMISSIONS FULL
+param_10: DEFINE PARAM $param_10 VALUE 'text' PERMISSIONS NONE
+param_11: DEFINE PARAM $param_11 VALUE 'text' PERMISSIONS FULL
+param_12: DEFINE PARAM $param_12 VALUE 'text' PERMISSIONS WHERE $user.role == 'admin'
+param_13: DEFINE PARAM $param_13 VALUE { a: 1 } PERMISSIONS FULL
+param_14: DEFINE PARAM $param_14 VALUE { a: 1 } PERMISSIONS NONE
+param_15: DEFINE PARAM $param_15 VALUE { a: 1 } PERMISSIONS FULL
+param_16: DEFINE PARAM $param_16 VALUE { a: 1 } PERMISSIONS WHERE $user.role == 'admin'
+param_17: DEFINE PARAM $param_17 VALUE true PERMISSIONS FULL
+param_18: DEFINE PARAM $param_18 VALUE true PERMISSIONS NONE
+param_19: DEFINE PARAM $param_19 VALUE true PERMISSIONS FULL
+param_2: DEFINE PARAM $param_2 VALUE NONE PERMISSIONS NONE
+param_20: DEFINE PARAM $param_20 VALUE true PERMISSIONS WHERE $user.role == 'admin'
+param_3: DEFINE PARAM $param_3 VALUE NONE PERMISSIONS FULL
+param_4: DEFINE PARAM $param_4 VALUE NONE PERMISSIONS WHERE $user.role == 'admin'
+param_5: DEFINE PARAM $param_5 VALUE 50 PERMISSIONS FULL
+param_6: DEFINE PARAM $param_6 VALUE 50 PERMISSIONS NONE
+param_7: DEFINE PARAM $param_7 VALUE 50 PERMISSIONS FULL
+param_8: DEFINE PARAM $param_8 VALUE 50 PERMISSIONS WHERE $user.role == 'admin'
+param_9: DEFINE PARAM $param_9 VALUE 'text' PERMISSIONS FULL

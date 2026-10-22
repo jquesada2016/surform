@@ -1,0 +1,10 @@
+/target
+*.snap.new
+.zcode/
+docs/_site/
+docs/editor/node_modules/
+.DS_Store
+# references/
+/references/
+/AGENTS.md
+/meta/

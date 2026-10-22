@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0002 (spec/README.md#design-rules-settled)
+
+  x unterminated block comment
+   ,----
+ 1 | fn f() { /* oops
+   :          ^|
+   :           `-- comment starts here
+   `----
+  help: add `*/`; block comments do not nest and end at the first `*/`

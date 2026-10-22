@@ -1,0 +1,5 @@
+---
+source: src/info/write.rs
+expression: once
+---
+ns acme;

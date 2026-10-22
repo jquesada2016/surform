@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field meta: object {
+  on: t;
+  readonly;
+  flexible;
+  inline;
+};

@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1015 (spec/README.md#design-rules-settled)
+
+  x `password` cannot be set together with `passhash`
+   ,----
+ 1 | user bot { on: root; passhash: 'h'; password: 'p'; };
+   :                                     ^^^^|^^^
+   :                                         `-- cannot be set together with the earlier clause
+   `----
+  help: remove one — `password` and `passhash` cannot both be set

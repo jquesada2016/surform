@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0006 (spec/README.md#design-rules-settled)
+
+  x invalid escape in quoted identifier
+   ,----
+ 1 | namespace ⟨a\⟩b⟩;
+   :            |
+   :            `-- not a valid escape character
+   `----
+  help: valid escapes are `\n`, `\r`, `\t`, `\0`, `\\`, `\b`, `\f`, `\'`, `\"`, `\`` and `\u{…}`

@@ -1,0 +1,10 @@
+// The spec's namespace, sequence, and param examples, in one clean file.
+/// Acme Corporation
+namespace acme;
+
+namespace staging;
+
+sequence invoice_number = 1000;
+
+/// Default page size for list endpoints
+param $default_limit = 50;

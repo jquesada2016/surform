@@ -1,0 +1,19 @@
+---
+source: src/diag.rs
+assertion_line: 2203
+expression: "render(src, &diag)"
+---
+SDL-E1009 (spec/README.md#design-rules-settled)
+
+  x the embedded SurrealQL parser rejected this expression: Unexpected token `COMMENT`, expected Eof
+  |  --> [1:14]
+  |   |
+  | 1 | 1 COMMENT 'oops'
+  |   |   ^^^^^^^
+  | 
+   ,----
+ 1 | param $x = 1 COMMENT 'oops';
+   :            ^^^^^^^^|^^^^^^^
+   :                    `-- the embedded parser rejected this expression
+   `----
+  help: this clause takes a SurrealQL expression; the official parser's rejection is quoted above

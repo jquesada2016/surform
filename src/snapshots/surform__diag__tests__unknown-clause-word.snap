@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1014 (spec/README.md#design-rules-settled)
+
+  x unknown word `ownr` in the `roles` clause
+   ,----
+ 1 | user bot { on: root; roles: ownr; };
+   :                             ^^|^
+   :                               `-- not a spelling this clause defines
+   `----
+  help: did you mean `owner`?

@@ -1,0 +1,14 @@
+---
+source: src/info/write.rs
+expression: once
+---
+index diskann v {
+  on: `pt`;
+  fields: vec;
+  dimension: 64;
+  distance: cosine;
+  degree: 50;
+  l_build: 90;
+  alpha: 1.2;
+  hashed_vector;
+};

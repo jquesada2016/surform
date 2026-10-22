@@ -1,0 +1,126 @@
+/// Acme Corporation
+namespace acme;
+
+/// Primary application database
+database app {
+    strict;
+    changefeed {
+        expiry: 7d;
+        include original;
+    };
+};
+
+sequence invoice_number = 1000;
+
+/// Default page size for list endpoints
+param $default_limit = 50;
+
+/// CI deployment account
+user deployer {
+    on: namespace;
+    passhash: '$argon2id$v=19$';
+    roles: editor, viewer;
+};
+
+/// English text search
+analyzer english {
+    tokenizers: class;
+    filters: snowball(en), lowercase;
+};
+
+/// Log every user creation
+event user_created {
+    on: user;
+    when: $event = 'CREATE';
+    then: { create log set user = $after.id; };
+};
+
+event webhook_fanout {
+    on: invoice;
+    async {
+        retry: 5;
+        maxdepth: 8;
+    };
+    then: (create delivery set invoice = $after.id), (update stats:webhooks set fired = fired + 1);
+};
+
+/// Colour helpers
+module color {
+    from: f'modules:/color.surli';
+    unsigned;
+};
+
+/// Post permissions
+fn can_edit($p: record<post>) -> bool {
+    return $auth.id = $p.author or $auth.role = 'admin';
+} {
+    permissions: $auth.admin = true;
+};
+
+// No `///` above any config — `config` has no COMMENT clause
+config api {
+    middleware: api::timeout(5s), api::log();
+    permissions: $auth.admin = true;
+};
+
+config graphql {
+    tables { include: user, post; };
+    functions: none;
+    depth: 4;
+    complexity: 100;
+    introspection: none;
+};
+
+config default {
+    namespace: 'acme';
+    database: 'shop';
+};
+
+/// Inbox thread lookup
+index by_account_thread {
+    on: message;
+    fields: account, thread_id;
+};
+
+/// Admin API with fallback
+api '/admin/*rest' {
+    any {
+        middleware: api::timeout(5s);
+        then: { { status: 404, body: { error: 'no such route' } } };
+    };
+    get, delete {
+        permissions: $auth.admin = true;
+        then: { { status: 200 } };
+    };
+};
+
+/// SSO token verification
+access corp_sso {
+    on: database;
+    type: jwt;
+    url: 'https://sso.acme.example/jwks';
+    duration { session: 8h; };
+};
+
+// Shared audit columns (no `///` — a mixin takes no doc comment)
+mixin audited {
+    created_at: datetime {
+        default: time::now();
+    };
+    updated_at: datetime;
+};
+
+/// Application users
+table user schemafull {
+    ...audited;
+    email: string {
+        assert: string::is_email($value);
+        default: 'unknown@example.com';
+    };
+};
+
+/// Derived display name
+field display_name {
+    on: user;
+    computed: string::uppercase(email);
+};

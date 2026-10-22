@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE CONFIG OVERWRITE API
+    MIDDLEWARE api::timeout(5s), api::log()
+    PERMISSIONS WHERE $auth.admin = true;

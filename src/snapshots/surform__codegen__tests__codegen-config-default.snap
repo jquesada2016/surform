@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 1244
+expression: ddl
+---
+DEFINE CONFIG OVERWRITE DEFAULT NAMESPACE 'acme' DATABASE 'blog';
+DEFINE CONFIG OVERWRITE DEFAULT NAMESPACE 'acme' DATABASE NONE;

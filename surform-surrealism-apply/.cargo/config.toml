@@ -1,0 +1,9 @@
+# The WASI build flag the official module scaffold ships (the docs'
+# "Creating custom modules" recipe): tokio's WASI socket/time surface
+# the surrealism SDK's async runtime rides is unstable-gated. Same
+# config the default artifact's crate carries — applies to cargo
+# invocations from this directory subtree (`surreal module build` runs
+# there); plain workspace builds of the rlib (host tests, clippy)
+# don't need it.
+[build]
+rustflags = ["--cfg", "tokio_unstable"]

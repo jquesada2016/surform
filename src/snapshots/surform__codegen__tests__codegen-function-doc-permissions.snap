@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE FUNCTION OVERWRITE fn::can_edit($p: record<post>) -> bool {
+    RETURN $auth.id = $p.author OR $auth.role = 'admin'
+}
+    PERMISSIONS WHERE $auth.admin = true
+    COMMENT 'Whether the current user may edit this post';

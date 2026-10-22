@@ -1,0 +1,6 @@
+include '../shared/ids.surdl';
+
+table sessions schemafull {
+    ...timestamps;
+    field token: string;
+};

@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field secret: object {
+  on: vault;
+  readonly;
+  flexible;
+  permissions: none;
+};

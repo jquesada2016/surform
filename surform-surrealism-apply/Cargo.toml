@@ -1,0 +1,46 @@
+[package]
+name = "surform-surrealism-apply"
+version = "0.1.0"
+edition = "2024"
+# The same floor as the default artifact's crate — the locked =3.3.0
+# graph the guest links by path.
+rust-version = "1.94"
+description = "Surform's Surrealism module, apply variant — converge + execute at the invoking session's auth"
+publish = false
+
+# The second artifact shares the default artifact's ONE source file
+# ([lib] path): one source of truth, two packages. This package turns
+# the `apply` feature on by default, so its wasm build (and its native
+# tests — the default workspace gate runs them) compiles the apply
+# machinery; the default artifact's crate never does.
+[lib]
+# The shared source IS the default artifact's source file — one
+# source of truth, two packages. The lib target keeps this package's
+# own name (the module packager derives the wasm artifact's filename
+# from it); the tests spell the longer identifier.
+path = "../surform-surrealism/src/lib.rs"
+# `cdylib` produces the wasm32-wasip2 component `surreal module build`
+# packages into the .surli artifact; `rlib` keeps the guest natively
+# testable (the default artifact's crate's precedent).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The Surrealism guest SDK — the same exact pin the default artifact's
+# crate carries (floor-move style; a bump is the deliberate spec event
+# the =3.3.0 pins are and re-runs the server-side probe).
+surrealism = "=0.6.0"
+# The `#[surrealism]` macro's generated glue names `surrealdb_types`
+# paths directly — the default artifact's crate carries it for the
+# same reason. Same instance the workspace's =3.3.0 family pins.
+surrealdb-types = "=3.3.0"
+# The compiler, by path — the guest is a thin wrapper over the core.
+surform = { path = ".." }
+# The diagnostic renderer — one instance already in the graph.
+miette = { version = "7", features = ["derive", "fancy"] }
+
+[features]
+# This package IS the second artifact: the apply feature on by
+# default. There is no apply-off build of it (the default artifact's
+# crate owns that shape).
+default = ["apply"]
+apply = []

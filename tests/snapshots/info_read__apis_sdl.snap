@@ -1,0 +1,73 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+api '/:x' {
+  get {
+    then: { { status: 200 } };
+  };
+};
+
+api '/admin/*rest' {
+  any {
+    middleware: api::timeout(5s);
+    then: { { status: 404, body: { error: 'no such route' } } };
+  };
+  get, delete {
+    permissions: $auth.admin = true;
+    then: { { status: 200 } };
+  };
+};
+
+api '/anyfull' {
+  get {
+    then: { { status: 200 } };
+  };
+};
+
+api '/anymw' {
+  any {
+    middleware: api::timeout(5s);
+  };
+  get {
+    then: { { status: 200 } };
+  };
+};
+
+api '/echo' {
+  post, put {
+    then: { { status: 200, body: { you_sent: $request.body } } };
+  };
+};
+
+api '/empty' {
+};
+
+/// Health check
+api '/health' {
+  get {
+    then: { { status: 200, body: { ok: true } } };
+  };
+};
+
+api '/mid' {
+  get {
+    permissions: none;
+    middleware: api::timeout(1s), fn::rate_limit(100);
+    then: { { status: 200 } };
+  };
+};
+
+api '/perms' {
+  get {
+    then: { { status: 200 } };
+  };
+  delete {
+    permissions: none;
+    then: { { status: 204 } };
+  };
+  trace {
+    permissions: $auth.admin = true;
+    then: { { status: 200 } };
+  };
+};

@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1011 (spec/README.md#design-rules-settled)
+
+  x clause `strict` is a flag — write `strict;` (no value, no block)
+   ,----
+ 1 | database blog { strict: true; };
+   :                  ^^^|^^
+   :                     `-- this clause takes a different form
+   `----
+  help: the separator picks the clause form: `key: <value>;`, bare `key;` (flag), or `key { … };` (sub-block) — spec rule 2

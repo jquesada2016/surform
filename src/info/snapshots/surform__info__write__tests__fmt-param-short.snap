@@ -1,0 +1,6 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Default page size for list endpoints
+param $default_limit = 50;

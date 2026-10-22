@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1019 (spec/README.md#design-rules-settled)
+
+  x `123` is not a single identifier
+   ,----
+ 1 | event e { on: 123; then: 1; };
+   :               ^|^
+   :                `-- not a single identifier
+   `----
+  help: this clause takes one bare word or a quoted identifier (`` `backtick` `` or `⟨angle⟩`)

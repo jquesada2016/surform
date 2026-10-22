@@ -1,0 +1,11 @@
+---
+source: src/codegen.rs
+assertion_line: 1806
+expression: ddl
+---
+DEFINE TABLE OVERWRITE post_stats TYPE ANY SCHEMALESS AS SELECT
+    author,
+    count() AS posts
+    FROM post
+    GROUP BY author
+    COMMENT 'Posts per author';

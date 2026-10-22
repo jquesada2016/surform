@@ -1,0 +1,9 @@
+---
+source: src/codegen.rs
+assertion_line: 1812
+expression: ddl
+---
+DEFINE FIELD OVERWRITE secret ON account TYPE string PERMISSIONS NONE;
+DEFINE FIELD OVERWRITE audited ON account TYPE string
+    PERMISSIONS FOR select NONE,
+    FOR create, update WHERE $auth.admin = true;

@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `start` in namespace definition
+   ,----
+ 1 | namespace acme { start: 5; };
+   :                  ^^|^^
+   :                    `-- unknown clause key
+   `----
+  help: remove it; each statement's clause list is in its spec file

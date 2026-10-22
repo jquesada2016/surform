@@ -1,0 +1,13 @@
+---
+source: src/codegen.rs
+assertion_line: 1559
+expression: ddl
+---
+DEFINE TABLE OVERWRITE `post` TYPE NORMAL SCHEMAFULL;
+DEFINE FIELD OVERWRITE updated_at ON `post` TYPE datetime;
+DEFINE FIELD OVERWRITE title ON `post` TYPE string;
+DEFINE FIELD OVERWRITE created_at ON `post` TYPE datetime DEFAULT time::now();
+DEFINE TABLE OVERWRITE account TYPE NORMAL SCHEMAFULL;
+DEFINE FIELD OVERWRITE created_at ON account TYPE datetime;
+DEFINE FIELD OVERWRITE updated_at ON account TYPE datetime;
+DEFINE FIELD OVERWRITE email ON account TYPE string;

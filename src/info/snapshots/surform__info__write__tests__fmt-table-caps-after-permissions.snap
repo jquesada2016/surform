@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table capd {
+  schemaless;
+  permissions: full;
+  inline edges: 8;
+  inline references: 16;
+};

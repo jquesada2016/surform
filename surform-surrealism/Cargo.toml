@@ -1,0 +1,60 @@
+[package]
+name = "surform-surrealism"
+version = "0.1.0"
+edition = "2024"
+# The same floor as the compiler crate — the locked =3.3.0 graph the
+# guest links by path.
+rust-version = "1.94"
+description = "Surform as a Surrealism module — the compiler inside SurrealDB"
+publish = false
+
+[lib]
+# `cdylib` produces the wasm32-wasip2 component `surreal module build`
+# packages into the .surli artifact; `rlib` keeps the guest natively
+# testable (the editor crate's precedent — same dual-crate-type
+# rationale, different ABI).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The Surrealism guest SDK. Exact pin, floor-move style: the SDK pin
+# rides the surform SurrealDB floor (the =3.3.0 family).
+# 0.6.0 is the version an early spike proved
+# end-to-end for THIS surface: the real compiler in-guest,
+# byte-identical DDL. A bump is the deliberate spec event the
+# =3.3.0 pins are — the server-side probe leg re-runs before any
+# release that moves it.
+surrealism = "=0.6.0"
+# The `#[surrealism]` macro's generated glue names `surrealdb_types`
+# paths directly (the ABI's value conversions), so the crate must be
+# a direct dependency — the official scaffold carries it for the
+# same reason. Same instance the workspace's =3.3.0 family pins; no
+# new code in the graph.
+surrealdb-types = "=3.3.0"
+# The compiler. The guest is a thin wrapper over the core — the
+# spike's 20-line proof; the editor crate's
+# wasm-bindgen surface does NOT transfer (Surrealism is a different
+# ABI).
+surform = { path = ".." }
+# The diagnostic renderer. Same major + features the compiler links —
+# one instance already in the graph (the family-split exact-pin
+# pattern), no new code. The guest renders rejected SDL's diagnostics
+# with the same stable no-color theme the CLI pipes (the error string
+# is what SurrealQL callers see verbatim after the host's
+# `Function call error: ` prefix).
+miette = { version = "7", features = ["derive", "fancy"] }
+
+[features]
+# The default artifact is PURE: `surrealism.toml` declares zero
+# capabilities, and the surface makes no host calls, so every output
+# is reproducible from its inputs alone (the compile and the
+# converge/status exports — the zero-grant pins in tests/manifest.rs
+# hold the line).
+default = []
+# The `apply` feature carries the apply-variant machinery in the shared
+# source: the pure halves (splitter, scope pre-flight, ledger ride)
+# and — in the wasm32 build only — the `apply` export and its host
+# calls. The DEFAULT artifact never enables it (the pins assert the
+# feature stays out of `default`); the SECOND artifact is the
+# `surform-surrealism-apply` package, whose default features turn
+# this on. Its manifest (the grant surface) lives there.
+apply = []

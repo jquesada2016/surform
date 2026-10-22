@@ -1,0 +1,102 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+sequence seq_1 {
+  start: 0;
+  batch: 1000;
+};
+
+sequence seq_10 {
+  start: 0;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_11 {
+  start: 0;
+  batch: 250;
+};
+
+sequence seq_12 {
+  start: 0;
+  batch: 250;
+  timeout: 5s;
+};
+
+sequence seq_13 {
+  start: 5000;
+  batch: 1000;
+};
+
+sequence seq_14 {
+  start: 5000;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_15 {
+  start: 5000;
+  batch: 1000;
+};
+
+sequence seq_16 {
+  start: 5000;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_17 {
+  start: 5000;
+  batch: 250;
+};
+
+sequence seq_18 {
+  start: 5000;
+  batch: 250;
+  timeout: 5s;
+};
+
+sequence seq_2 {
+  start: 0;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_3 {
+  start: 0;
+  batch: 1000;
+};
+
+sequence seq_4 {
+  start: 0;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_5 {
+  start: 0;
+  batch: 250;
+};
+
+sequence seq_6 {
+  start: 0;
+  batch: 250;
+  timeout: 5s;
+};
+
+sequence seq_7 {
+  start: 0;
+  batch: 1000;
+};
+
+sequence seq_8 {
+  start: 0;
+  batch: 1000;
+  timeout: 5s;
+};
+
+sequence seq_9 {
+  start: 0;
+  batch: 1000;
+};

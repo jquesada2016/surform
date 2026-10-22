@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+assertion_line: 2665
+expression: ddl
+---
+DEFINE MODULE OVERWRITE mod::admin_tools FROM f"modules:/admin.surli"
+    UNSIGNED
+    PERMISSIONS WHERE $auth.admin = true;

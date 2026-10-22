@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+// interior comments ride
+DEFINE PARAM OVERWRITE $weird VALUE '}no close{'; /* tail */

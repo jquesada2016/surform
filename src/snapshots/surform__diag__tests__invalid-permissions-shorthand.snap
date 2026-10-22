@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1045 (spec/table.md)
+
+  x `$auth.id = id` is not a table permission — write `none`, `full`, or a per-operation block
+   ,----
+ 1 | table t { permissions: $auth.id = id; };
+   :                     ^^^^^^^|^^^^^^^
+   :                            `-- not the `none | full` shorthand
+   `----
+  help: table permissions take `permissions: none;`, `permissions: full;`, or a per-operation `permissions { select: …; … };` block — no expression

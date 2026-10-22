@@ -1,0 +1,31 @@
+[package]
+name = "surform-editor"
+version = "0.1.0"
+edition = "2024"
+# The same floor as the compiler crate — the locked =3.3.0 graph.
+rust-version = "1.94"
+description = "Surform's editor backend — wasm bindings for the browser playground"
+publish = false
+
+[lib]
+# `cdylib` produces the wasm artifact the playground loads; `rlib`
+# keeps the logic natively testable (wasm-bindgen compiles on the
+# host, so the unit tests and clippy run without a browser).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The compiler. Everything reachable from the binding surface is pure
+# parsing and emission — the embedded ENGINE is not part of the wasm
+# surface (exec/verification stays native).
+surform = { path = ".." }
+# Exact pin: the wasm-bindgen CLI must match the crate version to the
+# patch digit, and 0.2.128 is already in the lockfile as a transitive
+# of the =3.3.0 family (no new code in the graph).
+wasm-bindgen = "=0.2.128"
+# The `check` report is JSON; serde's derive models it. Same major
+# versions the workspace already resolves.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The diagnostics' `miette::Diagnostic` impls are what the report
+# extracts from. Same major the compiler links — one instance.
+miette = "7"

@@ -1,0 +1,5 @@
+// A broken file: a namespace with the spec's non-empty-block error,
+// followed by a statement that must still parse (recovery).
+namespace acme { oops: 1; };
+
+namespace staging;

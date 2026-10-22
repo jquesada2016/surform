@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1006 (spec/README.md#design-rules-settled)
+
+  x unterminated block: expected `}` before end of file
+   ,----
+ 1 | namespace acme {
+   :                |
+   :                `-- block starts here
+   `----
+  help: add the closing `}`

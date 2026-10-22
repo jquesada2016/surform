@@ -1,0 +1,11 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE API OVERWRITE '/admin/*rest'
+    FOR ANY MIDDLEWARE api::timeout(5s) THEN { { status: 404, body: { error: 'no such route' } } }
+    FOR get, delete PERMISSIONS WHERE $auth.admin = true THEN { { status: 200 } };
+DEFINE API OVERWRITE '/x' FOR ANY;
+DEFINE API OVERWRITE '/bare';
+DEFINE API OVERWRITE '/e\\:x' FOR get THEN 1;

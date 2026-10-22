@@ -1,0 +1,531 @@
+---
+source: tests/info_read.rs
+assertion_line: 163
+expression: written(&read_out)
+---
+/// update log
+event braced {
+  on: ev_host;
+  when: true;
+  then: { CREATE b SET x = 1 };
+};
+
+event ev_1 {
+  on: ev_host;
+  when: true;
+  then: (CREATE log SET at = time::now());
+};
+
+event ev_10 {
+  on: ev_host;
+  when: true;
+  then: THROW 'boom';
+};
+
+event ev_11 {
+  on: ev_host;
+  when: true;
+  then: THROW 'boom';
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_12 {
+  on: ev_host;
+  when: true;
+  then: THROW 'boom';
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_13 {
+  on: ev_host;
+  when: true;
+  then: RETURN $after.id;
+};
+
+event ev_14 {
+  on: ev_host;
+  when: true;
+  then: RETURN $after.id;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_15 {
+  on: ev_host;
+  when: true;
+  then: RETURN $after.id;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_16 {
+  on: ev_host;
+  when: true;
+  then: BREAK;
+};
+
+event ev_17 {
+  on: ev_host;
+  when: true;
+  then: BREAK;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_18 {
+  on: ev_host;
+  when: true;
+  then: BREAK;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_19 {
+  on: ev_host;
+  when: true;
+  then: CONTINUE;
+};
+
+event ev_2 {
+  on: ev_host;
+  when: true;
+  then: (CREATE log SET at = time::now());
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_20 {
+  on: ev_host;
+  when: true;
+  then: CONTINUE;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_21 {
+  on: ev_host;
+  when: true;
+  then: CONTINUE;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_22 {
+  on: ev_host;
+  when: true;
+  then: time::now();
+};
+
+event ev_23 {
+  on: ev_host;
+  when: true;
+  then: time::now();
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_24 {
+  on: ev_host;
+  when: true;
+  then: time::now();
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_25 {
+  on: ev_host;
+  when: true;
+  then: x.y = 1;
+};
+
+event ev_26 {
+  on: ev_host;
+  when: true;
+  then: x.y = 1;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_27 {
+  on: ev_host;
+  when: true;
+  then: x.y = 1;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_28 {
+  on: ev_host;
+  when: true;
+  then: fn::a(), THROW 'b';
+};
+
+event ev_29 {
+  on: ev_host;
+  when: true;
+  then: fn::a(), THROW 'b';
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_3 {
+  on: ev_host;
+  when: true;
+  then: (CREATE log SET at = time::now());
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_30 {
+  on: ev_host;
+  when: true;
+  then: fn::a(), THROW 'b';
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_31 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE log SET at = time::now());
+};
+
+event ev_32 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE log SET at = time::now());
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_33 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE log SET at = time::now());
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_34 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+};
+
+event ev_35 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_36 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_37 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::audit::write($event, $after.id ?? $before.id);
+};
+
+event ev_38 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::audit::write($event, $after.id ?? $before.id);
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_39 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::audit::write($event, $after.id ?? $before.id);
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_4 {
+  on: ev_host;
+  when: true;
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+};
+
+event ev_40 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: THROW 'boom';
+};
+
+event ev_41 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: THROW 'boom';
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_42 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: THROW 'boom';
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_43 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: RETURN $after.id;
+};
+
+event ev_44 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: RETURN $after.id;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_45 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: RETURN $after.id;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_46 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: BREAK;
+};
+
+event ev_47 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: BREAK;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_48 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: BREAK;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_49 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: CONTINUE;
+};
+
+event ev_5 {
+  on: ev_host;
+  when: true;
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_50 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: CONTINUE;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_51 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: CONTINUE;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_52 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: time::now();
+};
+
+event ev_53 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: time::now();
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_54 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: time::now();
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_55 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: x.y = 1;
+};
+
+event ev_56 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: x.y = 1;
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_57 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: x.y = 1;
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_58 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::a(), THROW 'b';
+};
+
+event ev_59 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::a(), THROW 'b';
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_6 {
+  on: ev_host;
+  when: true;
+  then: (CREATE l2 SET x = 1), (UPDATE stats SET n += 1);
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_60 {
+  on: ev_host;
+  when: $event = 'CREATE';
+  then: fn::a(), THROW 'b';
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};
+
+event ev_7 {
+  on: ev_host;
+  when: true;
+  then: fn::audit::write($event, $after.id ?? $before.id);
+};
+
+event ev_8 {
+  on: ev_host;
+  when: true;
+  then: fn::audit::write($event, $after.id ?? $before.id);
+  async {
+    retry: 1;
+    maxdepth: 3;
+  };
+};
+
+event ev_9 {
+  on: ev_host;
+  when: true;
+  then: fn::audit::write($event, $after.id ?? $before.id);
+  async {
+    retry: 5;
+    maxdepth: 8;
+  };
+};

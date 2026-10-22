@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1034 (spec/api.md)
+
+  x `health` is not a string literal — the api route path is one
+   ,----
+ 1 | api health { get { then: { { status: 200 } }; }; };
+   :     ^^^|^^
+   :        `-- the route path is a string literal
+   `----
+  help: the route path is a single string literal — `api '/users/:id' { … };`; SurrealDB validates the path grammar (static, `:param`, `*wildcard` segments) at define time

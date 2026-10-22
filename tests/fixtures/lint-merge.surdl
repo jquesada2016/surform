@@ -1,0 +1,2 @@
+namespace acme;
+database app;

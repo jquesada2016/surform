@@ -1,0 +1,14 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE API OVERWRITE '/health'
+    FOR get THEN { { status: 200, body: { ok: true } } }
+    COMMENT 'Health check';
+DEFINE API OVERWRITE '/echo'
+    FOR post, put THEN {
+        { status: 200, body: { you_sent: $request.body, method: $request.method } }
+    };
+DEFINE API OVERWRITE '/users/:id'
+    FOR get THEN { { status: 200, body: type::record('user', $request.params.id) } };

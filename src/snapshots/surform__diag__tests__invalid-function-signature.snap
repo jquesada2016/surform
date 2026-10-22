@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1023 (spec/function.md)
+
+  x expected `(` to open the parameter list
+   ,----
+ 1 | fn color $p: int) { 1 };
+   :          ^
+   :          `-- malformed function signature
+   `----
+  help: a function is `fn <name>($<param>: <kind>, …) [-> <kind>] { <body> } [{ <clauses> };]` — spec/function.md

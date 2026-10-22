@@ -1,0 +1,7 @@
+include '../shared/ids.surdl';
+
+table users schemafull {
+    ...timestamps;
+    field name: string;
+    permissions: full;
+};

@@ -1,0 +1,21 @@
+---
+source: src/info/write.rs
+assertion_line: 1546
+expression: once
+---
+access signing {
+  on: db;
+  type: record;
+  signin: {
+    SELECT * FROM user WHERE email = $email AND crypto::argon2::compare($pass, $auth.password)
+  };
+  jwt {
+    algorithm: hs512;
+    key: '[REDACTED]';
+    issuer {
+      algorithm: hs512;
+      key: '[REDACTED]';
+    };
+  };
+  refresh;
+};

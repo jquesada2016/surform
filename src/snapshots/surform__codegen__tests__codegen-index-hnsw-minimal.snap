@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE INDEX OVERWRITE vec ON embedding FIELDS vector HNSW DIMENSION 768 DISTANCE COSINE;

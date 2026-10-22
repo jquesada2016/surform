@@ -1,0 +1,19 @@
+---
+source: src/info/write.rs
+assertion_line: 2151
+expression: once
+---
+// shared audit columns
+mixin timestamped {
+  field created_at: datetime;
+  field updated_at: datetime {
+    default: time::now();
+  };
+};
+
+table `post` {
+  schemafull;
+  field title: string;
+  field created_at: datetime; // overrides the member
+  ...timestamped; // audit trail
+};

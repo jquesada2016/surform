@@ -1,0 +1,256 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+/// db worker
+user `table` {
+  on: database;
+  roles: editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_1 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_10 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_11 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_12 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_13 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_14 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_15 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_16 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_17 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_18 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_19 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_2 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_20 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_21 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_22 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_23 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_24 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_25 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_26 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_27 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_3 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_4 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_5 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_6 {
+  on: database;
+  roles: viewer;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};
+
+user user_7 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_8 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+user user_9 {
+  on: database;
+  roles: owner, editor;
+  duration {
+    token: 2h;
+    session: 30m;
+  };
+};

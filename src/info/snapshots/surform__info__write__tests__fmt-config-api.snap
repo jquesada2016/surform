@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+config api {
+  middleware: api::timeout(5s), api::log();
+  permissions: $auth.admin = true;
+};

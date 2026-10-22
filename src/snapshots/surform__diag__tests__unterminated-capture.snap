@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0004 (spec/README.md#design-rules-settled)
+
+  x unterminated capture: expected `;` before end of file
+   ,----
+ 1 | param $x = 1 +
+   :            ^
+   :            `-- capture starts here
+   `----
+  help: add `;`

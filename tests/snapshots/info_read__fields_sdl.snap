@@ -1,0 +1,124 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+field audited: string {
+  on: account;
+  permissions {
+    select: none;
+    create, update: $auth.admin = true;
+  };
+};
+
+field author: record<user> {
+  on: account;
+  reference {
+    on delete: cascade;
+  };
+  permissions: full;
+};
+
+/// The contact address
+field contact: string {
+  on: account;
+  default: 'unknown@example.com';
+  assert: string::is_email($value);
+  permissions: full;
+};
+
+field `da`: array<string> {
+  on: account;
+  default always: [];
+  permissions: full;
+};
+
+field `da`.*: string {
+  on: account;
+  permissions: full;
+};
+
+field derived {
+  on: account;
+  computed: string::uppercase(name);
+  permissions: full;
+};
+
+field display: string {
+  on: account;
+  permissions: full;
+  graphql {
+    alias: 'displayName';
+  };
+};
+
+field fcp: string {
+  on: account;
+  computed: 1 + 1;
+  permissions {
+    select: meta = 1;
+    create, update: full;
+  };
+};
+
+field fvd: string {
+  on: account;
+  default: 2;
+  value: 1;
+  assert: 3 > 2;
+  permissions: full;
+};
+
+field id: string {
+  on: account;
+  permissions: full;
+};
+
+field locked: bool {
+  on: account;
+  value: true;
+  readonly;
+  permissions: full;
+};
+
+field meta2: object {
+  on: account;
+  flexible;
+  permissions: full;
+};
+
+field name: string {
+  on: account;
+  permissions: full;
+};
+
+field optf: option<string> {
+  on: account;
+  permissions: full;
+};
+
+field owner: record<user> {
+  on: account;
+  reference;
+  permissions: full;
+};
+
+field parent: record<page> {
+  on: account;
+  reference {
+    on delete: (CREATE cleanup_log SET at = time::now());
+  };
+  permissions: full;
+};
+
+field secret: string {
+  on: account;
+  permissions {
+    select, create, update: none;
+  };
+};
+
+field shout: string {
+  on: account;
+  computed: string::uppercase(name);
+  permissions: full;
+};

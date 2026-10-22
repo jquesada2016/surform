@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE INDEX OVERWRITE title_fts ON `post` FIELDS title
+    FULLTEXT ANALYZER `english` BM25(1.2,0.75) HIGHLIGHTS;

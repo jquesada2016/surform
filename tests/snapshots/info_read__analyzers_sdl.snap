@@ -1,0 +1,68 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+analyzer an_1;
+
+analyzer an_10 {
+  function: fn::strip;
+  tokenizers: class, punct;
+};
+
+analyzer an_11 {
+  function: fn::strip;
+  tokenizers: class, punct;
+  filters: lowercase, edgengram(2, 10);
+};
+
+analyzer an_12 {
+  function: fn::strip;
+  tokenizers: class, punct;
+  filters: snowball(english), ascii;
+};
+
+analyzer an_2 {
+  filters: lowercase, edgengram(2, 10);
+};
+
+analyzer an_3 {
+  filters: snowball(english), ascii;
+};
+
+analyzer an_4 {
+  tokenizers: class, punct;
+};
+
+analyzer an_5 {
+  tokenizers: class, punct;
+  filters: lowercase, edgengram(2, 10);
+};
+
+analyzer an_6 {
+  tokenizers: class, punct;
+  filters: snowball(english), ascii;
+};
+
+analyzer an_7 {
+  function: fn::strip;
+};
+
+analyzer an_8 {
+  function: fn::strip;
+  filters: lowercase, edgengram(2, 10);
+};
+
+analyzer an_9 {
+  function: fn::strip;
+  filters: snowball(english), ascii;
+};
+
+analyzer `english` {
+  tokenizers: class;
+  filters: snowball(english);
+};
+
+/// English text search
+analyzer noted {
+  filters: lowercase;
+};

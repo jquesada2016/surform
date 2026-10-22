@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE INDEX OVERWRITE vec_tuned ON embedding FIELDS vector
+    HNSW DIMENSION 768 DISTANCE MINKOWSKI 3 TYPE F16 M 16 EFC 200 EXTEND_CANDIDATES KEEP_PRUNED_CONNECTIONS;

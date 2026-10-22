@@ -1,0 +1,14 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+active_count: DEFINE INDEX active_count ON doc COUNT WHERE status = 'active'
+big_vec: DEFINE INDEX big_vec ON doc FIELDS embedding DISKANN DIMENSION 8 DIST COSINE_NORMALIZED TYPE F16 DEGREE 32 L_BUILD 50 ALPHA 1.3f HASHED_VECTOR
+body_fts: DEFINE INDEX body_fts ON doc FIELDS body FULLTEXT ANALYZER like BM25(1.2,0.75)
+by_thread: DEFINE INDEX by_thread ON doc FIELDS account, thread_id COMMENT 'Composite lookup'
+disk_min: DEFINE INDEX disk_min ON doc FIELDS embedding DISKANN DIMENSION 8 DIST EUCLIDEAN TYPE F32 DEGREE 64 L_BUILD 100 ALPHA 1.2f
+one_email: DEFINE INDEX one_email ON doc FIELDS email UNIQUE
+row_count: DEFINE INDEX row_count ON doc COUNT
+title_fts: DEFINE INDEX title_fts ON doc FIELDS title FULLTEXT ANALYZER english BM25(1.2,0.9) HIGHLIGHTS
+vec_min: DEFINE INDEX vec_min ON doc FIELDS vector HNSW DIMENSION 4 DIST EUCLIDEAN TYPE F32 EFC 150 M 12 M0 24 LM 0.40242960438184466f
+vec_tuned: DEFINE INDEX vec_tuned ON doc FIELDS vector HNSW DIMENSION 4 DIST MINKOWSKI 3 TYPE F16 EFC 200 M 16 M0 32 LM 0.36067376022224085f EXTEND_CANDIDATES KEEP_PRUNED_CONNECTIONS

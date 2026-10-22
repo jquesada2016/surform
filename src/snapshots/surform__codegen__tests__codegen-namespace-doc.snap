@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE NAMESPACE OVERWRITE acme COMMENT 'Acme Corporation';
+USE NS acme;

@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 716
+expression: ddl
+---
+DEFINE PARAM OVERWRITE $editor_only VALUE true PERMISSIONS WHERE level > 10;
+DEFINE PARAM OVERWRITE $explicit_full PERMISSIONS FULL;

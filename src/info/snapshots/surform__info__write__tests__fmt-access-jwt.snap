@@ -1,0 +1,13 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// SSO token verification
+access corp_sso {
+  on: db;
+  type: jwt;
+  url: 'https://sso.acme.example/jwks';
+  duration {
+    session: 8h;
+  };
+};

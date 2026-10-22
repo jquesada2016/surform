@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1013 (spec/README.md#design-rules-settled)
+
+  x the `changefeed` block requires `expiry`
+   ,----
+ 1 | database blog { changefeed { include original; }; };
+   :                  ^^^^^|^^^^
+   :                       `-- required clause missing here
+   `----
+  help: add `expiry: …;` inside the `changefeed` block

@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+param $guarded {
+  value: 50;
+  permissions: $auth.role = 'admin';
+};

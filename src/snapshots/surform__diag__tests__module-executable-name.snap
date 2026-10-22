@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1022 (spec/README.md#design-rules-settled)
+
+  x a silo module is self-named — remove the header name (the 3.3 silo form takes no alias)
+   ,----
+ 1 | module color { from: silo::acme::utils::<1.2.0>; unsigned; };
+   :        ^^|^^
+   :          `-- module name does not fit its executable
+   `----
+  help: the header name must fit the executable: file modules take `module <name> { … };`, silo modules take none

@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1372
+expression: "render(src, &diag)"
+---
+SDL-E1028 (spec/config.md)
+
+  x expected `(` with the middleware's arguments — write `name()` when there are none
+   ,----
+ 1 | config api { middleware: api::timeout; };
+   :                         ^^^^^^|^^^^^^
+   :                               `-- not a well-formed middleware call
+   `----
+  help: a middleware entry is a call — `name(args)`, `fn::name(args)`, or `mod::pkg::name(args)`; use `()` for no arguments

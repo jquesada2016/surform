@@ -1,0 +1,9 @@
+---
+source: src/codegen.rs
+assertion_line: 1952
+expression: ddl
+---
+DEFINE CONFIG OVERWRITE API MIDDLEWARE timeout();
+DEFINE CONFIG OVERWRITE API
+    MIDDLEWARE fn::util::guard((CREATE audit)), mod::pkg::check(1000)
+    PERMISSIONS NONE;

@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1044 (spec/table.md)
+
+  x clause does not apply to this table kind: `enforced;` is not part of the normal table vocabulary — it belongs to a relation table
+   ,----
+ 1 | table users { enforced; schemafull; };
+   :              ^^^^|^^^
+   :                  `-- not this table kind's clause
+   `----
+  help: each `table` kind defines its own clauses — check the header kind and the clause list in the linked spec

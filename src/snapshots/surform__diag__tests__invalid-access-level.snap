@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1877
+expression: "render(src, &diag)"
+---
+SDL-E1041 (spec/access.md)
+
+  x access variant not allowed at this level: `type: record` requires `on: database` (parser-enforced upstream)
+   ,----
+ 1 | access account { on: root; type: record; signin: 1; };
+   :                              ^^^^^^|^^^^^
+   :                                    `-- this variant needs `on: database`
+   `----
+  help: record accesses (and bearer accesses for records) live at the database level — write `on: database;` (or `on: db;`)

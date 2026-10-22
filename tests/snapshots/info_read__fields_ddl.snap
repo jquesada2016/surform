@@ -1,0 +1,22 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+audited: DEFINE FIELD audited ON account TYPE string PERMISSIONS FOR select NONE, FOR create, update WHERE $auth.admin = true
+author: DEFINE FIELD author ON account TYPE record<user> REFERENCE ON DELETE CASCADE PERMISSIONS FULL
+contact: DEFINE FIELD contact ON account TYPE string DEFAULT 'unknown@example.com' ASSERT string::is_email($value) COMMENT 'The contact address' PERMISSIONS FULL
+da: DEFINE FIELD da ON account TYPE array<string> DEFAULT ALWAYS [] PERMISSIONS FULL
+da.*: DEFINE FIELD da.* ON account TYPE string PERMISSIONS FULL
+derived: DEFINE FIELD derived ON account COMPUTED string::uppercase(name) PERMISSIONS FULL
+display: DEFINE FIELD display ON account TYPE string GRAPHQL_ALIAS 'displayName' PERMISSIONS FULL
+fcp: DEFINE FIELD fcp ON account TYPE string COMPUTED 1 + 1 PERMISSIONS FOR select WHERE meta = 1, FOR create, update FULL
+fvd: DEFINE FIELD fvd ON account TYPE string DEFAULT 2 VALUE 1 ASSERT 3 > 2 PERMISSIONS FULL
+id: DEFINE FIELD id ON account TYPE string PERMISSIONS FULL
+locked: DEFINE FIELD locked ON account TYPE bool READONLY VALUE true PERMISSIONS FULL
+meta2: DEFINE FIELD meta2 ON account TYPE object FLEXIBLE PERMISSIONS FULL
+name: DEFINE FIELD name ON account TYPE string PERMISSIONS FULL
+optf: DEFINE FIELD optf ON account TYPE none | string PERMISSIONS FULL
+owner: DEFINE FIELD owner ON account TYPE record<user> REFERENCE ON DELETE IGNORE PERMISSIONS FULL
+parent: DEFINE FIELD parent ON account TYPE record<page> REFERENCE ON DELETE THEN (CREATE cleanup_log SET at = time::now()) PERMISSIONS FULL
+secret: DEFINE FIELD secret ON account TYPE string PERMISSIONS FOR select, create, update NONE
+shout: DEFINE FIELD shout ON account TYPE string COMPUTED string::uppercase(name) PERMISSIONS FULL

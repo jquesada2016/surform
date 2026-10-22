@@ -1,0 +1,9 @@
+---
+source: src/info/write.rs
+assertion_line: 1477
+expression: once
+---
+user provisioned {
+  on: root;
+  passscram: 'SCRAM-SHA-256$4096:MDEyMzQ1Njc4OWFiY2RlZg==$nQpbZ77WudtqufPwikHXGRt6g2QJ4zns8bZLw273DRM=:jn2amWP1q1h+jgjy0YTO14S6/F02SV7taipOeB7ef20=';
+};

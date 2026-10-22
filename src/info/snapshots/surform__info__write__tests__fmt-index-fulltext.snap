@@ -1,0 +1,12 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Inbox thread lookup
+index fulltext search {
+  on: message;
+  fields: body;
+  concurrently;
+  analyzer: `english`;
+  bm25: (1.2, 0.75);
+};

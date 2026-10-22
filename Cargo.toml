@@ -1,0 +1,103 @@
+[workspace]
+members = ["docs", "editor", "surform-surrealism", "surform-surrealism-apply"]
+
+# Engine-touching work (tests, the docs builder) runs the embedded
+# SurrealDB engine, which is unusably slow unoptimized — so dev and
+# test builds compile every DEPENDENCY at opt-level 3 while our own
+# crates stay at dev settings with their debug assertions intact
+# (the policy: release-speed engines, full-assertion tool code).
+[profile.dev.package."*"]
+opt-level = 3
+
+[package]
+name = "surform"
+version = "0.1.0"
+edition = "2024"
+# The locked =3.3.0 graph's real floor, NOT the 1.85 edition floor —
+# re-pinned at the 2026-09-25 floor move.
+rust-version = "1.94"
+description = "Surform — a declarative Schema Definition Language (SDL) that compiles to SurrealQL DDL for SurrealDB v3"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jquesada2016/surform"
+homepage = "https://jquesada2016.github.io/surform/"
+readme = "README.md"
+authors = ["Jose Quesada"]
+keywords = ["surrealdb", "surrealql", "schema", "sdl", "database"]
+categories = ["database", "command-line-utilities", "development-tools"]
+# The docs-site crate (its generated wasm/bundle artifacts especially),
+# the editor bindings, and the Surrealism guests (the default artifact
+# and the apply variant) are workspace members, not part of the
+# published crate's source tarball; the internal project docs and the
+# skill stay out of it too.
+exclude = [
+    "docs",
+    "editor",
+    "surform-surrealism",
+    "surform-surrealism-apply",
+    "AGENTS.md",
+    "meta",
+    ".agents",
+]
+
+[dependencies]
+# The engine parser + its public `sql` AST (Display impls). Exact pin.
+# The 3.3.0 floor move (2026-09-25) is that deliberate spec event; the
+# next bump is another one. Upstream split the crate family at 3.3 —
+# the parse entry stays on the umbrella, but the capability types and
+# the parser config moved to the split crates below. All three are the
+# SAME instances the umbrella links (no new code in the graph).
+surrealdb-core = { version = "=3.3.0", default-features = false }
+# The capability types (`Capabilities`/`ExperimentalTarget`/`Targets`)
+# live here since 3.3 (core's `dbs::capabilities` went private).
+surrealdb-rpc = "=3.3.0"
+# The parser's `ParserConfig` (depth limits; the old `cnf` config's
+# parser-facing successor) lives here since 3.3.
+surrealdb-syn = "=3.3.0"
+# The `ToSql`/`SqlFormat` traits of the `sql` AST (the expression
+# re-print path). Same crate instance surrealdb-core links; no new code
+# in the graph. `surrealdb-core` does not re-export the traits.
+surrealdb-types = "=3.3.0"
+# The `sql` AST types themselves (`Expr`/`Ast`/`CoverStmts`/
+# `BindingPower`) for the pretty-printer's expression walk — core's
+# `sql` alias is `pub(crate)`, so the types are not nameable through
+# it. Same crate instance surrealdb-core links; no new code in the
+# graph (the exact-pin family-split pattern of `surrealdb-rpc`/`-syn`).
+surrealdb-sql = "=3.3.0"
+miette = { version = "7", features = ["derive", "fancy"] }
+strsim = "0.11"
+clap = { version = "4", features = ["derive"] }
+
+# The `migrate push` HTTP client: blocking — the CLI stays sync, no
+# async runtime — with rustls (ring provider, webpki roots) and NO
+# native-tls. Default features off drops
+# gzip: a migration client POSTs and reads JSON, it does not negotiate
+# response compression. Target-gated OFF the wasm32 build: the
+# playground never pushes, and rustls does not compile for the wasm
+# target (cargo must build every lib dependency for each target the
+# lib compiles for — link-time dead-stripping does not exempt it).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
+
+[dev-dependencies]
+# Embedded engine for the exec-smoke layer — SDK only, no sockets.
+# Defaults (protocol-ws, rustls) are remote-protocol baggage; skip them.
+# insta (snapshots), proptest (panic guard), and assert_cmd (CLI)
+# serve the other testing layers (CONTRIBUTING.md).
+surrealdb = { version = "=3.3.0", default-features = false, features = [
+    "kv-mem",
+] }
+tokio = { version = "1", features = ["macros", "rt"] }
+insta = "1"
+proptest = "1"
+assert_cmd = "2"
+
+[lib]
+# The 2026-10-09 unification: package, lib, and bin are all `surform`.
+# The name is spelled out even though it matches the default — it is
+# load-bearing, every dependent crate's `use surform::` binds to it.
+name = "surform"
+path = "src/lib.rs"
+
+[[bin]]
+name = "surform"
+path = "src/main.rs"

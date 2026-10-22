@@ -1,0 +1,87 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+index count active_count {
+  on: doc;
+  where: status = 'active';
+};
+
+index diskann big_vec {
+  on: doc;
+  fields: embedding;
+  dimension: 8;
+  distance: cosine_normalized;
+  type: f16;
+  degree: 32;
+  l_build: 50;
+  alpha: 1.3;
+  hashed_vector;
+};
+
+index fulltext body_fts {
+  on: doc;
+  fields: body;
+  analyzer: like;
+  bm25: (1.2, 0.75);
+};
+
+/// Composite lookup
+index by_thread {
+  on: doc;
+  fields: account, thread_id;
+};
+
+index diskann disk_min {
+  on: doc;
+  fields: embedding;
+  dimension: 8;
+  distance: euclidean;
+  type: f32;
+  degree: 64;
+  l_build: 100;
+  alpha: 1.2;
+};
+
+index unique one_email {
+  on: doc;
+  fields: email;
+};
+
+index count row_count {
+  on: doc;
+};
+
+index fulltext title_fts {
+  on: doc;
+  fields: title;
+  analyzer: `english`;
+  bm25: (1.2, 0.9);
+  highlights;
+};
+
+index hnsw vec_min {
+  on: doc;
+  fields: vector;
+  dimension: 4;
+  distance: euclidean;
+  type: f32;
+  m: 12;
+  m0: 24;
+  lm: 0.40242960438184466;
+  efc: 150;
+};
+
+index hnsw vec_tuned {
+  on: doc;
+  fields: vector;
+  dimension: 4;
+  distance: minkowski(3);
+  type: f16;
+  m: 16;
+  m0: 32;
+  lm: 0.36067376022224085;
+  efc: 200;
+  extend_candidates;
+  keep_pruned_connections;
+};

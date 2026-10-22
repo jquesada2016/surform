@@ -1,0 +1,6 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+API: API MIDDLEWARE api::timeout(5s), api::log() PERMISSIONS NONE
+GraphQL: GRAPHQL TABLES INCLUDE t1, t2 FUNCTIONS NONE DEPTH 4 COMPLEXITY 100 INTROSPECTION NONE

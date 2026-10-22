@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE EVENT OVERWRITE webhook_fanout ON invoice
+    ASYNC RETRY 5 MAXDEPTH 8
+    THEN { IF `rand`::bool() { THROW 'flaky downstream' } };

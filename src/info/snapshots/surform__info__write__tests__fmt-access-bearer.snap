@@ -1,0 +1,16 @@
+---
+source: src/info/write.rs
+expression: once
+---
+access tokens {
+  on: database;
+  type: bearer;
+  for: record;
+  jwt {
+    url: 'https://keys.example/jwks';
+    issuer {
+      algorithm: es256;
+      key: '[REDACTED]';
+    };
+  };
+};

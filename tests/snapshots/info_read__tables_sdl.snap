@@ -1,0 +1,120 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+table audit {
+  schemaless;
+  drop;
+  changefeed {
+    expiry: 4w2d;
+    include original;
+  };
+  permissions: full;
+};
+
+table blobby {
+  schemaless;
+  permissions: none;
+};
+
+table cap_host {
+  schemaless;
+  permissions: none;
+  inline edges: 64;
+  inline references: 16;
+};
+
+table relation generic_edge {
+  schemaless;
+  permissions: none;
+  field `in`: record {
+    permissions: full;
+  };
+  field `out`: record {
+    permissions: full;
+  };
+};
+
+table lw_users->lw_cap->lw_posts lightweight {
+  schemaless;
+  permissions: none;
+  inline edges: 8;
+};
+
+table lw_users->lw_likes->lw_posts lightweight {
+  schemaless;
+  permissions: none;
+};
+
+table lw_posts {
+  schemaless;
+  permissions: none;
+};
+
+table lw_users {
+  schemaless;
+  permissions: none;
+};
+
+table orgs {
+  schemaless;
+  permissions: none;
+};
+
+table `out` {
+  schemaless;
+  permissions: none;
+};
+
+/// Posts per author
+table view post_stats {
+  SELECT author, count() AS posts FROM posts GROUP BY author;
+  permissions: none;
+};
+
+table posts {
+  schemaless;
+  permissions: none;
+};
+
+table out->rel_out->posts {
+  schemaless;
+  permissions: none;
+  field `in`: record<out> {
+    permissions: full;
+  };
+  field `out`: record<posts> {
+    permissions: full;
+  };
+};
+
+/// App users
+table users {
+  schemafull;
+  permissions {
+    select, create: full;
+    update: $auth.id = id;
+    delete: none;
+  };
+};
+
+table users2 {
+  schemaless;
+  permissions: none;
+};
+
+table users2 | orgs->wrote->posts {
+  schemaless;
+  permissions: none;
+  enforced;
+  field `at`: datetime {
+    default: time::now();
+    permissions: full;
+  };
+  field `in`: record<users2 | orgs> {
+    permissions: full;
+  };
+  field `out`: record<posts> {
+    permissions: full;
+  };
+};

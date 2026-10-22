@@ -1,0 +1,6 @@
+---
+source: src/info/write.rs
+assertion_line: 2108
+expression: once
+---
+mixin base;

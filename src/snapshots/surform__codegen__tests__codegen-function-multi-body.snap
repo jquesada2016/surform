@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1533
+expression: ddl
+---
+DEFINE FUNCTION OVERWRITE fn::tax_total($net: number, $rate: option<number>) {
+    LET $r = $rate ?? 0.15f;
+    LET $tax = math::round($net * $r, 2);
+    $net + $tax;
+};

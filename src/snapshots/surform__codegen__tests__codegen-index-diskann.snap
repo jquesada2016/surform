@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE INDEX OVERWRITE big_vec ON document FIELDS embedding
+    DISKANN DIMENSION 1536 DISTANCE COSINE_NORMALIZED TYPE F16 DEGREE 32 L_BUILD 50 ALPHA 1.3 HASHED_VECTOR;

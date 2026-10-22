@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE MODULE OVERWRITE mod::table FROM f"b:/k" UNSIGNED PERMISSIONS NONE;
+DEFINE MODULE OVERWRITE silo::`9lives`::pkg::<0.1.2> UNSIGNED;

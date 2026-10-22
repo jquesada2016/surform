@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+module {
+  from: silo::acme::palette::<1.2.0>;
+  unsigned;
+};

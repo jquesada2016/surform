@@ -1,0 +1,6 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Acme Corporation
+namespace acme;

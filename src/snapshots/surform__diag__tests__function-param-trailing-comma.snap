@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1025 (spec/function.md)
+
+  x trailing `,` in the parameter list
+   ,----
+ 1 | fn price($a: int,) { 1 };
+   :                  |
+   :                  `-- trailing comma
+   `----
+  help: remove the trailing `,`; SurrealQL accepts one but INFO never emits it, so SDL is deliberately stricter

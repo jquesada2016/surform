@@ -1,0 +1,47 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+bucket bucket_1 {
+  backend: 'memory';
+  permissions: full;
+};
+
+bucket bucket_2 {
+  backend: 'memory';
+  permissions: none;
+};
+
+bucket bucket_3 {
+  backend: 'memory';
+  permissions: full;
+};
+
+bucket bucket_4 {
+  backend: 'memory';
+  permissions: $auth.admin = true;
+};
+
+bucket bucket_5 {
+  backend: 'memory';
+  readonly;
+  permissions: full;
+};
+
+bucket bucket_6 {
+  backend: 'memory';
+  readonly;
+  permissions: none;
+};
+
+bucket bucket_7 {
+  backend: 'memory';
+  readonly;
+  permissions: full;
+};
+
+bucket bucket_8 {
+  backend: 'memory';
+  readonly;
+  permissions: $auth.admin = true;
+};

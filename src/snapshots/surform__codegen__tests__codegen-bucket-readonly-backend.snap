@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE BUCKET OVERWRITE published_reports READONLY BACKEND 'memory';

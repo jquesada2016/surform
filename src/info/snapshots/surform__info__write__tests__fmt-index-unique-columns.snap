@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+index unique one_email {
+  on: `user`;
+  columns: email;
+};

@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1031 (spec/index.md)
+
+  x `1.2.3` is not a decimal number
+   ,----
+ 1 | index diskann v { on: t; fields: a; dimension: 8; alpha: 1.2.3; };
+   :                                                    ^^|^^
+   :                                                      `-- not a decimal number
+   `----
+  help: unsigned decimal numbers only — digits with `_` separators, an optional `.` fraction, an optional `e` exponent (`1.2`, `1_000.5e-2`, `3f`); no sign, no `NaN`/`Infinity` spellings, and
+        magnitudes under 2⁶³ (the emitted DDL prints the value bare, so it must re-parse upstream unchanged)

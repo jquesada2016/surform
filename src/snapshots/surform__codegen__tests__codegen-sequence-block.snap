@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+assertion_line: 716
+expression: ddl
+---
+DEFINE SEQUENCE OVERWRITE order_number BATCH 100 START 5000 TIMEOUT 5s;

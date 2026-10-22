@@ -1,0 +1,14 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE FIELD OVERWRITE mixed ON t TYPE int | string;
+DEFINE FIELD OVERWRITE size ON t TYPE 'small' | 'large' | int;
+DEFINE FIELD OVERWRITE inline_obj ON t TYPE { a: string, b: number };
+DEFINE FIELD OVERWRITE matrix ON t TYPE array<array<int>>;
+DEFINE FIELD OVERWRITE district ON t TYPE geometry<polygon>;
+DEFINE TABLE OVERWRITE metrics TYPE NORMAL SCHEMALESS;
+DEFINE FIELD OVERWRITE meta ON metrics TYPE object FLEXIBLE;
+DEFINE FIELD OVERWRITE meta.user_id ON metrics TYPE int;
+DEFINE FIELD OVERWRITE tags ON metrics TYPE array<string>;
+DEFINE FIELD OVERWRITE tags.* ON metrics TYPE string;

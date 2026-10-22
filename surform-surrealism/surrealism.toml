@@ -1,0 +1,30 @@
+# The module manifest `surreal module build` packs into the .surli
+# archive (surform-surrealism/README.md carries the build recipe).
+#
+# `target`/`abi` are the scaffold's head keys — the component ABI the
+# 3.3 engine loads (abi = 2). Top-level TOML keys,
+# so they precede the tables.
+target = "rust"
+abi = 2
+
+# The DEFAULT artifact is PURE — zero capabilities. Every grant line
+# is an explicit `false`/empty so the zero-grant property is asserted
+# by text, not by omission (surform-surrealism/tests pin this file).
+# These grants gate the SDK's host fns (sql/run/kv), NOT WASI fd
+# rights: the guest's no-filesystem property comes from the Surrealism
+# runtime's no-preopen policy (probe-verified on SurrealDB 3.3).
+# The apply artifact flips allow_arbitrary_queries in a
+# separate manifest; this one stays the pure default.
+[package]
+organisation = "surform"
+name = "surform"
+version = "0.1.0"
+
+[capabilities]
+allow_scripting = false
+allow_arbitrary_queries = false
+allow_functions = []
+allow_net = []
+strict_timeout = true
+
+[attach]

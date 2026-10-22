@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1017 (spec/README.md#design-rules-settled)
+
+  x `edgengram(x, 2)` is not a SurrealQL filter
+   ,----
+ 1 | analyzer a { filters: edgengram(x, 2); };
+   :                       ^^^^^^^|^^^^^^^
+   :                              `-- not a SurrealQL filter
+   `----
+  help: filters are `ascii`, `lowercase`, `uppercase`, `edgengram(<min>, <max>)`, `ngram(<min>, <max>)`, `snowball(<language>)` with a bare language keyword, or `mapper('<path>')`

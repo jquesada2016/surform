@@ -1,0 +1,1062 @@
+{
+  "name": "Surform (SDL)",
+  "scopeName": "source.surform",
+  "fileTypes": [
+    "surdl",
+    "sdl"
+  ],
+  "comment": "Syntax highlighting for Surform's Schema Definition Language. Structure mirrors the spec's grammar: lowercase statement heads, clause keys ending at ':' (values) / '{' (sub-blocks) / ';' (flags), and the three SurrealQL-verbatim bodies (fn bodies, view queries, raw blocks) plus every expression clause, which are delegated to SurrealDB's official grammar via include: source.surrealql — that requires the official 'SurrealQL' extension (surrealdb.surrealql, listed in extensionPack); without it the delegated regions still get string/comment/brace coloring from this grammar's own rules. Highlighting is cosmetic: the compiler is the authority.",
+  "patterns": [
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#quoted-idents"
+    },
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#raw-statement"
+    },
+    {
+      "include": "#fn-statement"
+    },
+    {
+      "include": "#view-statement"
+    },
+    {
+      "include": "#param-statement"
+    },
+    {
+      "include": "#field-object-type"
+    },
+    {
+      "include": "#spread-entry"
+    },
+    {
+      "include": "#field-header"
+    },
+    {
+      "include": "#expression-clauses"
+    },
+    {
+      "include": "#permissions-clause"
+    },
+    {
+      "include": "#keyword-clauses"
+    },
+    {
+      "include": "#assignment-expr"
+    },
+    {
+      "include": "#include-statement"
+    },
+    {
+      "include": "#flags"
+    },
+    {
+      "include": "#api-heads"
+    },
+    {
+      "include": "#sdl-braces"
+    },
+    {
+      "include": "#statement-heads"
+    },
+    {
+      "include": "#sub-block-heads"
+    },
+    {
+      "include": "#type-words"
+    },
+    {
+      "include": "#value-words"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#params"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "comment": "SDL's own comments: // line and /// doc (rule 5) — anywhere on the line, after the string rules so 'http://…' inside a literal stays a string. The other SurrealQL comment syntaxes are legal only inside captures, where #ql-comments carries a fallback.",
+      "patterns": [
+        {
+          "name": "comment.line.documentation.surform",
+          "match": "///.*$"
+        },
+        {
+          "name": "comment.line.double-slash.surform",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "comment": "String literals: plain '…' / \"…\" with backslash escapes, optional single-letter prefixes d s u b f r (rule 3's skip set). The f prefix is SurrealQL's format string; scopes follow the prefix.",
+      "patterns": [
+        {
+          "match": "(?i)(?<!\\w)([f])('(?:\\\\.|[^'\\\\])*'|\"(?:\\\\.|[^\"\\\\])*\")",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.string.begin.surform"
+            },
+            "2": {
+              "name": "string.format.surform"
+            }
+          }
+        },
+        {
+          "match": "(?i)(?<!\\w)([dsubr])('(?:\\\\.|[^'\\\\])*'|\"(?:\\\\.|[^\"\\\\])*\")",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.string.begin.surform"
+            },
+            "2": {
+              "name": "string.quoted.other.surform"
+            }
+          }
+        },
+        {
+          "name": "string.quoted.double.surform",
+          "match": "\"(?:\\\\.|[^\"\\\\])*\""
+        },
+        {
+          "name": "string.quoted.single.surform",
+          "match": "'(?:\\\\.|[^'\\\\])*'"
+        }
+      ]
+    },
+    "quoted-idents": {
+      "comment": "Quoted identifiers: backtick `…` and angle ⟨…⟩ (rule 3's skip set; interiors may hold anything).",
+      "patterns": [
+        {
+          "name": "string.interpolated.surform",
+          "match": "`(?:\\\\.|[^`\\\\])*`"
+        },
+        {
+          "name": "string.interpolated.surform",
+          "match": "⟨(?:\\\\.|[^⟩\\\\])*⟩"
+        }
+      ]
+    },
+    "statement-heads": {
+      "comment": "The statement keywords, line-initial (the parser's STATEMENT_KEYWORDS; codegen's canonical spellings). `fn` is the function head; `raw` is the escape hatch; `mixin` is the SDL-only field group (spec/mixin.md). `include` is NOT here — it has its own column-0 rule below, so the changefeed phrase-flag `include original;` (an indented clause) never false-inks as a head.",
+      "match": "(?i)^[ \\t]*(namespace|ns|database|db|table|field|index|event|fn|user|access|analyzer|param|sequence|config|api|bucket|module|mixin|raw)\\b",
+      "captures": {
+        "1": {
+          "name": "keyword.control.surform"
+        }
+      }
+    },
+    "include-statement": {
+      "comment": "The include statement (spec/include.md) — column 0 ONLY: `include original;` is the changefeed phrase-flag and every clause is legal at column 0 (indentation is cosmetic), so indented include lines must stay flags. The path string inks through #strings.",
+      "name": "keyword.control.surform",
+      "match": "(?i)^include\\b"
+    },
+    "spread-entry": {
+      "comment": "A spread entry — `...name;` — a table-block body entry, not a clause (spec/mixin.md): sigil-led, no key, no colon. Line-anchored like the field rules, so a `...` inside a value or SurrealQL region never fires.",
+      "match": "(?i)^[ \\t]*(\\.\\.\\.)[ \\t]*((?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+))",
+      "captures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "entity.name.surform"
+        }
+      }
+    },
+    "flags": {
+      "comment": "Bare flags and phrase flags (`include original;`) — the colon-less, brace-less clause form (rule 2), anywhere on the line (one-liner statements are legal SDL).",
+      "match": "(?i)(?<![\\w-])(schemafull|schemaless|flexible|readonly|inline|drop|enforced|strict|concurrently|highlights|extend_candidates|keep_pruned_connections|hashed_vector|refresh|unsigned|async|reference|auto|none|include\\s+original)\\s*(?=;)",
+      "captures": {
+        "1": {
+          "name": "entity.other.attribute-name.surform"
+        }
+      }
+    },
+    "api-heads": {
+      "comment": "The api body's structural head words (rule 2's head-not-a-key groups): comma-groupable method blocks and `any`, block-opening only so the expression clause `delete:` keeps its own rule.",
+      "match": "(?i)((?:delete|get|post|put|patch|trace)\\s*,\\s*)*(delete|get|post|put|patch|trace|any)\\s*(?=\\{)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "keyword.control.surform"
+        }
+      }
+    },
+    "params": {
+      "name": "variable.other.surform",
+      "match": "(?<![\\w$])\\$[a-zA-Z_][\\w-]*"
+    },
+    "numbers": {
+      "comment": "Numbers (with exponents) and the duration literals riding their digits (1s, 500ms, 2d…).",
+      "name": "constant.numeric.surform",
+      "match": "\\b(?:\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?[a-zµ]*)+\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.surform",
+      "match": "->|=>|==|!=|<=|>=|&&|\\|\\||\\?\\?|[-=+*/%<>|&!?:.,;()\\[\\]{}]"
+    },
+    "type-words": {
+      "comment": "The common kind leaves (rule 4; sql/kind.rs is the authority — this list is illustrative).",
+      "match": "(?i)(?<!\\w)(any|bool|bytes|datetime|decimal|duration|f16|f32|f64|file|float|geometry|int|i8|i16|i32|i64|number|object|option|array|set|record|range|regex|string|table|u8|uuid)(?!\\w)",
+      "name": "support.type.surform"
+    },
+    "value-words": {
+      "comment": "The closed keyword sets clause values take (levels, roles, access types, algorithms, tokenizers, distances, vector types, api methods, index variants, referential actions, graphql family words, permission shorthands).",
+      "match": "(?i)(?<!\\w)(none|full|auto|root|kv|ns|database|owner|editor|viewer|jwt|record|bearer|blank|camel|class|punct|euclidean|cosine|cosine_normalized|chebyshev|hamming|jaccard|pearson|inner_product|manhattan|minkowski|unique|count|fulltext|hnsw|diskann|relation|view|any|lightweight|normal|reject|cascade|ignore|unset|get|post|put|patch|delete|trace|f64|f32|f16|i8|i16|i32|i64|u8|eddsa|es256|es384|es512|hs256|hs384|hs512|ps256|ps384|ps512|rs256|rs384|rs512)(?!\\w)",
+      "name": "constant.language.surform"
+    },
+    "expression-clauses": {
+      "comment": "Expression clauses (rule 3's <expr>): everything after the ':' is SurrealQL verbatim until the depth-0 ';'. The #ql-region rules make the terminator depth-aware — a ';' inside balanced braces/parens/brackets or strings/comments never ends the clause — and delegate the interior to SurrealDB's official grammar. Keys from the parser's clause tables with ClauseKind::Expr / ExprList / Permissions / WordOrExpr / MiddlewareList.",
+      "patterns": [
+        {
+          "begin": "(?i)((?:select|create|update|delete)\\s*,\\s*)*((value|default always|default|assert|computed|when|then|where|signup|signin|authenticate|url|key|context|backend|batch|start|timeout|token|session|grant|on delete|middleware|columns|fields|database|namespace|select|create|update|delete)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "4": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#ql-region"
+            }
+          ]
+        }
+      ]
+    },
+    "permissions-clause": {
+      "comment": "permissions comes in exactly two forms (the spec's permission-clause note): the colon-less per-operation block — plain SDL braces, handled by #sdl-braces — and the single-value `permissions: none | full | <expr>;`, expressed here.",
+      "begin": "(?i)(permissions)\\s*(:)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.other.attribute-name.surform"
+        },
+        "2": {
+          "name": "punctuation.separator.key-value.surform"
+        }
+      },
+      "end": "(;)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.terminator.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-region"
+        }
+      ]
+    },
+    "keyword-clauses": {
+      "comment": "Keyword/literal clauses (rule 3's first kind — never a SurrealQL capture): 'key:' followed by SDL-lexed words, idents, strings, numbers, bm25 pairs, fn-paths, silo paths, analyzer filters, type sets. Keys from the parser's clause tables of those kinds.",
+      "patterns": [
+        {
+          "comment": "type: — the field kind grammar is header-owned; this covers access `type:`, index `type:`, config words.",
+          "begin": "(?i)(type)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#type-words"
+            },
+            {
+              "include": "#value-words"
+            },
+            {
+              "include": "#operators"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:inline edges|inline references|dimension|m|m0|efc|degree|l_build|retry|maxdepth|complexity|depth|expiry)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#numbers"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:lm|alpha)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#numbers"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:password|passhash|passscram|alias|deprecated|audience)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#strings"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:on|analyzer)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#quoted-idents"
+            },
+            {
+              "include": "#value-words"
+            },
+            {
+              "name": "entity.name.surform",
+              "match": "[\\w-]+"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)(algorithm)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#value-words"
+            }
+          ]
+        },
+        {
+          "comment": "access bearer's subject set — `user`/`record` are scoped here and NOT in the flat #value-words, where they would over-color common table names.",
+          "begin": "(?i)(for)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "match": "(?i)(?<!\\w)(user|record)(?!\\w)",
+              "name": "constant.language.surform"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:roles|tokenizers|introspection|distance)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#value-words"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)(filters)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "name": "entity.name.function.surform",
+              "match": "[\\w.-]+"
+            },
+            {
+              "name": "entity.name.function.surform",
+              "match": "[\\w.]+(?=\\()"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "comment": "analyzer `function: fn::…;` (an FnPath — a name path, never a call) and module `from: f'…' | silo::…;` (an Executable).",
+          "begin": "(?i)((?:function|from)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "name": "entity.name.function.surform",
+              "match": "(?i)(?:fn|silo)(?:::[\\w.-]+)+"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)((?:include|exclude)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#quoted-idents"
+            },
+            {
+              "name": "entity.name.function.surform",
+              "match": "(?i)fn(?:::[\\w-]+)+"
+            },
+            {
+              "name": "entity.name.surform",
+              "match": "[\\w-]+"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "begin": "(?i)(bm25)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "comment": "graphql's WordOrSubBlock `:` form — one family word (the `{` form is plain SDL braces).",
+          "begin": "(?i)((?:tables|functions)\\b)\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.other.attribute-name.surform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.surform"
+            }
+          },
+          "end": "(;)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.terminator.surform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#value-words"
+            }
+          ]
+        }
+      ]
+    },
+    "assignment-expr": {
+      "comment": "The statement-owned `= <expr>;` assignment short form (param, sequence, the computed field header). The sigil taxonomy makes this safe flat: at SDL level a `=` is ALWAYS an assignment (after ':' it would belong to the value).",
+      "begin": "(=)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.operator.surform"
+        }
+      },
+      "end": "(;)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.terminator.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-region"
+        }
+      ]
+    },
+    "param-statement": {
+      "comment": "`param $name = <expr>;` (the assignment short form rides #assignment-expr), `param $name;`, and `param $name { value: …; permissions: …; };` — the block form's clauses are SDL and ride #sdl-braces. The end's lookbehind arm covers the assignment form, where the inner rule consumed the ';'.",
+      "begin": "(?i)(param)\\s+(\\$[\\w-]+)\\s*",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "variable.other.surform"
+        }
+      },
+      "end": "(;)|(?<=;)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.terminator.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#assignment-expr"
+        },
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#sdl-braces"
+        },
+        {
+          "include": "#operators"
+        }
+      ]
+    },
+    "field-object-type": {
+      "comment": "The object-schema field kind (rule 4): `field meta: { member: kind, … }` — the type IS a brace-bearing object, so the header consumes the balanced braces as TYPE ink. Member names are ordinary words (kind.rs accepts any word): the content deliberately EXCLUDES the clause rules, or `field meta: { value: string, default: 1 }` would fire the value:/default: clause rules inside the type and corrupt state across lines. Nested objects recurse.",
+      "begin": "(?i)^[ \\t]*(field)\\s+((?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+)(?:\\.(?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+))*)\\s*(:)\\s*(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "entity.name.surform"
+        },
+        "3": {
+          "name": "punctuation.separator.key-value.surform"
+        },
+        "4": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#type-words"
+        },
+        {
+          "include": "#value-words"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#quoted-idents"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#field-object-type-braces"
+        },
+        {
+          "name": "keyword.operator.surform",
+          "match": "[<>|,()\\[\\]]"
+        }
+      ]
+    },
+    "field-object-type-braces": {
+      "begin": "(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#type-words"
+        },
+        {
+          "include": "#value-words"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#quoted-idents"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#field-object-type-braces"
+        },
+        {
+          "name": "keyword.operator.surform",
+          "match": "[<>|,()\\[\\]]"
+        }
+      ]
+    },
+    "field-header": {
+      "comment": "The field header through its type grammar: `field path: kind` ends at '=', ';' or the clause block '{' (rule 4). The '=' computed assignment is picked up by #assignment-expr.",
+      "begin": "(?i)^[ \\t]*(field)\\s+((?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+)(?:\\.(?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+))*)\\s*(:)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "entity.name.surform"
+        },
+        "3": {
+          "name": "punctuation.separator.key-value.surform"
+        }
+      },
+      "end": "(?=[;={])",
+      "patterns": [
+        {
+          "include": "#type-words"
+        },
+        {
+          "include": "#value-words"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "name": "keyword.operator.surform",
+          "match": "[<>|,(){}\\[\\]]"
+        }
+      ]
+    },
+    "sdl-braces": {
+      "comment": "An SDL clause block: `{` opens a sub-block only where a key ends (the sigil rule). Contents parse as SDL — clauses, nested statement heads, further braces. Verbatim bodies are consumed by their own rules before this one can fire.",
+      "begin": "(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#quoted-idents"
+        },
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#field-object-type"
+        },
+        {
+          "include": "#field-header"
+        },
+        {
+          "include": "#expression-clauses"
+        },
+        {
+          "include": "#permissions-clause"
+        },
+        {
+          "include": "#keyword-clauses"
+        },
+        {
+          "include": "#assignment-expr"
+        },
+        {
+          "include": "#flags"
+        },
+        {
+          "include": "#api-heads"
+        },
+        {
+          "include": "#statement-heads"
+        },
+        {
+          "include": "#sub-block-heads"
+        },
+        {
+          "include": "#type-words"
+        },
+        {
+          "include": "#value-words"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#params"
+        },
+        {
+          "include": "#sdl-braces"
+        },
+        {
+          "include": "#operators"
+        }
+      ]
+    },
+    "raw-statement": {
+      "comment": "`raw { … };` — the escape hatch (rule 8): the brace-balanced body forwards verbatim DDL. Every byte of the body belongs to SurrealQL.",
+      "begin": "(?i)(raw)\\s*(?=\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        }
+      },
+      "end": "(;)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.terminator.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-braced"
+        }
+      ]
+    },
+    "fn-statement": {
+      "comment": "`fn path::name($params) -> ret { BODY } { optional sdl clauses };` — the one two-block statement. The begin consumes the whole signature INCLUDING the body's opening brace, so the rule IS the verbatim body (content = #ql-region, end = its closing brace); after it ends, the optional second block is matched at the outer level by #sdl-braces — ordinary SDL clauses, per the two-block grammar.",
+      "begin": "(?i)(fn)\\s+([\\w-]+(?:::[\\w-]+)*)\\s*(\\()((?:[^()\\\\]|\\\\.)*)(\\))\\s*(?:->\\s*([\\w<>,|\\s'\"()\\[\\]]+?))?\\s*(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "entity.name.function.surform"
+        },
+        "3": {
+          "name": "punctuation.definition.parameters.begin.surform"
+        },
+        "4": {
+          "name": "meta.function.parameters.surform"
+        },
+        "5": {
+          "name": "punctuation.definition.parameters.end.surform"
+        },
+        "6": {
+          "name": "support.type.surform"
+        },
+        "7": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-region"
+        }
+      ]
+    },
+    "view-statement": {
+      "comment": "`table view <name> { QUERY; … }: the view's keyless block holds the SurrealQL-verbatim query first (the spec's keyless body block, `;`-terminated). The rule IS that capture — the block's '{' is consumed by the begin and the query's depth-0 ';' ends it — so the trailing SDL clauses (graphql, permissions blocks) and the block's own '}' ride the outer SDL rules, where they belong. A query missing its ';' degrades: highlighting is cosmetic.",
+      "begin": "(?i)(table)\\s+(view)\\s+((?:⟨[^⟩]*⟩|`[^`]*`|[\\w-]+))\\s*(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "constant.language.surform"
+        },
+        "3": {
+          "name": "entity.name.surform"
+        },
+        "4": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(;)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.terminator.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-region"
+        }
+      ]
+    },
+    "ql-braced": {
+      "comment": "One brace-balanced SurrealQL verbatim block (a fn body, a raw body, a view query).",
+      "begin": "(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.block.begin.surform"
+        }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.surform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#ql-region"
+        }
+      ]
+    },
+    "ql-region": {
+      "comment": "SurrealQL verbatim content, depth-aware: balanced braces/parens/brackets recurse (so a ';' inside them never terminates an expression clause), strings and the four SurrealQL comment syntaxes stay colored even without the official extension, and everything else is delegated to SurrealDB's official grammar (source.surrealql — a no-op include when the official extension is absent).",
+      "patterns": [
+        {
+          "include": "#ql-braced"
+        },
+        {
+          "begin": "\\(",
+          "end": "\\)",
+          "patterns": [
+            {
+              "include": "#ql-region"
+            }
+          ]
+        },
+        {
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [
+            {
+              "include": "#ql-region"
+            }
+          ]
+        },
+        {
+          "include": "#ql-comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#quoted-idents"
+        },
+        {
+          "include": "source.surrealql"
+        },
+        {
+          "include": "#params"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#value-words"
+        }
+      ]
+    },
+    "ql-comments": {
+      "comment": "The four SurrealQL comment syntaxes, legal inside captures (rule 3's comment model) — a fallback so regions keep comment ink without the official extension.",
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.surrealql",
+          "match": "--[^\\n]*"
+        },
+        {
+          "name": "comment.line.hash.surrealql",
+          "match": "#[^\\n]*"
+        },
+        {
+          "name": "comment.line.double-slash.surrealql",
+          "match": "//[^\\n]*"
+        },
+        {
+          "name": "comment.block.surrealql",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "sub-block-heads": {
+      "comment": "Colon-less sub-block heads that would otherwise read as type words: changefeed/duration/issuer/jwt/graphql, the DependentFlag blocks async/reference (and the graphql tables/functions family blocks) open a '{' sub-block, so the word is a clause key, not a kind.",
+      "match": "(?i)(?<![\\w-])(changefeed|duration|async|reference|issuer|jwt|graphql|tables|functions)\\s*(?=\\{)",
+      "captures": {
+        "1": {
+          "name": "entity.other.attribute-name.surform"
+        }
+      }
+    }
+  }
+}

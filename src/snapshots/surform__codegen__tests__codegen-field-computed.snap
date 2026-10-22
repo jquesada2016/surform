@@ -1,0 +1,11 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE TABLE OVERWRITE shout_board TYPE NORMAL SCHEMALESS;
+DEFINE FIELD OVERWRITE shout ON shout_board TYPE string COMPUTED string::uppercase(name);
+DEFINE FIELD OVERWRITE derived ON shout_board COMPUTED string::uppercase(name);
+DEFINE FIELD OVERWRITE secret_shout ON shout_board TYPE string
+    COMPUTED string::uppercase(name)
+    PERMISSIONS FOR select NONE;

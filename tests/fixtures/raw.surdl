@@ -1,0 +1,5 @@
+// The rule-8 escape hatch: verbatim DDL passthrough.
+raw {
+  // interior comments ride along
+  DEFINE PARAM OVERWRITE $smoke VALUE 1;
+};

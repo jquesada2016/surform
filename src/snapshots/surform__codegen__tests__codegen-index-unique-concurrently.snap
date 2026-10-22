@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE INDEX OVERWRITE one_email ON `user` FIELDS email UNIQUE CONCURRENTLY;

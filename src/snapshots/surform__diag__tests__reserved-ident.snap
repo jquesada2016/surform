@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1007 (spec/README.md#design-rules-settled)
+
+  x bare `select` cannot be an identifier (reserved word)
+   ,----
+ 1 | namespace select;
+   :           ^^^|^^
+   :              `-- reserved word
+   `----
+  help: backtick it (`` `select` ``) or choose another name; SurrealQL reserves these words

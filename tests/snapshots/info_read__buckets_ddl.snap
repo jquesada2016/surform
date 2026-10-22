@@ -1,0 +1,12 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+bucket_1: DEFINE BUCKET bucket_1 BACKEND 'memory' PERMISSIONS FULL
+bucket_2: DEFINE BUCKET bucket_2 BACKEND 'memory' PERMISSIONS NONE
+bucket_3: DEFINE BUCKET bucket_3 BACKEND 'memory' PERMISSIONS FULL
+bucket_4: DEFINE BUCKET bucket_4 BACKEND 'memory' PERMISSIONS WHERE $auth.admin = true
+bucket_5: DEFINE BUCKET bucket_5 READONLY BACKEND 'memory' PERMISSIONS FULL
+bucket_6: DEFINE BUCKET bucket_6 READONLY BACKEND 'memory' PERMISSIONS NONE
+bucket_7: DEFINE BUCKET bucket_7 READONLY BACKEND 'memory' PERMISSIONS FULL
+bucket_8: DEFINE BUCKET bucket_8 READONLY BACKEND 'memory' PERMISSIONS WHERE $auth.admin = true

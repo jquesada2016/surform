@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE ACCESS OVERWRITE partner_api ON DATABASE
+    TYPE JWT ALGORITHM ES256 KEY 'partners_public_key' WITH ISSUER KEY '[REDACTED]'
+    DURATION FOR TOKEN 1h;

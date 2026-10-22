@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE NAMESPACE OVERWRITE acme COMMENT "Acme's \"premier\" line\nsecond\tline — with a ' quote";
+USE NS acme;

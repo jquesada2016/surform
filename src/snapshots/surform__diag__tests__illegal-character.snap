@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1002 (spec/README.md#design-rules-settled)
+
+  x unexpected character `#`
+   ,----
+ 1 | # not a comment
+   : |
+   : `-- cannot start a statement or clause
+   `----
+  help: SDL statements begin with a definition keyword; outside captures the only comments are `//` and `///`

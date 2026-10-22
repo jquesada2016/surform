@@ -1,0 +1,15 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+namespace acme;
+
+/// Acme Corporation
+namespace app;
+
+namespace sdl_u17;
+
+/// two words
+namespace staging;
+
+namespace `table`;

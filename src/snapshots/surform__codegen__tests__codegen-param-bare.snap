@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+assertion_line: 716
+expression: ddl
+---
+DEFINE PARAM OVERWRITE $x;
+DEFINE PARAM OVERWRITE $table;

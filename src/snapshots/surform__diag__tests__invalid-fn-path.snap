@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1018 (spec/README.md#design-rules-settled)
+
+  x `fn::name()` is a call — the `function` clause takes a name path (remove `()`)
+   ,----
+ 1 | analyzer a { function: fn::name(); };
+   :                        ^^^^^|^^^^
+   :                             `-- not a well-formed function path
+   `----
+  help: an analyzer function is a name path — `fn::name`, `fn::module::name`, or `mod::module[::name…]` — never a call

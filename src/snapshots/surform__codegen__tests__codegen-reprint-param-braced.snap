@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+assertion_line: 822
+expression: ddl
+---
+DEFINE PARAM OVERWRITE $x VALUE { string::split('1.2.3', '.')[0] };

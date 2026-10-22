@@ -1,0 +1,16 @@
+---
+source: src/info/write.rs
+expression: once
+---
+index hnsw vec_idx {
+  on: `pt`;
+  fields: vec;
+  dimension: 3;
+  distance: cosine;
+  type: f64;
+  m: 16;
+  m0: 32;
+  lm: 0.5;
+  efc: 200;
+  extend_candidates;
+};

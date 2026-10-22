@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1890
+expression: "render(src, &diag)"
+---
+SDL-E1042 (spec/access.md)
+
+  x invalid access issuer: issuer algorithm `HS256` must equal the verification algorithm `ES256` when verifying by local key
+   ,----
+ 1 | access api_jwks { on: root; type: jwt; algorithm: es256; key: 'k'; issuer { algorithm: hs256; key: 's'; }; };
+   :                                                                       ^^^|^^
+   :                                                                          `-- this issuer block is invalid
+   `----
+  help: by local key the issuer must restate the verification algorithm and its own `key:` — without a key SurrealDB materializes a random one

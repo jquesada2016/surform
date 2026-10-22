@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1058 (spec/field.md)
+
+  x invalid INLINE field: only a top-level field can be INLINE — a dotted or wildcard path cannot embed into the adjacency payloads
+   ,----
+ 1 | field stats.views: int { on: t; inline; };
+   :                                 ^^^|^^
+   :                                    `-- this field cannot be INLINE
+   `----
+  help: `inline;` embeds a field's value into its table's edge-adjacency payloads — it needs a TYPE RELATION host, a top-level non-`in`/`out` name, and a stored (not computed) value

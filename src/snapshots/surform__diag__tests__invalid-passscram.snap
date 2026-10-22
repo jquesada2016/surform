@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 2681
+expression: "render(src, &diag)"
+---
+SDL-E1059 (spec/user.md)
+
+  x invalid SCRAM verifier: the `'[REDACTED]'` sentinel is INFO's redaction — a PASSSCRAM verifier never round-trips; author the real value
+   ,----
+ 1 | user u { on: root; passscram: '[REDACTED]'; };
+   :                    ^^^^^^|^^^^^^
+   :                          `-- not a valid SCRAM verifier
+   `----
+  help: a passscram verifier is `SCRAM-SHA-256$<iterations>:<salt>$<stored key>:<server key>` with base64 parts (the engine's parser validates the shape too)

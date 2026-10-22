@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1026 (spec/README.md#design-rules-settled)
+
+  x `frobnicate<int>` is not a SurrealQL kind
+   ,----
+ 1 | fn price($a: frobnicate<int>) { 1 };
+   :              ^^^^^^^^|^^^^^^^
+   :                      `-- not a SurrealQL kind
+   `----
+  help: kinds mirror SurrealQL's own: `option<T>`, `record<T>`, `array<T, N>`, unions (`int | float`), literal kinds — spec/README.md rule 4

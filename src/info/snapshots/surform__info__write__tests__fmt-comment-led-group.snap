@@ -1,0 +1,12 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table a {
+  schemaless;
+};
+
+// the b side
+table b {
+  schemaless;
+};

@@ -1,0 +1,15 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0003 (spec/README.md#design-rules-settled)
+
+  x unterminated quoted identifier: expected ```
+   ,-[2:1]
+ 1 | table user {
+ 2 | `weird field: int;
+   : |
+   : `-- identifier starts here
+ 3 | }
+   `----
+  help: add the closing ```; `\` escapes are honored inside quoted identifiers

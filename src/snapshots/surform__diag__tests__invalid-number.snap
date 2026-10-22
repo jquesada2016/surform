@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1020 (spec/README.md#design-rules-settled)
+
+  x `5s` is not a whole number in the 0–65535 range
+   ,----
+ 1 | event e { on: t; then: 1; async { retry: 5s; }; };
+   :                                          ^|
+   :                                           `-- not a whole number
+   `----
+  help: whole numbers only — 0–65535, no sign, fraction, or unit

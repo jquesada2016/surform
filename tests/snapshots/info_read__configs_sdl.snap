@@ -1,0 +1,17 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+config api {
+  middleware: api::timeout(5s), api::log();
+  permissions: none;
+};
+
+config graphql {
+  tables {
+    include: t1, t2;
+  };
+  depth: 4;
+  complexity: 100;
+  introspection: none;
+};

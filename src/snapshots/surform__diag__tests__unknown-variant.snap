@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1360
+expression: "render(src, &diag)"
+---
+SDL-E1027 (spec/config.md)
+
+  x unknown config variant `grapql`
+   ,----
+ 1 | config grapql { auto; };
+   :        ^^^|^^
+   :           `-- not a config variant
+   `----
+  help: did you mean `graphql`?

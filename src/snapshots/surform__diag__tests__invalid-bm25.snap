@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1032 (spec/index.md)
+
+  x the parens are mandatory — write `bm25: (1.2, 0.75);`
+   ,----
+ 1 | index fulltext f { on: t; fields: a; bm25: 1.2, 0.75; };
+   :                                      ^^^^^|^^^^
+   :                                           `-- not a `(<k1>, <b>)` pair
+   `----
+  help: write `bm25: (<k1>, <b>);` — the parens are mandatory and exactly two numbers are taken, e.g. `bm25: (1.2, 0.75);`

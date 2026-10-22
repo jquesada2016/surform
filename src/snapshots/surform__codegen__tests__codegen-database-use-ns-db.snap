@@ -1,0 +1,12 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE NAMESPACE OVERWRITE one;
+USE NS one;
+DEFINE DATABASE OVERWRITE first;
+USE NS one DB first;
+DEFINE NAMESPACE OVERWRITE two;
+USE NS two;
+DEFINE DATABASE OVERWRITE second STRICT;
+USE NS two DB second;

@@ -1,0 +1,26 @@
+// The converge vector's desired state: what the database
+// should hold. The live side (fixtures/converge-live-info.txt, the
+// rendered interchange of the probed drift) differs from this by:
+// adds the `retention` param and the `audit` table with its field;
+// removes the live `note` field (an apostrophe default — the escaped
+// leaf) and the live `legacy` table (the warning + slot legs). The
+// scopes here name the capture's namespace/database — the rendered
+// INFO itself is scope-agnostic.
+
+namespace s2demo;
+
+database probe;
+
+param $retention = 30;
+
+table user schemafull {
+    email: string;
+
+    index unique email_idx {
+        fields: email;
+    };
+};
+
+table audit schemafull {
+    at: datetime;
+};

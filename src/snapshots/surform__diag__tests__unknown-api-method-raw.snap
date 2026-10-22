@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1035 (spec/api.md)
+
+  x unknown api sub-block head `raw`
+   ,----
+ 1 | api '/x' { raw { then: { 1 }; }; };
+   :            ^|^
+   :             `-- not a sub-block head
+   `----
+  help: `raw { … };` is a top-level statement — api sub-block heads are the methods (or one `any` block), never `raw`

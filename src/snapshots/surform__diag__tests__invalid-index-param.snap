@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1030 (spec/index.md)
+
+  x HNSW parameter `m` cannot be larger than 127
+   ,----
+ 1 | index hnsw v { on: t; fields: a; dimension: 8; m: 200; };
+   :                                              |
+   :                                              `-- outside this kind's domain
+   `----
+  help: each index kind constrains its own parameters — `m` ≤ 127, `m0` 0–255, DISKANN's distance/type domains and positive `degree`/`l_build` — spec/index.md

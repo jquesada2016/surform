@@ -1,0 +1,13 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// CI deployment account
+user deployer {
+  on: ns;
+  passhash: '$argon2id$v=19$';
+  roles: editor, viewer;
+  duration {
+    token: 1h;
+  };
+};

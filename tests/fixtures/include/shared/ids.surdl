@@ -1,0 +1,2 @@
+// an id sequence every table family shares
+sequence user_id { start: 1; };

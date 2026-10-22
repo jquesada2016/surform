@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1021 (spec/README.md#design-rules-settled)
+
+  x expected an f-string (`f'…'`) or the `silo::` prefix
+   ,----
+ 1 | module color { from: 'memory'; unsigned; };
+   :                       ^^^^|^^^^
+   :                           `-- not a module executable
+   `----
+  help: the `from` clause takes an f-string (`f'bucket:/key.surli'`) or a Silo package (`silo::org::pkg::<1.2.0>`)

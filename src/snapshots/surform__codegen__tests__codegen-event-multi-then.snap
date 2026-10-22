@@ -1,0 +1,9 @@
+---
+source: src/codegen.rs
+assertion_line: 1812
+expression: ddl
+---
+DEFINE EVENT OVERWRITE double_bookkeeping ON payment
+    WHEN $event = 'UPDATE' AND $before.status != $after.status
+    THEN (CREATE ledger_entry SET payment = $after.id),
+    (UPDATE stats:payments SET changes = changes + 1);

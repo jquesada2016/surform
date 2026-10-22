@@ -1,0 +1,7 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table user | bot->wrote->`post` {
+  enforced;
+};

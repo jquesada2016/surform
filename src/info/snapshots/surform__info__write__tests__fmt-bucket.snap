@@ -1,0 +1,9 @@
+---
+source: src/info/write.rs
+expression: once
+---
+bucket uploads {
+  backend: 'file:/srv/uploads';
+  readonly;
+  permissions: full;
+};

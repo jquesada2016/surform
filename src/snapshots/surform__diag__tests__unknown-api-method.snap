@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1035 (spec/api.md)
+
+  x unknown api sub-block head `gets`
+   ,----
+ 1 | api '/x' { gets { then: { { status: 200 } }; }; };
+   :            ^^|^
+   :              `-- not a sub-block head
+   `----
+  help: did you mean `get`?

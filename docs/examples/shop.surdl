@@ -1,0 +1,35 @@
+// The quick-start schema. `//` lines are ordinary comments — they
+// document the file and never reach the database.
+
+namespace acme;
+database shop;
+
+/// People who buy things.
+table user {
+  schemafull;
+
+  // The engine rejects anything that does not look like an email.
+  field email: string { assert: string::is_email($value); };
+  field name: string;
+
+  // No two accounts share an email — a plain comment, since doc
+  // comments only attach to top-level definitions.
+  index unique email_unique {
+    fields: email;
+  };
+};
+
+/// Anything a user publishes.
+table post {
+  schemafull;
+
+  field title: string { assert: string::len($value) > 0; };
+  field body: string;
+
+  // Who wrote this post.
+  field author: record<user>;
+
+  index author_idx {
+    fields: author;
+  };
+};

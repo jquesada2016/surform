@@ -1,0 +1,12 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Primary application database
+db app {
+  strict;
+  changefeed {
+    expiry: 1w;
+    include original;
+  };
+};

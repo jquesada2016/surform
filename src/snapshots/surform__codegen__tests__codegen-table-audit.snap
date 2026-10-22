@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE TABLE OVERWRITE audit TYPE NORMAL DROP SCHEMALESS CHANGEFEED 4w2d INCLUDE ORIGINAL;

@@ -1,0 +1,7 @@
+namespace acme;
+database shop;
+
+table person {
+  schemafull;
+  permisions: full;
+};

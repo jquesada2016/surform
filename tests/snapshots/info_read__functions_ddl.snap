@@ -1,0 +1,30 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+d1::d2: DEFINE FUNCTION fn::d1::d2() { RETURN 1 } PERMISSIONS FULL
+fn_1: DEFINE FUNCTION fn::fn_1() { RETURN 1 } PERMISSIONS FULL
+fn_10: DEFINE FUNCTION fn::fn_10($a: int) -> bool { RETURN 1 } PERMISSIONS FULL
+fn_11: DEFINE FUNCTION fn::fn_11($a: int) -> bool { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_12: DEFINE FUNCTION fn::fn_12($a: int) -> bool {;} PERMISSIONS FULL
+fn_13: DEFINE FUNCTION fn::fn_13($a: int, $b: array<float, 10>) { RETURN 1 } PERMISSIONS FULL
+fn_14: DEFINE FUNCTION fn::fn_14($a: int, $b: array<float, 10>) { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_15: DEFINE FUNCTION fn::fn_15($a: int, $b: array<float, 10>) {;} PERMISSIONS FULL
+fn_16: DEFINE FUNCTION fn::fn_16($a: int, $b: array<float, 10>) -> bool { RETURN 1 } PERMISSIONS FULL
+fn_17: DEFINE FUNCTION fn::fn_17($a: int, $b: array<float, 10>) -> bool { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_18: DEFINE FUNCTION fn::fn_18($a: int, $b: array<float, 10>) -> bool {;} PERMISSIONS FULL
+fn_19: DEFINE FUNCTION fn::fn_19($x: none | int) { RETURN 1 } PERMISSIONS FULL
+fn_2: DEFINE FUNCTION fn::fn_2() { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_20: DEFINE FUNCTION fn::fn_20($x: none | int) { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_21: DEFINE FUNCTION fn::fn_21($x: none | int) {;} PERMISSIONS FULL
+fn_22: DEFINE FUNCTION fn::fn_22($x: none | int) -> bool { RETURN 1 } PERMISSIONS FULL
+fn_23: DEFINE FUNCTION fn::fn_23($x: none | int) -> bool { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_24: DEFINE FUNCTION fn::fn_24($x: none | int) -> bool {;} PERMISSIONS FULL
+fn_3: DEFINE FUNCTION fn::fn_3() {;} PERMISSIONS FULL
+fn_4: DEFINE FUNCTION fn::fn_4() -> bool { RETURN 1 } PERMISSIONS FULL
+fn_5: DEFINE FUNCTION fn::fn_5() -> bool { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_6: DEFINE FUNCTION fn::fn_6() -> bool {;} PERMISSIONS FULL
+fn_7: DEFINE FUNCTION fn::fn_7($a: int) { RETURN 1 } PERMISSIONS FULL
+fn_8: DEFINE FUNCTION fn::fn_8($a: int) { LET $y = 1; RETURN $y; } PERMISSIONS FULL
+fn_9: DEFINE FUNCTION fn::fn_9($a: int) {;} PERMISSIONS FULL
+full_shape: DEFINE FUNCTION fn::full_shape($p: record<post>) -> bool { RETURN $auth.id = $p.author } COMMENT 'whether the user may edit' GRAPHQL_ALIAS 'edit' GRAPHQL_DEPRECATED 'use v2' PERMISSIONS WHERE $auth.admin = true

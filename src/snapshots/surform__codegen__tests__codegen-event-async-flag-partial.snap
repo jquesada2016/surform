@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE EVENT OVERWRITE flagged ON t ASYNC THEN 1;
+DEFINE EVENT OVERWRITE retry_only ON t ASYNC RETRY 5 THEN 1;
+DEFINE EVENT OVERWRITE maxdepth_only ON t ASYNC MAXDEPTH 8 THEN 1;
+DEFINE EVENT OVERWRITE sync ON t THEN 1;

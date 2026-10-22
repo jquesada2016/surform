@@ -1,0 +1,9 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+acme: DEFINE NAMESPACE acme
+app: DEFINE NAMESPACE app COMMENT 'Acme Corporation'
+sdl_u17: DEFINE NAMESPACE sdl_u17
+staging: DEFINE NAMESPACE staging COMMENT 'two words'
+table: DEFINE NAMESPACE `table`

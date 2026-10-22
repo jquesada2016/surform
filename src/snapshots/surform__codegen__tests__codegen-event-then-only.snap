@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+assertion_line: 1533
+expression: ddl
+---
+DEFINE EVENT OVERWRITE touch_counter ON `post` THEN (UPDATE counter:posts SET total = total + 1);

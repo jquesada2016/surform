@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1055 (spec/README.md#design-rules-settled)
+
+  x expected `{` to open the raw block, found `;`
+   ,----
+ 1 | raw;
+   :    ^
+   :    `-- expected `{` to open the raw block
+   `----
+  help: `raw { … };` captures SurrealQL DDL verbatim between the braces — write `{` right after the keyword

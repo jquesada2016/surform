@@ -1,0 +1,4 @@
+namespace acme;
+database shop;
+user admin { on: root; password: 'change-me'; };
+table post { field id: int; permissions: full; };

@@ -1,0 +1,15 @@
+---
+source: src/info/write.rs
+expression: once
+---
+/// Admin API with fallback
+api '/admin/*rest' {
+  any {
+    middleware: api::timeout(5s);
+    then: { { status: 404, body: { error: 'no such route' } } };
+  };
+  get, delete {
+    permissions: $auth.admin = true;
+    then: { { status: 200 } };
+  };
+};

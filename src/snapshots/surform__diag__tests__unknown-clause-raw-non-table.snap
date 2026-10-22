@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `raw` in user definition
+   ,----
+ 1 | user u { on: root; raw: 1; };
+   :                    ^|^
+   :                     `-- unknown clause key
+   `----
+  help: `raw { … };` is a top-level statement — `raw` is reserved in block context and is not a clause of this block

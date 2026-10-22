@@ -1,0 +1,18 @@
+{
+  accesses: {  },
+  analyzers: {  },
+  apis: {  },
+  buckets: {  },
+  configs: {  },
+  functions: {  },
+  modules: {  },
+  params: {  },
+  sequences: {  },
+  tables: {
+    adoptee: 'DEFINE TABLE adoptee TYPE NORMAL SCHEMALESS PERMISSIONS FULL'
+  },
+  users: {  },
+  "@tables": {
+    adoptee: { events: {  }, fields: {  }, indexes: {  }, lives: {  }, tables: {  } }
+  }
+}

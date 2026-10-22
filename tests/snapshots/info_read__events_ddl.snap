@@ -1,0 +1,66 @@
+---
+source: tests/info_read.rs
+assertion_line: 125
+expression: "section_ddl(&info, section)"
+---
+braced: DEFINE EVENT braced ON ev_host WHEN true THEN { CREATE b SET x = 1 } COMMENT 'update log'
+ev_1: DEFINE EVENT ev_1 ON ev_host WHEN true THEN (CREATE log SET at = time::now())
+ev_10: DEFINE EVENT ev_10 ON ev_host WHEN true THEN THROW 'boom'
+ev_11: DEFINE EVENT ev_11 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN THROW 'boom'
+ev_12: DEFINE EVENT ev_12 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN THROW 'boom'
+ev_13: DEFINE EVENT ev_13 ON ev_host WHEN true THEN RETURN $after.id
+ev_14: DEFINE EVENT ev_14 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN RETURN $after.id
+ev_15: DEFINE EVENT ev_15 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN RETURN $after.id
+ev_16: DEFINE EVENT ev_16 ON ev_host WHEN true THEN BREAK
+ev_17: DEFINE EVENT ev_17 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN BREAK
+ev_18: DEFINE EVENT ev_18 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN BREAK
+ev_19: DEFINE EVENT ev_19 ON ev_host WHEN true THEN CONTINUE
+ev_2: DEFINE EVENT ev_2 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN (CREATE log SET at = time::now())
+ev_20: DEFINE EVENT ev_20 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN CONTINUE
+ev_21: DEFINE EVENT ev_21 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN CONTINUE
+ev_22: DEFINE EVENT ev_22 ON ev_host WHEN true THEN time::now()
+ev_23: DEFINE EVENT ev_23 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN time::now()
+ev_24: DEFINE EVENT ev_24 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN time::now()
+ev_25: DEFINE EVENT ev_25 ON ev_host WHEN true THEN x.y = 1
+ev_26: DEFINE EVENT ev_26 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN x.y = 1
+ev_27: DEFINE EVENT ev_27 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN x.y = 1
+ev_28: DEFINE EVENT ev_28 ON ev_host WHEN true THEN fn::a(), THROW 'b'
+ev_29: DEFINE EVENT ev_29 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN fn::a(), THROW 'b'
+ev_3: DEFINE EVENT ev_3 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN (CREATE log SET at = time::now())
+ev_30: DEFINE EVENT ev_30 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN fn::a(), THROW 'b'
+ev_31: DEFINE EVENT ev_31 ON ev_host WHEN $event = 'CREATE' THEN (CREATE log SET at = time::now())
+ev_32: DEFINE EVENT ev_32 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN (CREATE log SET at = time::now())
+ev_33: DEFINE EVENT ev_33 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN (CREATE log SET at = time::now())
+ev_34: DEFINE EVENT ev_34 ON ev_host WHEN $event = 'CREATE' THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_35: DEFINE EVENT ev_35 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_36: DEFINE EVENT ev_36 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_37: DEFINE EVENT ev_37 ON ev_host WHEN $event = 'CREATE' THEN fn::audit::write($event, $after.id ?? $before.id)
+ev_38: DEFINE EVENT ev_38 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN fn::audit::write($event, $after.id ?? $before.id)
+ev_39: DEFINE EVENT ev_39 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN fn::audit::write($event, $after.id ?? $before.id)
+ev_4: DEFINE EVENT ev_4 ON ev_host WHEN true THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_40: DEFINE EVENT ev_40 ON ev_host WHEN $event = 'CREATE' THEN THROW 'boom'
+ev_41: DEFINE EVENT ev_41 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN THROW 'boom'
+ev_42: DEFINE EVENT ev_42 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN THROW 'boom'
+ev_43: DEFINE EVENT ev_43 ON ev_host WHEN $event = 'CREATE' THEN RETURN $after.id
+ev_44: DEFINE EVENT ev_44 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN RETURN $after.id
+ev_45: DEFINE EVENT ev_45 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN RETURN $after.id
+ev_46: DEFINE EVENT ev_46 ON ev_host WHEN $event = 'CREATE' THEN BREAK
+ev_47: DEFINE EVENT ev_47 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN BREAK
+ev_48: DEFINE EVENT ev_48 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN BREAK
+ev_49: DEFINE EVENT ev_49 ON ev_host WHEN $event = 'CREATE' THEN CONTINUE
+ev_5: DEFINE EVENT ev_5 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_50: DEFINE EVENT ev_50 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN CONTINUE
+ev_51: DEFINE EVENT ev_51 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN CONTINUE
+ev_52: DEFINE EVENT ev_52 ON ev_host WHEN $event = 'CREATE' THEN time::now()
+ev_53: DEFINE EVENT ev_53 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN time::now()
+ev_54: DEFINE EVENT ev_54 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN time::now()
+ev_55: DEFINE EVENT ev_55 ON ev_host WHEN $event = 'CREATE' THEN x.y = 1
+ev_56: DEFINE EVENT ev_56 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN x.y = 1
+ev_57: DEFINE EVENT ev_57 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN x.y = 1
+ev_58: DEFINE EVENT ev_58 ON ev_host WHEN $event = 'CREATE' THEN fn::a(), THROW 'b'
+ev_59: DEFINE EVENT ev_59 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN $event = 'CREATE' THEN fn::a(), THROW 'b'
+ev_6: DEFINE EVENT ev_6 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN (CREATE l2 SET x = 1), (UPDATE stats SET n += 1)
+ev_60: DEFINE EVENT ev_60 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN $event = 'CREATE' THEN fn::a(), THROW 'b'
+ev_7: DEFINE EVENT ev_7 ON ev_host WHEN true THEN fn::audit::write($event, $after.id ?? $before.id)
+ev_8: DEFINE EVENT ev_8 ON ev_host ASYNC RETRY 1 MAXDEPTH 3 WHEN true THEN fn::audit::write($event, $after.id ?? $before.id)
+ev_9: DEFINE EVENT ev_9 ON ev_host ASYNC RETRY 5 MAXDEPTH 8 WHEN true THEN fn::audit::write($event, $after.id ?? $before.id)

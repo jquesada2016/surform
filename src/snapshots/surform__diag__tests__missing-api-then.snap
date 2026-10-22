@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1038 (spec/api.md)
+
+  x this method group requires `then:`
+   ,----
+ 1 | api '/x' { get { permissions: none; }; };
+   :                |
+   :                `-- this group has no `then:`
+   `----
+  help: every method group takes a `then:` response — e.g. `then: { { status: 200 } };`; only `any` may omit it (that is the no-fallback form)

@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 702
+expression: "render(src, &diag)"
+---
+SDL-E1010 (spec/README.md#design-rules-settled)
+
+  x expected `:` and a value after `start`
+   ,----
+ 1 | sequence n { start; };
+   :              ^^|^^
+   :                `-- expected `:` and a value
+   `----
+  help: write `start: <expression>;` — the `:` starts the value

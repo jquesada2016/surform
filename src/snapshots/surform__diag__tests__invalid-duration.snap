@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1012 (spec/README.md#design-rules-settled)
+
+  x `7days` is not a SurrealQL duration — an integer plus a unit, or a compound like `1h30m`
+   ,----
+ 1 | database blog { changefeed { expiry: 7days; }; };
+   :                                    ^^|^^
+   :                                      `-- not a SurrealQL duration
+   `----
+  help: SurrealQL durations are an integer plus a unit (`7d`), or a compound (`1h30m`); units: ns, us, µs, ms, s, m, h, d, w, y — integers only, no sign or fraction

@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+assertion_line: 1866
+expression: "render(src, &diag)"
+---
+SDL-E1040 (spec/access.md)
+
+  x clause does not apply to this access variant: clause `for` is not part of the `jwt` access vocabulary — it belongs to a bearer access
+   ,----
+ 1 | access sso { on: root; type: jwt; for: user; url: 'https://x/jwks'; };
+   :                              ^|^
+   :                               `-- not this variant's clause
+   `----
+  help: each `access` variant defines its own clauses — check `type:` and the variant's clause list in the linked spec

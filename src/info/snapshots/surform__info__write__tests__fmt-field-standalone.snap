@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field email: string {
+  on: `user`;
+  assert: string::is_email($value);
+};

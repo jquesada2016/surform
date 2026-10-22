@@ -1,0 +1,9 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE EVENT OVERWRITE user_created ON `user`
+    WHEN $event = 'CREATE'
+    THEN { CREATE log SET at = time::now(), user = $after.id }
+    COMMENT 'Log every user creation';

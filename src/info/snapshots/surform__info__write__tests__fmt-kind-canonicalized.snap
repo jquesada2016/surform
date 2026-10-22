@@ -1,0 +1,9 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table t {
+  field u: option<int>;
+  field v: record<person>;
+  field w: array<int, 10>;
+};

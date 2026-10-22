@@ -1,0 +1,19 @@
+namespace acme;
+database shop;
+
+// Shared audit columns, spread into every table below.
+mixin timestamped {
+  field created_at: datetime { default: time::now(); };
+  field updated_at: datetime;
+};
+
+/// A person in the company directory.
+table person {
+  schemafull;
+  ...timestamped;
+  field name: string;
+  field email: string { assert: string::is_email($value); };
+  index unique email_unique {
+    fields: email;
+  };
+};

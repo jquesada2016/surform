@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE ANALYZER OVERWRITE `snowball`;
+DEFINE ANALYZER OVERWRITE empty;

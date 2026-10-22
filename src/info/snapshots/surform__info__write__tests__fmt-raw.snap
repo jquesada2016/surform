@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+raw {
+// a comment inside the escape hatch
+  DEFINE TABLE legacy AS SELECT * FROM old;
+};

@@ -1,0 +1,5 @@
+// shared mixin definitions
+mixin timestamps {
+    field created_at: datetime { default: time::now(); };
+    field updated_at: datetime { default: time::now(); };
+};

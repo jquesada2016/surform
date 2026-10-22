@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1036 (spec/api.md)
+
+  x duplicate method `get` — each method may appear in only one group
+   ,----
+ 1 | api '/x' { get { then: 1; }; get { then: 2; }; };
+   :                              ^|^
+   :                               `-- method already grouped
+   `----
+  help: merge the groups — `get, delete { … };` — or give each method its own group; a method may appear in only one

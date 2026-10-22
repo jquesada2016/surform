@@ -1,0 +1,13 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, section)"
+---
+/:x: DEFINE API '/:x' FOR any PERMISSIONS FULL FOR get PERMISSIONS FULL THEN { { status: 200 } }
+/admin/*rest: DEFINE API '/admin/*rest' FOR any MIDDLEWARE api::timeout(5s) PERMISSIONS FULL THEN { { status: 404, body: { error: 'no such route' } } } FOR get, delete PERMISSIONS WHERE $auth.admin = true THEN { { status: 200 } }
+/anyfull: DEFINE API '/anyfull' FOR any PERMISSIONS FULL FOR get PERMISSIONS FULL THEN { { status: 200 } }
+/anymw: DEFINE API '/anymw' FOR any MIDDLEWARE api::timeout(5s) PERMISSIONS FULL FOR get PERMISSIONS FULL THEN { { status: 200 } }
+/echo: DEFINE API '/echo' FOR any PERMISSIONS FULL FOR post, put PERMISSIONS FULL THEN { { status: 200, body: { you_sent: $request.body } } }
+/empty: DEFINE API '/empty' FOR any PERMISSIONS FULL
+/health: DEFINE API '/health' FOR any PERMISSIONS FULL FOR get PERMISSIONS FULL THEN { { status: 200, body: { ok: true } } } COMMENT 'Health check'
+/mid: DEFINE API '/mid' FOR any PERMISSIONS FULL FOR get MIDDLEWARE api::timeout(1s), fn::rate_limit(100) PERMISSIONS NONE THEN { { status: 200 } }
+/perms: DEFINE API '/perms' FOR any PERMISSIONS FULL FOR get PERMISSIONS FULL THEN { { status: 200 } } FOR delete PERMISSIONS NONE THEN { { status: 204 } } FOR trace PERMISSIONS WHERE $auth.admin = true THEN { { status: 200 } }

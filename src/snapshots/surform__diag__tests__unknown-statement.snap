@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1001 (spec/README.md#design-rules-settled)
+
+  x unknown statement keyword `namespac`
+   ,----
+ 1 | namespac acme;
+   : ^^^^|^^^
+   :     `-- not a statement keyword
+   `----
+  help: did you mean `namespace`?

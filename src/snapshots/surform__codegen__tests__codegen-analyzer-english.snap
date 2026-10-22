@@ -1,0 +1,9 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE ANALYZER OVERWRITE `english`
+    TOKENIZERS CLASS
+    FILTERS SNOWBALL(ENGLISH), LOWERCASE
+    COMMENT 'English text search';

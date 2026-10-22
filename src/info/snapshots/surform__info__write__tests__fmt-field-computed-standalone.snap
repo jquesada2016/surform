@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field display_name: string {
+  on: `user`;
+  computed: string::uppercase(email);
+};

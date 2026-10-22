@@ -1,0 +1,7 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE BUCKET OVERWRITE admin_dumps PERMISSIONS WHERE $auth.admin = true;
+DEFINE BUCKET OVERWRITE explicit_full PERMISSIONS FULL;
+DEFINE BUCKET OVERWRITE shared;

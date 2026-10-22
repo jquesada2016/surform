@@ -1,0 +1,51 @@
+# The apply variant's manifest — packed by `surreal module build` into
+# surform-apply.surli (surform-surrealism/README.md carries the build
+# recipe; THIS artifact's grant surface is the security story,
+# spelled out in the crate README).
+#
+# `target`/`abi` are the scaffold's head keys — the component ABI the
+# 3.3 engine loads (abi = 2). Top-level TOML keys,
+# so they precede the tables.
+target = "rust"
+abi = 2
+
+# The SECOND artifact's identity: `surform/surform-apply` — distinct
+# from the default artifact's `surform/surform` so the two .surli
+# files can never alias in the host (module KV scope follows package
+# identity — the probe's two-identity finding). It registers and
+# dispatches under the module name the DEFINER chooses; the README's
+# recipe spells `mod::surform_apply`.
+[package]
+organisation = "surform"
+name = "surform-apply"
+version = "0.1.0"
+
+# The grant surface — the narrowest the apply flow runs under, every
+# line an exact, documented ask (the probe is the evidence for each):
+#
+# - `allow_arbitrary_queries = true` — the host `sql` import, the ONLY
+#   mutation path: the capture reads, the executed statements, the
+#   ledger self-record. Runtime-checked on EVERY call (host.rs:152);
+#   with it off the host refuses verbatim ("Module does not have the
+#   'allow_arbitrary_queries' capability" — the probe's captured
+#   refusal, quoted in the README). Enforcement narrows the SERVER's
+#   capabilities downward at runtime; load-time validation refuses
+#   over-asks; SQL `PERMISSIONS` on the module gates only who may CALL
+#   it.
+# - `allow_functions` — the module's context function-gates EVERY
+#   function call, builtins included (the probe: `session::ns` refused
+#   under an empty grant). Three exact names, nothing wildcarded:
+#   `session::ns` + `session::db` (the pre-flight that pins apply to
+#   the invoking session's database) and `time::now` (the ledger
+#   self-record's applied_at).
+# - `allow_scripting = false`, `allow_net = []` — no scripting, no
+#   network. Server deny-lists are always preserved as defense in
+#   depth (host.rs:99–142).
+[capabilities]
+allow_scripting = false
+allow_arbitrary_queries = true
+allow_functions = ["session::ns", "session::db", "time::now"]
+allow_net = []
+strict_timeout = true
+
+[attach]

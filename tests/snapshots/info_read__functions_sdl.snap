@@ -1,0 +1,112 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+fn d1::d2() { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_1() { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_10($a: int) -> bool { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_11($a: int) -> bool { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_12($a: int) -> bool {;} {
+  permissions: full;
+};
+
+fn fn_13($a: int, $b: array<float, 10>) { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_14($a: int, $b: array<float, 10>) { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_15($a: int, $b: array<float, 10>) {;} {
+  permissions: full;
+};
+
+fn fn_16($a: int, $b: array<float, 10>) -> bool { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_17($a: int, $b: array<float, 10>) -> bool { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_18($a: int, $b: array<float, 10>) -> bool {;} {
+  permissions: full;
+};
+
+fn fn_19($x: option<int>) { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_2() { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_20($x: option<int>) { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_21($x: option<int>) {;} {
+  permissions: full;
+};
+
+fn fn_22($x: option<int>) -> bool { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_23($x: option<int>) -> bool { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_24($x: option<int>) -> bool {;} {
+  permissions: full;
+};
+
+fn fn_3() {;} {
+  permissions: full;
+};
+
+fn fn_4() -> bool { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_5() -> bool { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_6() -> bool {;} {
+  permissions: full;
+};
+
+fn fn_7($a: int) { RETURN 1 } {
+  permissions: full;
+};
+
+fn fn_8($a: int) { LET $y = 1; RETURN $y; } {
+  permissions: full;
+};
+
+fn fn_9($a: int) {;} {
+  permissions: full;
+};
+
+/// whether the user may edit
+fn full_shape($p: record<post>) -> bool { RETURN $auth.id = $p.author } {
+  permissions: $auth.admin = true;
+  graphql {
+    alias: 'edit';
+    deprecated: 'use v2';
+  };
+};

@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1024 (spec/function.md)
+
+  x fn parameter without `$`
+   ,----
+ 1 | fn price(p: int) { 1 };
+   :          |
+   :          `-- parameter name without `$`
+   `----
+  help: parameters keep their `$` — SurrealQL requires it (spec/function.md)

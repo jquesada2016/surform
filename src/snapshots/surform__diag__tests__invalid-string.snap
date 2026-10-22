@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1016 (spec/README.md#design-rules-settled)
+
+  x `nope` is not a SurrealQL string literal
+   ,----
+ 1 | user bot { on: root; password: nope; };
+   :                                ^^|^
+   :                                  `-- not a SurrealQL string literal
+   `----
+  help: string literals are single- or double-quoted with SurrealQL `\` escapes (`\n`, `\t`, `\'`, `\"`, `\\`, `\u{…}` …)

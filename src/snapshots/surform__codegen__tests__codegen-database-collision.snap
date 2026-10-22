@@ -1,0 +1,8 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE NAMESPACE OVERWRITE `table`;
+USE NS `table`;
+DEFINE DATABASE OVERWRITE `select`;
+USE NS `table` DB `select`;

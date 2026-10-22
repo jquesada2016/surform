@@ -1,0 +1,7 @@
+---
+source: tests/info_read.rs
+expression: sdl
+---
+config default {
+  database: 'solo';
+};

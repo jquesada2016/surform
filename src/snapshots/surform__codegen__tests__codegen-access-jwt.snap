@@ -1,0 +1,11 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE ACCESS OVERWRITE corp_sso ON DATABASE
+    TYPE JWT URL 'https://sso.acme.com/.well-known/jwks.json'
+    COMMENT 'Tokens issued by Acme SSO';
+DEFINE ACCESS OVERWRITE ops ON ROOT
+    TYPE JWT ALGORITHM ES256 KEY 'ops_public_key_pem'
+    DURATION FOR SESSION 8h;

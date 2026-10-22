@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+assertion_line: 822
+expression: ddl
+---
+DEFINE SEQUENCE OVERWRITE n START 1 + 1;

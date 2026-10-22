@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E0007 (spec/README.md#design-rules-settled)
+
+  x doc comment attaches to no definition
+   ,----
+ 1 | /// Acme Corporation
+   : ^|^
+   :  `-- doc block starts here
+   `----
+  help: doc comments attach to the definition directly below them (no blank line); move this block or delete it

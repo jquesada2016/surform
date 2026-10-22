@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE FUNCTION OVERWRITE fn::last_opt($req: number, $opt: option<number>) { $opt ?? $req };
+DEFINE FUNCTION OVERWRITE fn::util::slugify($s: string) -> string {
+    string::lowercase(string::replace($s, ' ', '-'))
+}
+    GRAPHQL_ALIAS 'slugify';

@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+assertion_line: 716
+expression: ddl
+---
+DEFINE PARAM OVERWRITE $default_limit VALUE 50 COMMENT 'Default page size for list endpoints';

@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE NAMESPACE OVERWRITE `table`;
+USE NS `table`;

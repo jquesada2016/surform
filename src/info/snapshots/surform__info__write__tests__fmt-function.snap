@@ -1,0 +1,9 @@
+---
+source: src/info/write.rs
+assertion_line: 1546
+expression: once
+---
+/// Post permissions
+fn can_edit($p: record<post>) -> bool { RETURN $auth.id = $p.author OR $auth.role = 'admin' } {
+  permissions: $auth.admin = true;
+};

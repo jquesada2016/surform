@@ -1,0 +1,141 @@
+---
+source: tests/info_read.rs
+expression: written(&read_out)
+---
+access a_aud {
+  on: database;
+  type: jwt;
+  url: 'https://sso.example/jwks';
+  audience: 'aud1', 'aud2';
+  duration {
+    session: 8h;
+  };
+};
+
+access a_auth {
+  on: database;
+  type: jwt;
+  url: 'https://x.example/jwks';
+  duration {
+    session: NONE;
+  };
+  authenticate: $auth.admin = true;
+};
+
+access a_brec {
+  on: database;
+  type: bearer;
+  for: record;
+  duration {
+    grant: 4w2d;
+    token: 1h;
+    session: NONE;
+  };
+};
+
+access a_buser {
+  on: database;
+  type: bearer;
+  for: user;
+  duration {
+    grant: 4w2d;
+    token: 1d;
+    session: NONE;
+  };
+};
+
+access a_ctx {
+  on: database;
+  type: record;
+  signup: { CREATE user SET email = $email };
+  jwt {
+    algorithm: hs512;
+    key: '[REDACTED]';
+  };
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+  context: { extra: 1, tier: 'gold' };
+};
+
+access a_es {
+  on: database;
+  type: jwt;
+  algorithm: es256;
+  key: 'public_verify_pem';
+  issuer {
+    key: '[REDACTED]';
+  };
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+access a_hs {
+  on: database;
+  type: jwt;
+  algorithm: hs256;
+  key: '[REDACTED]';
+  duration {
+    token: 2h;
+    session: NONE;
+  };
+};
+
+access a_rec {
+  on: database;
+  type: record;
+  signup: { CREATE user SET email = $email };
+  signin: { SELECT * FROM user WHERE email = $email };
+  jwt {
+    algorithm: hs512;
+    key: '[REDACTED]';
+  };
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};
+
+access a_recjwt {
+  on: database;
+  type: record;
+  signin: { SELECT id FROM user WHERE email = $email };
+  jwt {
+    algorithm: eddsa;
+    key: 'rec_signing';
+    issuer {
+      key: '[REDACTED]';
+    };
+  };
+  refresh;
+  duration {
+    grant: 4w2d;
+    token: 1h;
+    session: NONE;
+  };
+};
+
+access a_url {
+  on: database;
+  type: jwt;
+  url: 'https://sso.example/jwks';
+  duration {
+    session: 8h;
+  };
+};
+
+access a_urli {
+  on: database;
+  type: jwt;
+  url: 'https://u.example/jwks';
+  issuer {
+    key: '[REDACTED]';
+  };
+  duration {
+    token: 1h;
+    session: NONE;
+  };
+};

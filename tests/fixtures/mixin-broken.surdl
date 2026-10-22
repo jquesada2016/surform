@@ -1,0 +1,6 @@
+// The spread references no mixin defined above it (spec/mixin.md,
+// rule 7 — define before reference).
+table post schemafull {
+    ...timestamped;
+    title: string;
+};

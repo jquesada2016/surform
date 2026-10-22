@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1047 (spec/table.md)
+
+  x invalid view body: the view's query comes first — write `select …;` before any clauses
+   ,----
+ 1 | table view stats { permissions: full; select author from post; };
+   :                  |
+   :                  `-- the view's block starts with its query
+   `----
+  help: a view's block is its query — write `table view <name> {{ select …; }};`, with any clauses after the query

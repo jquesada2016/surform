@@ -1,0 +1,5 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE DATABASE OVERWRITE blog CHANGEFEED 1w INCLUDE ORIGINAL;

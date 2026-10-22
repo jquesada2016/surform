@@ -1,0 +1,15 @@
+---
+source: src/diag.rs
+assertion_line: 679
+expression: "render(src, &diag)"
+---
+SDL-E1008 (spec/README.md#design-rules-settled)
+
+  x `sequence` takes no doc comment (no COMMENT clause)
+   ,-[1:1]
+ 1 | /// invoice numbering
+   : ^|^
+   :  `-- no COMMENT clause on this statement
+ 2 | sequence invoice_number;
+   `----
+  help: `sequence` has no COMMENT clause in SurrealQL, so a doc comment has nowhere to attach — delete it or move it onto the definition above/below that takes one

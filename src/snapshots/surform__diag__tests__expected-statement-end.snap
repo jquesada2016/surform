@@ -1,0 +1,13 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1005 (spec/README.md#design-rules-settled)
+
+  x expected `;` or `{`, found `=`
+   ,----
+ 1 | namespace acme = 5;
+   :                |
+   :                `-- expected `;` or `{`
+   `----
+  help: add the `;` this position requires (after a name, `{` opens its block instead)

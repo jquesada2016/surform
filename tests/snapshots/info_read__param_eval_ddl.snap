@@ -1,0 +1,5 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, \"params\")"
+---
+seed: DEFINE PARAM $seed VALUE 2 PERMISSIONS FULL

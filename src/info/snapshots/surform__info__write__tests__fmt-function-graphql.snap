@@ -1,0 +1,10 @@
+---
+source: src/info/write.rs
+expression: once
+---
+fn go::heavy($n: array<int, 5>) -> number { RETURN $n.len() } {
+  graphql {
+    alias: 'heavyFn';
+    deprecated: 'use len';
+  };
+};

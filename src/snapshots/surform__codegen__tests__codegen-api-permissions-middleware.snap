@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE API OVERWRITE '/mixed'
+    FOR get PERMISSIONS FULL THEN { { status: 200 } }
+    FOR delete PERMISSIONS NONE THEN { { status: 204 } }
+    FOR trace PERMISSIONS WHERE $auth.admin = true THEN { { status: 200 } };
+DEFINE API OVERWRITE '/slow' FOR get MIDDLEWARE api::timeout(1s) THEN { { status: 200 } };

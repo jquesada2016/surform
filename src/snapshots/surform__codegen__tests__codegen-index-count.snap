@@ -1,0 +1,6 @@
+---
+source: src/codegen.rs
+expression: ddl
+---
+DEFINE INDEX OVERWRITE row_count ON reading COUNT;
+DEFINE INDEX OVERWRITE active_count ON item COUNT WHERE status = 'active';

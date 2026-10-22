@@ -1,0 +1,9 @@
+---
+source: src/info/write.rs
+expression: once
+---
+event e {
+  on: t;
+  then: 1;
+  async;
+};

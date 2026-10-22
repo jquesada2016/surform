@@ -1,0 +1,14 @@
+---
+source: src/diag.rs
+expression: "render(src, &diag)"
+---
+SDL-E1033 (spec/index.md)
+
+  x unknown distance `cosin` — did you mean `cosine`?
+   ,----
+ 1 | index hnsw v { on: t; fields: a; dimension: 8; distance: cosin; };
+   :                                            ^^^^^^^|^^^^^^^
+   :                                                   `-- not a distance keyword
+   `----
+  help: distances are `euclidean`, `cosine`, `cosine_normalized`, `chebyshev`, `hamming`, `jaccard`, `pearson`, `inner_product`, `manhattan`, or `minkowski(<order>)` — only minkowski takes an
+        argument

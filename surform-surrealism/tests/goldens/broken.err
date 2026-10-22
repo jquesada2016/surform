@@ -1,0 +1,12 @@
+SDL rejected: 1 diagnostics
+SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `oops` in namespace definition
+   ,-[schema.surdl:3:18]
+ 2 | // followed by a statement that must still parse (recovery).
+ 3 | namespace acme { oops: 1; };
+   :                  ^^|^
+   :                    `-- unknown clause key
+ 4 | 
+   `----
+  help: remove it; each statement's clause list is in its spec file

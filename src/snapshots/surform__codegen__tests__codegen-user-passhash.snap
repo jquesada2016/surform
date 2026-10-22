@@ -1,0 +1,10 @@
+---
+source: src/codegen.rs
+assertion_line: 1746
+expression: ddl
+---
+DEFINE USER OVERWRITE deployer ON NAMESPACE
+    PASSHASH '$argon2id$v=19$'
+    ROLES EDITOR, VIEWER
+    DURATION FOR TOKEN 1h, FOR SESSION 12h
+    COMMENT 'CI deployment account';

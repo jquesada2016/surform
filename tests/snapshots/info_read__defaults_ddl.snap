@@ -1,0 +1,5 @@
+---
+source: tests/info_read.rs
+expression: "section_ddl(&info, \"defaults\")"
+---
+database: solo

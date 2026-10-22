@@ -1,0 +1,8 @@
+---
+source: src/info/write.rs
+expression: once
+---
+field seen_at: datetime {
+  on: visit;
+  default always: time::now();
+};
