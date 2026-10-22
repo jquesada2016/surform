@@ -72,11 +72,13 @@ param $default_limit = 50;
   comment in a field's kind capture re-anchors to the field.)
 - **One blank line between top-level definitions** — `table`, `fn`,
   `access`, `sequence`, and every other statement separates from its
-  neighbors so a file reads in paragraphs. The separation is part of
-  the canonical form: comments stay glued to the statement they
-  annotate (a `///` doc block never floats off its definition), and
-  the block interiors — fn bodies, a table's fields — stay packed,
-  where structure comes from indentation instead.
+  neighbors so a file reads in paragraphs. The one exception: a run
+  of `include` statements packs tight as one import group (the group
+  still separates from the definitions around it). The separation is
+  part of the canonical form: comments stay glued to the statement
+  they annotate (a `///` doc block never floats off its definition),
+  and the block interiors — fn bodies, a table's fields — stay
+  packed, where structure comes from indentation instead.
 - A table body prints in the **member layout**: the table's clauses,
   then fields, then the spread entries (in their authored order —
   which spread wins a collision is order), then indexes, then events

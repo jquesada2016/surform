@@ -2332,8 +2332,8 @@ fn fmt_print_mode_stays_per_file() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("UTF-8");
     assert_eq!(
-        stdout, "include 'parts/m.surdl';\n\ninclude 'parts/t.surdl';\n",
-        "print mode formats the root's own text only"
+        stdout, "include 'parts/m.surdl';\ninclude 'parts/t.surdl';\n",
+        "print mode formats the root's own text only (the include run packs tight)"
     );
     assert_eq!(std::fs::read_to_string(&m).expect("m re-reads"), m_before);
     assert_eq!(std::fs::read_to_string(&t).expect("t re-reads"), t_before);

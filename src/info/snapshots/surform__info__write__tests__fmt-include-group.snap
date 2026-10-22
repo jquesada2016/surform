@@ -1,0 +1,12 @@
+---
+source: src/info/write.rs
+expression: once
+---
+table `user`;
+
+include 'a.sdl';
+include 'b.sdl';
+// picker feeds
+include 'c.sdl';
+
+param $x;

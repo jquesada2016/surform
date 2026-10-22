@@ -8,8 +8,10 @@
 //! — the order its spec file prints, extracted statement by statement;
 //! canonical spellings; `///` doc-comment lines above their statement;
 //! one statement per line; 2-space indent; one blank line between
-//! top-level statements (a statement's leading comments bind into its
-//! group, so the break always falls between definitions); a single
+//! top-level statements — except a run of adjacent `include`
+//! statements, which packs tight as one import group (a statement's
+//! leading comments bind into its group, so the break always falls
+//! between definitions); a single
 //! trailing newline. The assignment
 //! short form is taken when only its value is present
 //! (shortest-spelling rule); representation-equal states otherwise
@@ -47,9 +49,11 @@ pub const DEFAULT_MAX_WIDTH: usize = crate::pretty::DEFAULT_MAX_WIDTH;
 
 /// Writes the canonical SDL for a parsed file. An empty file writes
 /// an empty string. One blank line separates adjacent top-level
-/// statements — a statement's leading comments and trailing comments
-/// emit inside its own group (write_stmt), so the break always falls
-/// between definitions and never detaches a comment from its anchor.
+/// statements, except a run of adjacent `include` statements, which
+/// packs tight (one import group) — the break still falls between the
+/// group and every other definition. A statement's leading comments
+/// and trailing comments emit inside its own group (write_stmt), so a
+/// break never detaches a comment from its anchor.
 pub fn write_canonical(file: &SdlFile) -> String {
     write_canonical_with(file, crate::pretty::DEFAULT_MAX_WIDTH)
 }
@@ -64,13 +68,19 @@ pub fn write_canonical_with(file: &SdlFile, max_width: usize) -> String {
         max_width,
     };
     for (i, stmt) in file.items.iter().enumerate() {
-        if i > 0 {
+        if i > 0 && !(is_include(stmt) && is_include(&file.items[i - 1])) {
             w.out.push('\n');
         }
         write_stmt(&mut w, stmt, false);
     }
     w.comments(&file.trailing_comments);
     w.out
+}
+
+/// Whether a top-level statement is an `include` — the writer's
+/// pack-tight test for the import group.
+fn is_include(stmt: &Stmt) -> bool {
+    matches!(stmt, Stmt::Include(_))
 }
 
 /// The canonical SDL for ONE statement — the ONE canonical function's
@@ -2170,17 +2180,28 @@ fn push_path_segment(out: &mut String, segment: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse_file;
+    use crate::diag::Diag;
+    use crate::parser::{parse_file, parse_file_composable};
 
     /// The golden leg: the source parses clean, formats, the output
     /// re-parses clean, holds the same definition (span-blind), and
     /// formats to itself — then the snapshot pins the exact text.
     /// Every statement's spec examples ride through here.
     fn assert_fmt_golden(name: &str, src: &str) {
-        let (ast, diags) = parse_file(src);
+        assert_fmt_golden_with(name, src, parse_file);
+    }
+
+    /// [`assert_fmt_golden`] over the composable parse — the entry
+    /// `include` statements parse through (spec/include.md).
+    fn assert_fmt_golden_composable(name: &str, src: &str) {
+        assert_fmt_golden_with(name, src, parse_file_composable);
+    }
+
+    fn assert_fmt_golden_with(name: &str, src: &str, parse: fn(&str) -> (SdlFile, Vec<Diag>)) {
+        let (ast, diags) = parse(src);
         assert!(diags.is_empty(), "{src}: {diags:?}");
         let once = write_canonical(&ast);
-        let (reparsed, diags) = parse_file(&once);
+        let (reparsed, diags) = parse(&once);
         assert!(diags.is_empty(), "fmt output stopped parsing:\n{once}");
         assert!(
             ast.same_definition(&reparsed),
@@ -2456,6 +2477,19 @@ mod tests {
         assert_fmt_golden(
             "fmt-comment-led-group",
             "table a { schemaless; };\n// the b side\ntable b { schemaless; };",
+        );
+    }
+
+    #[test]
+    fn fmt_include_group() {
+        // The one exception to the blank-line separation: a run of
+        // adjacent includes packs tight (the import-group style),
+        // while the group still breaks from every other definition —
+        // and a comment leading one include anchors forward into the
+        // run, never back to the include above it.
+        assert_fmt_golden_composable(
+            "fmt-include-group",
+            "table user;\ninclude \"a.sdl\";\ninclude \"b.sdl\";\n// picker feeds\ninclude \"c.sdl\";\nparam $x;",
         );
     }
 

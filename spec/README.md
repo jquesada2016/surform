@@ -174,14 +174,16 @@ shapes (probe-pinned 2026-09-25).
    a clause note). A note on a clause the writer itself elides drops
    with it (the graphql `none` family, which the representation fold
    prints as nothing). The writer also separates adjacent top-level
-   statements with one blank line — a statement's leading and trailing
-   comments emit inside its own group, so the break always falls
-   between definitions and never detaches a comment (or a `///` doc
-   block) from its anchor. A comment between a statement's keyword and
-   its name (or any other seam with no anchor before the next)
-   re-anchors to the next anchor — nothing is lost. Comments inside
-   captured spans (fn bodies, `then:` blocks, view queries, expression
-   clause values, fn parameter lists — see
+   statements with one blank line — except a run of adjacent
+   `include` statements, which packs tight as one import group (the
+   group still breaks from every other definition). A statement's
+   leading and trailing comments emit inside its own group, so the
+   break always falls between definitions and never detaches a comment
+   (or a `///` doc block) from its anchor. A comment between a
+   statement's keyword and its name (or any other seam with no anchor
+   before the next) re-anchors to the next anchor — nothing is lost.
+   Comments inside captured spans (fn bodies, `then:` blocks, view
+   queries, expression clause values, fn parameter lists — see
    the comment model in rule 3) have no SDL anchor and drop; a field
    kind's `//` lines re-anchor like any other anchorless line. Text after `//` rides verbatim (trailing whitespace
    trimmed); the writer emits `//` plus that text, so fmt is
