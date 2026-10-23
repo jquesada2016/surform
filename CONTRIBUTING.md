@@ -114,3 +114,8 @@ Notes:
 By contributing you agree your contributions are available under the
 project's licenses, MIT OR Apache-2.0. Note the binary embeds
 SurrealDB's parser (BSL 1.1 — see THIRD-PARTY-NOTICES.md).
+
+---
+
+If Surform is useful to you, I'm available for work —
+[josequesada.dev](https://josequesada.dev).
