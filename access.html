@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access (sign-in &amp; tokens) · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Access (sign-in &amp; tokens)">
+<link rel="canonical" href="access.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html" class="active">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">The language</span><span class="crumb-title">Access (sign-in &amp; tokens)</span></div>
+  <article>
+<h1 class="page-title">Access (sign-in &amp; tokens)</h1>
+<p>Accesses are SurrealDB's authentication schemes: they define how tokens are <em>verified</em> and, for your application's end users, how accounts <em>sign up</em> and <em>sign in</em>. Three kinds exist, chosen with <code>type:</code> — <code>record</code>, <code>jwt</code>, and <code>bearer</code>.</p>
+<h2 id="record-access-your-apps-users">Record access: your app's users</h2>
+<p>The most common kind. A record access turns an email-and-password pair into a record user — SurrealDB runs your SurrealQL to create the account (<code>signup</code>) and to check a sign-in (<code>signin</code>):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> <span class="tok-k">password:</span> <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">access</span> account {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  <span class="tok-k">signup:</span> {
+    <span class="tok-k">create</span> <span class="tok-k">user</span> <span class="tok-k">set</span>
+      email = <span class="tok-v">$email</span>,
+      <span class="tok-k">password</span> = crypto::argon2::generate(<span class="tok-v">$password</span>)
+  };
+  <span class="tok-k">signin:</span> {
+    <span class="tok-k">select</span> * <span class="tok-k">from</span> <span class="tok-k">user</span>
+      <span class="tok-k">where</span> email = <span class="tok-v">$email</span>
+      and crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>)
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">password</span>` <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> account <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNUP</span> { <span class="tok-k">CREATE</span> <span class="tok-k">user</span> <span class="tok-k">SET</span> email = <span class="tok-v">$email</span>, <span class="tok-k">password</span> = crypto::argon2::generate(<span class="tok-v">$password</span>) }
+    <span class="tok-k">SIGNIN</span> {
+        <span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span> AND crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>)
+    };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user {\n  schemafull;\n  field email: string;\n  field password: string;\n};\n\naccess account {\n  on: database;\n  type: record;\n  signup: {\n    create user set\n      email = $email,\n      password = crypto::argon2::generate($password)\n  };\n  signin: {\n    select * from user\n      where email = $email\n      and crypto::argon2::compare(password, $password)\n  };\n};"}</script>
+</figure>
+<p>No trailing <code>;</code> inside those captures — the clause's value must be the returned result. <code>$email</code> and <code>$password</code> are what the client sends to the <code>SIGNUP</code>/<code>SIGNIN</code> endpoints.</p>
+<p>A post-auth check can inspect the signed-in record and reject with <code>throw</code>:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> blocked: <span class="tok-k">bool</span>;
+};
+
+<span class="tok-k">access</span> gated {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  <span class="tok-k">signin:</span> <span class="tok-k">select</span> * <span class="tok-k">from</span> <span class="tok-k">user</span> <span class="tok-k">where</span> email = <span class="tok-v">$email</span>;
+  <span class="tok-k">authenticate:</span> {
+    <span class="tok-k">if</span> <span class="tok-v">$auth</span>.blocked { throw <span class="tok-s">'account suspended'</span>; }
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> blocked <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">bool</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> gated <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNIN</span> (<span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span>)
+    <span class="tok-k">AUTHENTICATE</span> { <span class="tok-k">IF</span> <span class="tok-v">$auth</span>.blocked { THROW <span class="tok-s">'account suspended'</span> } };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user {\n  schemafull;\n  field email: string;\n  field blocked: bool;\n};\n\naccess gated {\n  on: database;\n  type: record;\n  signin: select * from user where email = $email;\n  authenticate: {\n    if $auth.blocked { throw 'account suspended'; }\n  };\n};"}</script>
+</figure>
+<h2 id="jwt-access-verify-tokens-from-somewhere-else">JWT access: verify tokens from somewhere else</h2>
+<p>The <code>jwt</code> kind does not issue anything (unless given an issuer) — it <em>verifies</em> tokens. The verification source is either a JWKS <code>url:</code> or an <code>algorithm:</code> + <code>key:</code> pair:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// Tokens issued by Acme SSO.</span>
+<span class="tok-k">access</span> corp_sso {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">url:</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span>;
+};
+
+<span class="tok-k">access</span> ops {
+  <span class="tok-k">on:</span> root;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">algorithm:</span> <span class="tok-k">es256</span>;
+  key: <span class="tok-s">'ops_public_key_pem'</span>;
+  <span class="tok-k">duration</span> { <span class="tok-k">session:</span> <span class="tok-n">8h</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> corp_sso <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">URL</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Tokens issued by Acme SSO.'</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> ops <span class="tok-k">ON</span> ROOT
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">ES256</span> KEY <span class="tok-s">'ops_public_key_pem'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">SESSION</span> <span class="tok-n">8h</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\n/// Tokens issued by Acme SSO.\naccess corp_sso {\n  on: database;\n  type: jwt;\n  url: 'https://sso.acme.com/.well-known/jwks.json';\n};\n\naccess ops {\n  on: root;\n  type: jwt;\n  algorithm: es256;\n  key: 'ops_public_key_pem';\n  duration { session: 8h; };\n};"}</script>
+</figure>
+<p>One rule governs which keys you may write:</p>
+<ul><li><strong>Asymmetric verify keys</strong> (<code>es*</code>, <code>eddsa</code>, <code>rs*</code>, <code>ps*</code>) are <em>public</em> keys — freely authorable, printed verbatim by the database.</li>
+<li><strong>Symmetric verify keys</strong> (<code>hs*</code>) and <strong>every issuer key</strong> are secrets. The database redacts them in <code>INFO</code>, and Surform accepts exactly one spelling there: the literal <code>'[REDACTED]'</code>. Writing a real key in those slots is a parse error:</li>
+</ul>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">access</span> broken {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">algorithm:</span> <span class="tok-k">hs256</span>;
+  key: <span class="tok-s">'SUp3r-s3cret-key-material'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1056 (spec/access.md)
+
+  x access secret key material may not be committed: a symmetric (`HS256`) verify key is secret material — write `key: '[REDACTED]';`
+   ,-[8:3]
+ 7 |   algorithm: hs256;
+ 8 |   key: 'SUp3r-s3cret-key-material';
+   :   ^|^
+   :    `-- this key slot takes only `'[REDACTED]'`
+ 9 | };
+   `----
+  help: write the literal `key: '[REDACTED]';` in SDL and provision the real secret outside SDL (this access class is run manually, so its secrets are never committed); asymmetric verify keys are
+        public and stay authorable
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"namespace acme;\ndatabase shop;\n\naccess broken {\n  on: database;\n  type: jwt;\n  algorithm: hs256;\n  key: 'SUp3r-s3cret-key-material';\n};"}</script>
+</figure>
+<p>That is deliberate: your schema file lives in git, so secret material must be provisioned outside it — that access class is applied manually, once.</p>
+<h3 id="issuers-and-audiences">Issuers and audiences</h3>
+<p>An <code>issuer</code> block turns the access into a token <em>issuer</em> alongside verification. Its key follows the same sentinel rule; its algorithm must equal the verify algorithm when verifying by local key:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">access</span> partner_api {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">algorithm:</span> <span class="tok-k">es256</span>;
+  key: <span class="tok-s">'partners_public_key'</span>;
+  <span class="tok-k">issuer</span> {
+    key: <span class="tok-s">'[REDACTED]'</span>;
+  };
+  <span class="tok-k">duration</span> { <span class="tok-k">token:</span> <span class="tok-n">1h</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> partner_api <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">ES256</span> KEY <span class="tok-s">'partners_public_key'</span> WITH <span class="tok-k">ISSUER</span> KEY <span class="tok-s">'[REDACTED]'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1h</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\naccess partner_api {\n  on: database;\n  type: jwt;\n  algorithm: es256;\n  key: 'partners_public_key';\n  issuer {\n    key: '[REDACTED]';\n  };\n  duration { token: 1h; };\n};"}</script>
+</figure>
+<p><code>audience:</code> (SurrealDB 3.3) — a comma list of strings the token's <code>aud</code> claim must intersect:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">access</span> corp_sso {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">url:</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span>;
+  <span class="tok-k">audience:</span> <span class="tok-s">'shop-web'</span>, <span class="tok-s">'shop-mobile'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> corp_sso <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">URL</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span> <span class="tok-k">AUDIENCE</span> <span class="tok-s">'shop-web'</span>, <span class="tok-s">'shop-mobile'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\naccess corp_sso {\n  on: database;\n  type: jwt;\n  url: 'https://sso.acme.com/.well-known/jwks.json';\n  audience: 'shop-web', 'shop-mobile';\n};"}</script>
+</figure>
+<h2 id="bearer-access-long-lived-grants">Bearer access: long-lived grants</h2>
+<p>A bearer access hands out grant tokens — for <code>user</code> accounts (any level) or <code>record</code> users (database level). Bearer accesses can also issue their own JWTs with a <code>jwt</code> block:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">access</span> ci_tokens {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">bearer</span>;
+  for: <span class="tok-k">user</span>;
+  <span class="tok-k">duration</span> {
+    <span class="tok-k">grant:</span> <span class="tok-n">30d</span>;
+    <span class="tok-k">token:</span> <span class="tok-n">1d</span>;
+  };
+};
+
+<span class="tok-k">access</span> device_keys {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">bearer</span>;
+  for: <span class="tok-k">record</span>;
+  <span class="tok-k">jwt</span> {
+    <span class="tok-k">algorithm:</span> <span class="tok-k">hs256</span>;
+    key: <span class="tok-s">'[REDACTED]'</span>;
+  };
+  <span class="tok-k">duration</span> { <span class="tok-k">token:</span> <span class="tok-n">365d</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> ci_tokens <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">BEARER</span> FOR <span class="tok-k">USER</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">GRANT</span> <span class="tok-n">4w2d</span>, FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1d</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> device_keys <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">BEARER</span> FOR <span class="tok-k">RECORD</span> WITH <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">HS256</span> KEY <span class="tok-s">'[REDACTED]'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1y</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\naccess ci_tokens {\n  on: database;\n  type: bearer;\n  for: user;\n  duration {\n    grant: 30d;\n    token: 1d;\n  };\n};\n\naccess device_keys {\n  on: database;\n  type: bearer;\n  for: record;\n  jwt {\n    algorithm: hs256;\n    key: '[REDACTED]';\n  };\n  duration { token: 365d; };\n};"}</script>
+</figure>
+<p>(<code>365d</code> prints as <code>1y</code> — SurrealDB's duration canon; the value is unchanged.)</p>
+<h2 id="context-data-for-the-session-surrealdb-33">Context: data for the session (SurrealDB 3.3)</h2>
+<p><code>context:</code> evaluates at authentication and becomes <code>$session.data</code> — a way to pin per-session facts your queries can read. It requires an access method that authenticates a <em>record</em> (a record access, or a bearer for records), and the expression must be read-only:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> plan: <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">access</span> account_ctx {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  <span class="tok-k">signin:</span> <span class="tok-k">select</span> * <span class="tok-k">from</span> <span class="tok-k">user</span> <span class="tok-k">where</span> email = <span class="tok-v">$email</span>;
+  <span class="tok-k">authenticate:</span> {
+    <span class="tok-k">if</span> <span class="tok-v">$auth</span>.blocked { throw <span class="tok-s">'account suspended'</span>; }
+  };
+  <span class="tok-k">context:</span> { plan: <span class="tok-v">$auth</span>.plan };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> plan <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> account_ctx <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNIN</span> (<span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span>)
+    <span class="tok-k">AUTHENTICATE</span> { <span class="tok-k">IF</span> <span class="tok-v">$auth</span>.blocked { THROW <span class="tok-s">'account suspended'</span> } }
+    <span class="tok-k">CONTEXT</span> { plan: <span class="tok-v">$auth</span>.plan };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user {\n  schemafull;\n  field email: string;\n  field plan: string;\n};\n\naccess account_ctx {\n  on: database;\n  type: record;\n  signin: select * from user where email = $email;\n  authenticate: {\n    if $auth.blocked { throw 'account suspended'; }\n  };\n  context: { plan: $auth.plan };\n};"}</script>
+</figure>
+<h2 id="duration-defaults">Duration defaults</h2>
+<p>The three duration sides default to grant <code>30d</code>, token <code>1h</code>, session unlimited — and an access without a <code>duration</code> block round-trips to one without. A verify-only access (no issuer) can't issue tokens, so a declared <code>token:</code> side there is dropped by the engine — <a href="lint.html">the linter</a> catches it (<code>SDL-L0011</code>).</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="users.html">Users &amp; roles</a> — the sysadmin accounts.</li>
+<li><a href="lint.html">The linter</a> — the duration-capability and sentinel warnings.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#record-access-your-apps-users">Record access: your app's users</a>
+<a class="toc-2" href="#jwt-access-verify-tokens-from-somewhere-else">JWT access: verify tokens from somewhere else</a>
+<a class="toc-3" href="#issuers-and-audiences">Issuers and audiences</a>
+<a class="toc-2" href="#bearer-access-long-lived-grants">Bearer access: long-lived grants</a>
+<a class="toc-2" href="#context-data-for-the-session-surrealdb-33">Context: data for the session (SurrealDB 3.3)</a>
+<a class="toc-2" href="#duration-defaults">Duration defaults</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/access.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

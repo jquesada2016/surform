@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The surform CLI · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: The surform CLI">
+<link rel="canonical" href="cli.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html" class="active">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">The surform CLI</span></div>
+  <article>
+<h1 class="page-title">The surform CLI</h1>
+<p>Six commands, one job each — <code>migrate</code> carries six subcommands. Output conventions are uniform across all of them: <strong>DDL and schema text go to stdout; diagnostics and lint findings go to stderr; a clean run prints nothing on stderr and exits 0.</strong></p>
+<div class="tablewrap"><table><thead><tr><th>command</th><th>job</th><th>exits 1 when</th></tr></thead><tbody><tr><td><code>surform check</code></td><td>parse and report</td><td>the file has diagnostics</td></tr><tr><td><code>surform build</code></td><td>emit DDL</td><td>the file has diagnostics</td></tr><tr><td><code>surform fmt</code></td><td>print canonical SDL (<code>--check</code>: verify without writing)</td><td>the file has diagnostics; <code>--check</code>: the input is not canonical</td></tr><tr><td><code>surform normalize</code></td><td>merge database state into the file</td><td>diagnostics, bad <code>--info</code> tags (a missing tag is a usage error — exit 2)</td></tr><tr><td><code>surform migrate generate</code></td><td>report drift + convergence script</td><td>drift exists in either direction and nothing was saved — a successful <code>--save</code> exits 0</td></tr><tr><td><code>surform migrate commit</code></td><td>hash + ledger-record a filled draft</td><td>unresolved slots, re-commit, source unreadable, the file name's number differing from the header's</td></tr><tr><td><code>surform migrate renumber</code></td><td>move a draft to another number — header and filename together</td><td>the draft is committed, unreadable, or malformed; the number is taken (or outside 1–9999)</td></tr><tr><td><code>surform migrate push</code></td><td>apply committed migrations over HTTP <code>/sql</code></td><td>an apply failed, drift, a pre-flight refusal — a <code>--dry-run</code> exits 1 on its would-refuse row</td></tr><tr><td><code>surform migrate status</code></td><td>the directory against the live ledger</td><td>anything DRIFTED or missing from the ledger</td></tr><tr><td><code>surform migrate revert</code></td><td>draft the migration toward a recorded state</td><td>an unreadable target, an ambiguous row, a schema that never declares <code>--ns</code>/<code>--db</code></td></tr><tr><td><code>surform migrate pull</code></td><td>fetch the database's rendered INFO as the interchange files <code>--info</code> consumes</td><td>a wire refusal (a bad endpoint, credentials, a failed INFO), a name that cannot ride a file, an unwritable file</td></tr><tr><td><code>surform lint</code></td><td>advisory warnings</td><td>any finding exists</td></tr></tbody></table></div>
+<p>Global flag: <code>--json</code> renders every diagnostic and finding as one JSON object per line — machine-friendly for editors and CI. The migrate pipeline's refusals render as one JSON object too — <code>{&quot;error&quot;: …, &quot;hint&quot;: …}</code>: the refusal's sentence as the error, its fix (the text after the <code> — </code>) as the hint. The pipeline's SUCCESS reports (the drift report and script, the draft banner, push/status/ revert output) stay plain stdout even under <code>--json</code>.</p>
+<p>On a composition root (a file with <code>include</code> statements — see <a href="includes.html">Multi-file schemas</a>), <code>check</code>, <code>build</code>, <code>migrate</code>, and <code>lint</code> follow the includes and work on the whole tree; every diagnostic and finding renders against the file it came from. <code>fmt</code> formats the root as authored without resolving anything, and <code>normalize</code> writes the whole tree back — <code>--in-place</code> returns every merged statement to its home file, without it the flattened form prints.</p>
+<h2 id="check-validate">check — validate</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Parse an SDL file and report diagnostics
+
+Usage: surform check [OPTIONS] &lt;FILE&gt;
+
+Arguments:
+  &lt;FILE&gt;  Path to the .surdl file
+
+Options:
+      --json  Render diagnostics as JSON (one object per line) instead of the graphical format
+  -h, --help  Print help</code></pre></div>
+<p>A clean file prints nothing and exits 0. A broken file gets line-anchored diagnostics:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>captured from the real binary</span><div class="ex-block"><div class="ex-label">$ surform check broken.surdl</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `permisions` in table definition
+   ,-[/var/folders/n6/6n6j82814px6vwrlh2v3grmw0000gn/T/surform-docs-broken.surdl:6:3]
+ 5 |   schemafull;
+ 6 |   permisions: full;
+   :   ^^^^^|^^^^
+   :        `-- unknown clause key
+ 7 | };
+   `----
+  help: did you mean `permissions`?
+
+</code></pre></div>
+</div>
+</figure>
+<p>Read the anatomy: the <strong>code</strong> links to the spec section that defines the rule; the snippet points at the exact line and column; the <code>help:</code> line suggests the next step. With <code>--json</code> the same information is one JSON object per line on stderr.</p>
+<p>Stdin is <code>fmt</code>'s alone — <code>check</code> and <code>build</code> read a file only, and that asymmetry is deliberate: formatting a pathless buffer is the pipe's job (<code>surform fmt</code> with no file, or <code>-</code>), while validation runs the resolution pass, which needs the file's root to follow includes and spreads — a stdin <code>check</code> would silently run the weaker pathless parse and look like a guarantee it isn't.</p>
+<h2 id="build-compile-to-ddl">build — compile to DDL</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Compile an SDL file to SurrealQL DDL
+
+Usage: surform build [OPTIONS] &lt;FILE&gt;
+
+Arguments:
+  &lt;FILE&gt;  Path to the .surdl file
+
+Options:
+      --json  Render diagnostics as JSON (one object per line) instead of the graphical format
+  -h, --help  Print help</code></pre></div>
+<p>On success the SurrealQL DDL prints to stdout — pipe it wherever your SurrealQL goes:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform build schema.surdl &gt; schema.surql
+surform build schema.surdl | surreal sql --conn ws://localhost:8000 --user root --pass … --ns acme --db shop</code></pre></div>
+<p>A dirty file emits no DDL at all — you never apply half a schema.</p>
+<h2 id="fmt-canonical-style">fmt — canonical style</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Write an SDL file's canonical form
+
+Plain `//` comments are layout, not definition: they re-emit at their anchors (above the statement or block child they preceded; anchorless lines trail inside their block) while never changing what a file means, and `///` doc comments are preserved as before. Comments inside captured SurrealQL bodies (fn bodies, `then:` blocks, views) are not SDL structure and drop. With no file (or `-`), the source reads from stdin and the canonical form prints to stdout — the pipe editors format an unsaved buffer through; `--in-place` needs a real file to rewrite.
+
+`--check` compares instead of printing: exit 0, silent, when the input is already canonical; exit 1 with a diff-style rendering of what would change when it is not — the CI gate without the `--in-place` plus `git diff` dance. A generated migration script (the `-- surform migration` draft header) is refused in every mode: `--` is SurrealQL comment syntax, not SDL's, and fmt does not reflow migration scripts — the schema to format is the header's `-- source:` file.
+
+Usage: surform fmt [OPTIONS] [FILE]
+
+Arguments:
+  [FILE]
+          Path to the .surdl file (omit, or `-`, to read stdin)
+
+Options:
+      --check
+          Check instead of print: exit 0 silent when the input is already canonical, exit 1 with a diff of what would change
+
+      --json
+          Render diagnostics as JSON (one object per line) instead of the graphical format
+
+      --in-place
+          Rewrite in place instead of printing — a composition root writes the whole tree (every participating file formats from its own loader parse)
+
+      --max-width &lt;N&gt;
+          The layout budget the formatted output's expression values and kind unions break under, in columns (the official formatter's `--max-line-length`)
+          
+          [default: 100]
+
+  -h, --help
+          Print help (see a summary with '-h')</code></pre></div>
+<p><code>fmt</code> prints the file's canonical form; <code>--in-place</code> rewrites in place instead — and on a <a href="includes.html">composition root</a> it rewrites the whole tree, every participating file formatting from its own loader parse. Formatting has a fixed point — running it again changes nothing — which makes it safe to run in CI as a check:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform fmt --check schema.surdl  <span class="tok-c"> # exit 1 + the diff it would apply</span>
+surform fmt --in-place schema.surdl
+git diff --exit-code  <span class="tok-c"> # the older dance --check replaces</span></code></pre></div>
+<p><code>--check</code> is that gate in one command: exit 0, silent, when the input is already canonical; exit 1 with a diff of what would change on stderr (finding-class output — stdout stays empty; the diff stays plain text under <code>--json</code> — it is not a diagnostic). The <code>--max-width</code> budget is part of the verdict, and the pipe is an input here too (<code>surform fmt --check &lt; schema.surdl</code>); <code>--in-place</code> cannot ride along — one refuses to write, the other's whole job is writing.</p>
+<p>One input is refused in every mode: a generated migration script (a file whose first line is the <code>-- surform migration</code> draft header <code>migrate generate --save</code> writes). <code>--</code> is SurrealQL comment syntax, not SDL's, and fmt does not reflow migration scripts — the schema to format is the draft header's <code>-- source:</code> file.</p>
+<p>The pipe is an input too: with no file (or <code>-</code>), <code>fmt</code> reads stdin and prints the canonical form — the interface editors drive when they format an unsaved buffer:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform fmt &lt; schema.surdl</code></pre></div>
+<p><code>--max-width N</code> moves the wrap budget long lines break under (default 100). Details and before/after examples: <a href="fmt.html">Formatting</a>.</p>
+<h2 id="normalize-adopt-the-database">normalize — adopt the database</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Merge rendered INFO interchange into an SDL file and re-emit the canonical SDL
+
+Each `--info` scope merges into the file (adopt/elide/preserve/fold), placement orders the result, and the writer prints it. Scope tags: `root=&lt;path&gt;`, `ns=&lt;name&gt;=&lt;path&gt;`, `db=&lt;ns&gt;/&lt;name&gt;=&lt;path&gt;` — repeat `--info` per scope; missing scopes simply don't merge, and at least one tag is required (a scope-less run has nothing to adopt and would silently be a disguised `fmt`).
+
+A composition root normalizes as a project: the merge runs over the flattened document and `--in-place` returns every merged statement to the file that authored it (an adoptee with no writable position refuses — SDL-E0013); without `--in-place` the flattened canonical form prints.
+
+The db interchange file carries each table's INFO FOR TABLE child map in a reserved `&quot;@tables&quot;` sibling key. Until `surform` grows a pull command, a trivial shell loop assembles it.
+
+Usage: surform normalize [OPTIONS] --info &lt;SPEC&gt; &lt;FILE&gt;
+
+Arguments:
+  &lt;FILE&gt;
+          Path to the .surdl file
+
+Options:
+      --info &lt;SPEC&gt;
+          Interchange scope: `root=&lt;path&gt;`, `ns=&lt;name&gt;=&lt;path&gt;`, or `db=&lt;ns&gt;/&lt;name&gt;=&lt;path&gt;` — repeat `--info` per scope; required (a scope-less run has nothing to adopt and would silently be a disguised `fmt`)
+
+      --json
+          Render diagnostics as JSON (one object per line) instead of the graphical format
+
+      --in-place
+          Rewrite the file in place instead of printing to stdout
+
+      --max-width &lt;N&gt;
+          The layout budget the re-emitted file's expression values and kind unions break under, in columns
+          
+          [default: 100]
+
+  -h, --help
+          Print help (see a summary with '-h')</code></pre></div>
+<p><code>normalize</code> merges the database's rendered <code>INFO</code> output — handed over as interchange files — into your schema file, so an existing database becomes a Surform file:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform normalize schema.surdl --in-place --info db=acme/shop=info-db.txt</code></pre></div>
+<p>At least one <code>--info</code> tag is required — with none there is nothing to adopt, and the run would silently be a disguised <code>fmt</code> (with <code>--in-place</code>, a rewrite); the command refuses at the CLI instead. <code>fmt</code> is the no-merge path. Scope tags, the interchange format, and the full walkthrough: <a href="normalize.html">Adopting a database</a>.</p>
+<p>Mixin-carrying files merge <a href="mixins.html">spread-preserving</a>: a member whose database state matches its definition stays covered by the spread, a diverged one materializes as the explicit override, and <code>migrate generate</code> reports drift on the member itself.</p>
+<h2 id="migrate-generate-what-drifted-and-the-script">migrate generate — what drifted, and the script</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Schema migrations — generate, commit, push, status, revert
+
+`generate` prints the drift report to stdout, followed by the full convergence script — defines (SDL-only and drifted definitions) as `DEFINE … OVERWRITE` from the authored SDL side in the compiler's emission order, then the database-only removals (`IF EXISTS`, children before parents, the data-destroying classes carrying `SURFORM WARNING` anchors). One transaction per scope section, each section's `USE` outside its frame (a failed statement rolls its own section back — sections before it stay applied). `--save` writes a draft only when the script is ONE transaction (single-scope; the file format wraps exactly one) — a multi-scope script applies from the printed output. Exit 1 when drift exists in either direction and nothing was saved (SDL-only definitions count — they are apply-pending; a successful `--save` exits 0 — the draft is the artifact); expected-unmanaged findings are informational and never trip the exit.
+
+Usage: surform migrate [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  generate  Generate the convergence migration: the drift report, then the script (or report only, with `--check`)
+  commit    Commit a saved, filled migration draft into the ledger
+  push      Apply committed migrations to a live database over HTTP
+  pull      Fetch the database's rendered INFO as interchange files
+  status    Compare the migrations directory against the live migration ledger
+  revert    Draft the migration that undoes a recorded one
+  renumber  Move a draft to another number — the header's number line and the FILE NAME change together, the one operation that cannot split the identity commit's mismatch check refuses (push walks file names; the ledger self-records the header's). Refuses a COMMITTED migration (the number is the ledger's record id) and a number another draft already carries. The body rides untouched — a draft's number lives only in its first header line
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+      --json
+          Render diagnostics as JSON (one object per line) instead of the graphical format
+
+  -h, --help
+          Print help (see a summary with '-h')</code></pre></div>
+<p><code>migrate generate</code> compares the file with the database's rendered <code>INFO</code> and prints two sections: the drift report and the convergence script — defines first (<code>DEFINE … OVERWRITE</code> from your file's side), removals last (<code>IF EXISTS</code>, the data-destroying lines under <code>SURFORM WARNING</code> blocks), one transaction per scope section with the <code>USE</code> switches outside the frames. It exits 1 when drift exists in either direction — the CI-friendly signal, report-only with <code>--check</code>. A converged run prints one <code>(converged)</code> line and exits 0. The <code>--from &lt;file&gt; --to &lt;file&gt;</code> input mode swaps the database side for a second schema version — the same report and the same script shape, schema version against schema version:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --check || echo &quot;schema drifted!&quot;
+surform migrate generate --from schema-v1.surdl --to schema-v2.surdl</code></pre></div>
+<p>The bare file is the third input, the baseline: the file is the whole desired state and the FROM side is empty, so every definition rides apply-pending and the script defines from nothing - the first migration of a fresh pipeline in one command, with no database reading and no scaffolding files:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl --save</code></pre></div>
+<p><code>--save</code> writes the script as a numbered draft under <code>migrations/</code> instead of printing it — a script spanning several scopes saves as a draft GROUP instead (one file per scope section, <code>NNNNa_…</code>/<code>NNNNb_…</code>, applied in name order — the full story in <a href="migrate.html">Schema migration</a>). The stdout names the file and the next move (<code>fill the SURFORM SLOT regions, then: surform migrate commit &lt;file&gt;</code>), and a successful save exits 0 — the draft is the artifact; the drift exit 1 belongs to <code>--check</code> and to the plain run when nothing was saved. Regenerating a script the directory already drafts prints <code>note: an existing draft carries this exact script: &lt;file&gt;</code> and saves anyway (informational — the stale draft may hold your fill-in-progress edits); <code>--save --replace &lt;n&gt;</code> is the take-over: the draft <code>&lt;n&gt;</code> on disk must carry this exact script (its hash must match), then it is removed and the new draft saves under its number — a missing, committed, or differently-scripted target refuses (a group's members are not replaceable — delete a stale group by hand and regenerate). <code>migrate commit</code> hashes the filled draft and appends the migration ledger's statements inside its transaction — a draft carrying statements after its <code>COMMIT;</code> frame refuses (commit wraps exactly one transaction) — the full draft → fill → commit story in <a href="migrate.html">Schema migration</a>.</p>
+<h2 id="migrate-push-apply-the-committed-migrations">migrate push — apply the committed migrations</h2>
+<p><code>migrate push</code> walks the migrations directory in number order and applies each committed file to a live database through SurrealDB's HTTP <code>POST /sql</code> endpoint — the ledger-recorded ones skip, the first failure stops the run with the engine's error and the count applied before it:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate push --endpoint http://127.0.0.1:8000 \
+  --ns acme --db shop --user acme-admin</code></pre></div>
+<p>Every connection coordinate — <code>--endpoint</code>, <code>--ns</code>, <code>--db</code>, and the credentials — falls back to its environment variable when the flag is absent (<code>SURFORM_ENDPOINT</code>/<code>SURFORM_NS</code>/<code>SURFORM_DB</code>/ <code>SURFORM_DB_USER</code>/<code>SURFORM_DB_PASS</code>/<code>SURFORM_DB_TOKEN</code> — the recommended form; a flag over an environment variable, and a present-but-empty variable counts as given). The credentials are either a Basic pair (<code>--user</code>/<code>--pass</code>) or a bearer token (<code>--token</code>, sent as <code>Authorization: Bearer &lt;token&gt;</code>) — never both; the token is one you minted (a single <code>POST /signin</code> with the database-level credential), carried verbatim and never refreshed. On a terminal, a Basic run with a user but no password asks for it (<code>password:</code> on stderr); the answer never prints anywhere, and a non-interactive run without one keeps the give-both-or-neither refusal. <code>--dir</code> moves the migrations directory and <code>--ledger-table</code> threads the ledger read, exactly as on <code>commit</code>. Each file applies in one HTTP call, its own transaction wrapping it — a failed statement rolls the whole file back. <code>--dry-run</code> answers &quot;what would this push do?&quot; without answering it with the database: the entire pre-flight runs (directory walk, drift checks, the one ledger SELECT) and the plan prints — would-apply / already-applied / skip-draft / would-refuse, that last one exiting 1 — with ZERO migration POSTs. The apply loop's rules, the fresh-database case, and the body-<code>USE</code> guard: <a href="migrate.html">Schema migration</a>.</p>
+<h2 id="migrate-status-the-directory-against-the-ledger">migrate status — the directory against the ledger</h2>
+<p><code>migrate status</code> classifies every migration file against the live ledger — applied (hash match), pending (committed, not yet pushed), draft, DRIFTED (the ledger records the number with a different hash — both hashes named) — plus ledger rows the directory has no file for:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate status --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<p>One ledger SELECT through the same endpoint push applies through; status never applies anything. The connection coordinates fall back to the environment exactly as on <code>push</code> — and with NO endpoint (flag or environment) the run is OFFLINE: the local classification only (draft and committed per file, the ledger-derived states rendering as <code>unknown (no endpoint)</code>), exit 0 — nothing can be DRIFTED without a ledger. Exit 0 when directory and ledger agree, 1 when anything is DRIFTED or missing — the CI gate for history integrity. The states and the exit rule: <a href="migrate.html">Schema migration</a>.</p>
+<h2 id="migrate-revert-draft-the-way-back">migrate revert — draft the way back</h2>
+<p><code>migrate revert --to &lt;number|hash-prefix&gt;</code> drafts the migration from the LIVE database's schema to a recorded row's schema — the same script <code>generate --from &lt;live&gt; --to &lt;recorded&gt;</code> would emit, slots riding wherever the recorded state orphans data. The draft (plus a <code>.surdl</code> sidecar carrying the recorded state verbatim — the draft's <code>-- source:</code>, so a later commit re-records exactly that state) lands in the migrations directory and NOTHING is applied: fill, commit, push — the revert travels the normal road. The ledger table itself is immune (no revert can draft its removal); the boundaries and the round trip: <a href="migrate.html">Schema migration</a>.</p>
+<p>Live examples: <a href="migrate.html">Schema migration</a>.</p>
+<h2 id="migrate-pull-the-interchange-fetched">migrate pull — the interchange, fetched</h2>
+<p><code>migrate pull</code> is the interchange's producer: the database's rendered <code>INFO FOR ROOT</code>, <code>INFO FOR NS</code>, and <code>INFO FOR DB</code> — plus one <code>INFO FOR TABLE</code> per table — ride the same HTTP <code>POST /sql</code> endpoint push applies through, and the interchange files <code>normalize</code> and <code>migrate generate --info</code> consume land in <code>--dir</code> (the db file carrying every table's child map under the reserved <code>&quot;@tables&quot;</code> key). The ready-made next command prints — the database scope's tag, with the wider compares (root, ns) named as deliberate acts on the advice lines under it:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate pull --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<p>Nothing but the INFO statements ever goes over the wire, and nothing but <code>surform-info-*.txt</code> files land on disk (a re-pull refreshes exactly the names it writes — hand-written interchange files are not pull's to touch). A pull under a restricted credential writes only the scopes that credential can read: a scope's permission refusal drops it (no file; the advice line names the fuller credential that completes the pull), any other refusal refuses the pull naming its scope, and the db scope never degrades. The connection coordinates fall back to the environment exactly as on <code>push</code> (<code>SURFORM_ENDPOINT</code>/<code>SURFORM_NS</code>/<code>SURFORM_DB</code>, the credentials as on push — a Basic pair or a bearer token, never both), and <code>--dir</code> moves where the files land; the printed lines name them there. The whole story: <a href="normalize.html">Adopting a database</a>.</p>
+<h2 id="lint-the-advisory-pass">lint — the advisory pass</h2>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Lint an SDL file — advisory findings, exit 1 when any exist
+
+The findings read the resolved state: the merge's placed output when `--info` scopes are given, the file itself otherwise. Findings never affect `check`/`build`; exit 1 when any exist (the clippy convention).
+
+Usage: surform lint [OPTIONS] &lt;FILE&gt;
+
+Arguments:
+  &lt;FILE&gt;
+          Path to the .surdl file
+
+Options:
+      --info &lt;SPEC&gt;
+          Interchange scope: `root=&lt;path&gt;`, `ns=&lt;name&gt;=&lt;path&gt;`, or `db=&lt;ns&gt;/&lt;name&gt;=&lt;path&gt;` — repeat `--info` per scope
+
+      --json
+          Render diagnostics as JSON (one object per line) instead of the graphical format
+
+  -h, --help
+          Print help (see a summary with '-h')</code></pre></div>
+<p>Findings are warnings, not errors — your file applies fine with them. Exit 1 when any exist. The catalog: <a href="lint.html">The linter</a>.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="getting-started.html">Getting started</a> — the commands in a walkthrough.</li>
+<li><a href="verification.html">How examples are verified</a> — the pipeline behind the example panels.</li>
+</ul>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#check-validate">check — validate</a>
+<a class="toc-2" href="#build-compile-to-ddl">build — compile to DDL</a>
+<a class="toc-2" href="#fmt-canonical-style">fmt — canonical style</a>
+<a class="toc-2" href="#normalize-adopt-the-database">normalize — adopt the database</a>
+<a class="toc-2" href="#migrate-generate-what-drifted-and-the-script">migrate generate — what drifted, and the script</a>
+<a class="toc-2" href="#migrate-push-apply-the-committed-migrations">migrate push — apply the committed migrations</a>
+<a class="toc-2" href="#migrate-status-the-directory-against-the-ledger">migrate status — the directory against the ledger</a>
+<a class="toc-2" href="#migrate-revert-draft-the-way-back">migrate revert — draft the way back</a>
+<a class="toc-2" href="#migrate-pull-the-interchange-fetched">migrate pull — the interchange, fetched</a>
+<a class="toc-2" href="#lint-the-advisory-pass">lint — the advisory pass</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/cli.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

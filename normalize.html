@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adopting a database · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Adopting a database">
+<link rel="canonical" href="normalize.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html" class="active">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">Adopting a database</span></div>
+  <article>
+<h1 class="page-title">Adopting a database</h1>
+<p><code>surform normalize</code> builds a schema file from a database's state: it merges the database's <code>INFO</code> output — handed over as interchange files — into an SDL file, and writes the result in canonical form: the same style <a href="fmt.html">fmt</a> prints, under the same width budget (<code>--max-width</code>, default 100).</p>
+<h2 id="the-happy-path-adopt-a-whole-database">The happy path: adopt a whole database</h2>
+<p>Start from a stub that names the scope, hand normalize the database's <code>INFO FOR DB</code> output, and you get a schema file:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>adoption verified through the normalize pipeline (read → merge → write)</span><div class="ex-block"><div class="ex-label">INFO FOR DB, as the engine prints it</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>{
+  tables: {
+    user: 'DEFINE TABLE user TYPE NORMAL SCHEMAFULL PERMISSIONS FULL'
+  },
+  params: {
+    limit: 'DEFINE PARAM $limit VALUE 10 PERMISSIONS FULL'
+  },
+  &quot;@tables&quot;: {
+    user: {
+      fields: {
+        email: 'DEFINE FIELD email ON user TYPE string PERMISSIONS FULL'
+      },
+      indexes: {  },
+      events: {  }
+    }
+  }
+}</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">surform normalize → your schema file</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">param</span> <span class="tok-v">$limit</span> = <span class="tok-n">10</span>;
+
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+};
+</code></pre></div>
+</div>
+</figure>
+<p>Noise the database adds disappears on the way — <code>PERMISSIONS FULL</code> on a field is the engine's default, so canonical SDL elides it.</p>
+<h2 id="the-command">The command</h2>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform normalize schema.surdl --in-place \
+  --info root=info-root.txt \
+  --info ns=acme=info-ns.txt \
+  --info db=acme/shop=info-db.txt</code></pre></div>
+<p>At least one <code>--info</code> tag is required — with none there is nothing to adopt, and the run would silently be a disguised <code>fmt</code>. One tag per scope you have; missing scopes simply don't merge:</p>
+<ul><li><code>root=&lt;path&gt;</code> — <code>INFO FOR ROOT</code> output (namespaces, root users, the default config).</li>
+<li><code>ns=&lt;name&gt;=&lt;path&gt;</code> — <code>INFO FOR NS</code> output.</li>
+<li><code>db=&lt;ns&gt;/&lt;name&gt;=&lt;path&gt;</code> — <code>INFO FOR DB</code> output <strong>plus</strong> each table's <code>INFO FOR TABLE</code> child map under a reserved <code>&quot;@tables&quot;</code> key.</li>
+</ul>
+<p>The interchange is <code>surform migrate pull</code>'s output — all three scopes, the per-table child maps included, fetched straight from the live database (a restricted credential pulls only the scopes it can read; see the <a href="migrate.html">migration page</a>):</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate pull --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<p>The <code>surform-info-*.txt</code> files land in the working directory (<code>--dir</code> moves them; a pull under a restricted credential writes only the scopes it can read) and the ready-made command prints — the same tags the <a href="migrate.html">migration page</a> shows from the compare side.</p>
+<p>A <a href="includes.html">composition root</a> normalizes as a project: with <code>--in-place</code> every merged statement returns to the file that authored it (the includes stay put; unchanged files are not rewritten), and without it the flattened canonical form prints. One refusal (SDL-E0013), two shapes: an adopted <code>namespace</code>/<code>database</code> — a scope statement belongs in the root's preamble, where its position re-binds every scope below it — and a statement the merge would have to move past an include subtree that another file's definitions still depend on (an adopted analyzer whose index lives in a composed file, say). Place those by hand and re-run.</p>
+<h2 id="the-four-verbs">The four verbs</h2>
+<p>What normalize does with each difference between your file and the database:</p>
+<ul><li><strong>adopt</strong> — statements the database has and your file lacks come in (that is the adoption above).</li>
+<li><strong>elide</strong> — values equal to the engine's own defaults disappear. Canonical SDL is minimal: <code>BATCH 1000 START 0</code> collapses to a bare sequence, an event's <code>WHEN true</code> vanishes.</li>
+<li><strong>preserve</strong> — what <code>INFO</code> cannot express stays yours: database <code>strict;</code>, index <code>concurrently;</code>, user secrets, a bearer access's stored-but-unprinted JWT clauses.</li>
+<li><strong>fold</strong> — server-synthesized bookkeeping folds back into the shape that implies it: an array field's <code>tags.*</code> subfield folds into <code>tags: array&lt;int&gt;</code>, a relation's materialized <code>in</code>/<code>out</code> fields fold into the header arrows.</li>
+</ul>
+<p>Placement is topological: adoptees land after the last definition they depend on — an index nests after its table, a fulltext index after its analyzer — with deterministic tie-breaks, so repeated runs are stable.</p>
+<h2 id="running-it-twice">Running it twice</h2>
+<p>Normalize the same database twice and the second run changes nothing — the merge of the merged file is the merged file. Combined with the fixed point on <a href="fmt.html">fmt</a>, your schema file settles: it stops churning once it matches the database.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="migrate.html">Schema migration</a> — compare without merging.</li>
+<li><a href="fmt.html">Formatting</a> — the canonical style normalize writes.</li>
+</ul>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-happy-path-adopt-a-whole-database">The happy path: adopt a whole database</a>
+<a class="toc-2" href="#the-command">The command</a>
+<a class="toc-2" href="#the-four-verbs">The four verbs</a>
+<a class="toc-2" href="#running-it-twice">Running it twice</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/normalize.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

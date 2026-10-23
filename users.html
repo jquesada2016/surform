@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users &amp; roles · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Users &amp; roles">
+<link rel="canonical" href="users.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html" class="active">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">The language</span><span class="crumb-title">Users &amp; roles</span></div>
+  <article>
+<h1 class="page-title">Users &amp; roles</h1>
+<p>Users are the accounts that sign in to SurrealDB itself — sysadmins, service accounts, analysts — each at a level (root, namespace, or database) with roles. Your application's end users are <em>not</em> these; they are <a href="access.html">record users</a>.</p>
+<h2 id="the-shape">The shape</h2>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// CI deployment account.</span>
+<span class="tok-k">user</span> deployer {
+  <span class="tok-k">on:</span> <span class="tok-k">namespace</span>;
+  <span class="tok-k">passhash:</span> <span class="tok-s">'$argon2id$v=19$…'</span>;
+  <span class="tok-k">roles:</span> <span class="tok-k">editor</span>, <span class="tok-k">viewer</span>;
+  <span class="tok-k">duration</span> {
+    <span class="tok-k">token:</span> <span class="tok-n">1h</span>;
+    <span class="tok-k">session:</span> <span class="tok-n">12h</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">USER</span> <span class="tok-k">OVERWRITE</span> deployer <span class="tok-k">ON</span> <span class="tok-k">NAMESPACE</span>
+    <span class="tok-k">PASSHASH</span> <span class="tok-s">'$argon2id$v=19$…'</span>
+    <span class="tok-k">ROLES</span> <span class="tok-k">EDITOR</span>, <span class="tok-k">VIEWER</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1h</span>, FOR <span class="tok-k">SESSION</span> <span class="tok-n">12h</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'CI deployment account.'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\n/// CI deployment account.\nuser deployer {\n  on: namespace;\n  passhash: '$argon2id$v=19$…';\n  roles: editor, viewer;\n  duration {\n    token: 1h;\n    session: 12h;\n  };\n};"}</script>
+</figure>
+<p><code>on:</code> is required and sets the level: <code>root</code>, <code>namespace</code>, or <code>database</code> (short spellings <code>kv</code>/<code>ns</code>/<code>db</code> are accepted). A root user connects without choosing a namespace; a database user must.</p>
+<h2 id="credentials-and-the-re-apply-rule">Credentials and the re-apply rule</h2>
+<p>Three credential slots exist:</p>
+<ul><li><strong><code>passhash:</code></strong> — a pre-computed argon2 hash. <strong>Preferred</strong>: your password never appears in the file, so it can live in git.</li>
+<li><strong><code>password:</code></strong> — plaintext. It works, but the linter warns every time (<code>SDL-L0002</code>) because the file is now carrying a live secret.</li>
+<li><strong><code>passscram:</code></strong> — a SCRAM-SHA-256 verifier (SurrealDB 3.3). Additive with the pass clauses — an explicit verifier wins over the password-derived one. Generate it with a SCRAM-capable client; the compiler shape-checks the string at parse time and rejects garbage before the database ever sees it.</li>
+</ul>
+<p>The rule: <strong>how you re-apply depends on whether the user carries a secret.</strong> A user with <code>password:</code>, <code>passhash:</code>, or <code>passscram:</code> is re-applied with <code>OVERWRITE</code> — it converges like everything else. A user with <em>no</em> secret is define-once (<code>IF NOT EXISTS</code> in the emitted DDL): re-applying a secret-less definition would otherwise wipe the stored credential and brick the account:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">user</span> analyst {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">roles:</span> <span class="tok-k">viewer</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">USER</span> <span class="tok-k">IF</span> <span class="tok-k">NOT</span> <span class="tok-k">EXISTS</span> analyst <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span> <span class="tok-k">ROLES</span> <span class="tok-k">VIEWER</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nuser analyst {\n  on: database;\n  roles: viewer;\n};"}</script>
+</figure>
+<p>The emitted DDL carries <code>IF NOT EXISTS</code> instead of <code>OVERWRITE</code>. The linter still flags the secret-less user (<code>SDL-L0003</code>) — usually it is a placeholder you meant to fill in.</p>
+<h2 id="provisioned-scram-verifiers">Provisioned SCRAM verifiers</h2>
+<p>The verifier format is <code>SCRAM-SHA-256$&lt;iterations&gt;:&lt;salt&gt;$&lt;stored key&gt;:&lt;server key&gt;</code> with standard-base64 parts (the keys are exactly 32 bytes → 44 base64 chars). This is SurrealDB's own known-answer verifier — its password is <code>pencil</code> — handy for smoke tests:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">user</span> migrator {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">passhash:</span> <span class="tok-s">'$argon2id$v=19$m=19456,t=2,p=1$abc'</span>;
+  <span class="tok-k">passscram:</span> <span class="tok-s">'SCRAM-SHA-256$4096:MDEyMzQ1Njc4OWFiY2RlZg==$nQpbZ77WudtqufPwikHXGRt6g2QJ4zns8bZLw273DRM=:jn2amWP1q1h+jgjy0YTO14S6/F02SV7taipOeB7ef20='</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">USER</span> <span class="tok-k">OVERWRITE</span> migrator <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">PASSHASH</span> <span class="tok-s">'$argon2id$v=19$m=19456,t=2,p=1$abc'</span>
+    <span class="tok-k">PASSSCRAM</span> <span class="tok-s">'SCRAM-SHA-256$4096:MDEyMzQ1Njc4OWFiY2RlZg==$nQpbZ77WudtqufPwikHXGRt6g2QJ4zns8bZLw273DRM=:jn2amWP1q1h+jgjy0YTO14S6/F02SV7taipOeB7ef20='</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nuser migrator {\n  on: database;\n  passhash: '$argon2id$v=19$m=19456,t=2,p=1$abc';\n  passscram: 'SCRAM-SHA-256$4096:MDEyMzQ1Njc4OWFiY2RlZg==$nQpbZ77WudtqufPwikHXGRt6g2QJ4zns8bZLw273DRM=:jn2amWP1q1h+jgjy0YTO14S6/F02SV7taipOeB7ef20=';\n};"}</script>
+</figure>
+<p>One caution in the other direction: <code>'[REDACTED]'</code> pasted back from a database dump is rejected at parse time — the sentinel is a redaction marker, not a usable verifier:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">user</span> migrator {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">passscram:</span> <span class="tok-s">'[REDACTED]'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1059 (spec/user.md)
+
+  x invalid SCRAM verifier: the `'[REDACTED]'` sentinel is INFO's redaction — a PASSSCRAM verifier never round-trips; author the real value
+   ,-[6:3]
+ 5 |   on: database;
+ 6 |   passscram: '[REDACTED]';
+   :   ^^^^|^^^^
+   :       `-- not a valid SCRAM verifier
+ 7 | };
+   `----
+  help: a passscram verifier is `SCRAM-SHA-256$&lt;iterations&gt;:&lt;salt&gt;$&lt;stored key&gt;:&lt;server key&gt;` with base64 parts (the engine's parser validates the shape too)
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"namespace acme;\ndatabase shop;\n\nuser migrator {\n  on: database;\n  passscram: '[REDACTED]';\n};"}</script>
+</figure>
+<h2 id="roles-and-durations">Roles and durations</h2>
+<p>Roles are <code>owner</code>, <code>editor</code>, <code>viewer</code> (the default) — rendered uppercase in the DDL. Two durations bound a sign-in: how long a generated token lives (<code>token:</code>, default <code>1h</code>) and how long the session may last (<code>session:</code>, default unlimited — <code>none</code>).</p>
+<p>One operational note: every executed <code>DEFINE USER</code> — including a re-apply — rotates the account's internal session code and signs out its existing sessions. The database gives no warning when this happens; avoid re-applying mid-session.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="access.html">Access (sign-in &amp; tokens)</a> — your end users' authentication, which is a different statement entirely.</li>
+<li><a href="lint.html">The linter</a> — the plaintext-password and secret-less warnings.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-shape">The shape</a>
+<a class="toc-2" href="#credentials-and-the-re-apply-rule">Credentials and the re-apply rule</a>
+<a class="toc-2" href="#provisioned-scram-verifiers">Provisioned SCRAM verifiers</a>
+<a class="toc-2" href="#roles-and-durations">Roles and durations</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/users.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The linter · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: The linter">
+<link rel="canonical" href="lint.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html" class="active">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">The linter</span></div>
+  <article>
+<h1 class="page-title">The linter</h1>
+<p><code>surform lint</code> is the advisory pass: warnings about files that are <em>legal but suspicious</em>. Findings never change what <code>check</code> and <code>build</code> emit — but like a clippy step, <code>surform lint</code> exits 1 when anything fires, so it drops straight into CI:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform lint schema.surdl &amp;&amp; surform build schema.surdl &gt; schema.surql</code></pre></div>
+<p>Findings render exactly like diagnostics — code, snippet, help line, or <code>--json</code> — at warning severity. Codes are <code>SDL-Lxxxx</code>; this page is the catalog.</p>
+<h2 id="the-warnings-in-action">The warnings in action</h2>
+<p>A table wide open (<code>permissions: full;</code> — anyone, even unauthenticated users, can read and write every record; omitting the clause is the secure default and never warns):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> public_profile {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0001 (spec/table.md)
+
+  ! table `public_profile` in database `acme/shop`: permissions are `full` — anyone, even unauthenticated users, can access every record
+   ,-[4:1]
+ 3 |     
+ 4 | ,-&gt; table public_profile {
+ 5 | |     schemafull;
+ 6 | |     field name: string;
+ 7 | |     permissions: full;
+ 8 | |-&gt; };
+   : `---- `permissions: full` on this table
+   `----
+  help: `full` grants everyone — including unauthenticated connections — access to every record; omit the clause for the secure default (implicit `none`), or scope operations in a `permissions`
+        block
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable public_profile {\n  schemafull;\n  field name: string;\n  permissions: full;\n};"}</script>
+</figure>
+<p>A plaintext password (the file is going into git — so is your password):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">user</span> admin {
+  <span class="tok-k">on:</span> root;
+  <span class="tok-k">password:</span> <span class="tok-s">'change-me-immediately'</span>;
+  <span class="tok-k">roles:</span> <span class="tok-k">owner</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0002 (spec/user.md)
+
+  ! user `admin` in the root scope carries a plaintext `password:` — the literal rides in the file and in any emitted DDL
+   ,-[4:1]
+ 3 |     
+ 4 | ,-&gt; user admin {
+ 5 | |     on: root;
+ 6 | |     password: 'change-me-immediately';
+ 7 | |     roles: owner;
+ 8 | |-&gt; };
+   : `---- plaintext `password:`
+   `----
+  help: prefer `passhash:` with a pre-computed argon2 hash, or inject the secret at apply time
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\nuser admin {\n  on: root;\n  password: 'change-me-immediately';\n  roles: owner;\n};"}</script>
+</figure>
+<p>An ngram window that can only degrade (min larger than max — the database accepts it silently):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">analyzer</span> fuzzy {
+  <span class="tok-k">filters:</span> ngram(<span class="tok-n">5</span>, <span class="tok-n">2</span>);
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0004 (spec/analyzer.md)
+
+  ! analyzer `fuzzy`: `ngram(5, 2)` has min &gt; max — SurrealDB accepts it and silently degrades
+   ,-[4:1]
+ 3 |     
+ 4 | ,-&gt; analyzer fuzzy {
+ 5 | |     filters: ngram(5, 2);
+ 6 | |-&gt; };
+   : `---- `min` exceeds `max`
+   `----
+  help: swap the bounds so min ≤ max — SurrealQL accepts any pair and silently degrades
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\nanalyzer fuzzy {\n  filters: ngram(5, 2);\n};"}</script>
+</figure>
+<p>A relation that accepts dangling edges (<code>enforced;</code> missing):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span>;
+<span class="tok-k">table</span> post;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span>-&gt;wrote-&gt;post;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0006 (spec/table.md)
+
+  ! relation `wrote` in database `acme/shop` is not `enforced;` — RELATE accepts endpoints that do not exist
+   ,-[7:1]
+ 6 | 
+ 7 | table user-&gt;wrote-&gt;post;
+   : ^^^^^^^^^^^^|^^^^^^^^^^^
+   :             `-- not `enforced;`
+   `----
+  help: add `enforced;` to make SurrealDB verify both endpoints at write time
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable user;\ntable post;\n\ntable user->wrote->post;"}</script>
+</figure>
+<p>And <code>delete: full;</code> on a table — legal, but the database never reports it back, so the definition cannot round-trip or survive the migrate compare:</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> audit {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">delete:</span> <span class="tok-k">full</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0014 (spec/table.md)
+
+  ! table `audit` in database `acme/shop` carries `delete: full;` — INFO elides `FOR delete FULL`, so the clause cannot round-trip or drift
+   ,-[4:1]
+ 3 |     
+ 4 | ,-&gt; table audit {
+ 5 | |     permissions {
+ 6 | |       delete: full;
+ 7 | |     };
+ 8 | |-&gt; };
+   : `---- `delete: full;` cannot round-trip
+   `----
+  help: the clause still applies on execution; INFO elides `FOR delete FULL`, so the differ converges silently — verify the database's actual delete permission if it matters
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable audit {\n  permissions {\n    delete: full;\n  };\n};"}</script>
+</figure>
+<p>A reference to something no file defines — here a typo'd table in a permission filter (<code>orgs</code> for <code>org</code>; SurrealDB's catalog is flat, so the schema stays legal — the warning is the catch):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> org {
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">table</span> page {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> (<span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> orgs <span class="tok-k">WHERE</span> org = <span class="tok-v">$auth</span>.org);
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0024 (spec/README.md#the-linter)
+
+  ! table `orgs` is referenced in this table permission in `page` in database `acme/shop` but no linted file defines it
+    ,-[8:1]
+  7 |     
+  8 | ,-&gt; table page {
+  9 | |     permissions {
+ 10 | |       select: (SELECT * FROM orgs WHERE org = $auth.org);
+ 11 | |     };
+ 12 | |-&gt; };
+    : `---- `orgs` is not defined
+    `----
+  help: define the target, check the spelling, or excuse the statement with `// surform-lint-allow: SDL-L0024` — a target outside the linted files is legitimate (SurrealDB's catalog is flat)
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable org {\n  field name: string;\n};\n\ntable page {\n  permissions {\n    select: (SELECT * FROM orgs WHERE org = $auth.org);\n  };\n};"}</script>
+</figure>
+<p>The reference warnings stay conservative on purpose: a param read in a permission or default can be bound by the client at query time, so only <code>fn::</code> bodies (whose context the engine isolates from client-bound values) flag unknown params — a <code>param</code> definition resolves inside a body, and so do the session params and the record trio on a document-bound call. <code>mod::</code> calls are covered by their module definitions, <code>silo::</code>/<code>ml::</code> names by their version tails, and builtin paths (like an api middleware head named <code>string::uppercase</code>) resolve without any definition.</p>
+<p>Ordering is not a lint subject: the compiler owns emission order — definitions may stand anywhere, a true cycle is the SDL-E0015 diagnostic, a dependency that crosses a scope-section boundary is SDL-E0016, and a duplicate definition is SDL-E1062 (see <a href="basics.html#who-owns-the-order">Who owns the order</a>). The linter's remaining reference concern is the one the compiler cannot decide: a target that nothing in the document defines.</p>
+<h2 id="the-catalog">The catalog</h2>
+<div class="tablewrap"><table><thead><tr><th>code</th><th>warning</th></tr></thead><tbody><tr><td><code>SDL-L0001</code></td><td>table <code>permissions: full;</code> — anyone, even unauthenticated users, can access every record</td></tr><tr><td><code>SDL-L0002</code></td><td>plaintext <code>password:</code></td></tr><tr><td><code>SDL-L0003</code></td><td>secret-less user — define-once, probably a placeholder</td></tr><tr><td><code>SDL-L0004</code></td><td><code>edgengram</code>/<code>ngram</code> min &gt; max</td></tr><tr><td><code>SDL-L0005</code></td><td>duplicate entry in roles / tokenizers / filters</td></tr><tr><td><code>SDL-L0006</code></td><td>relation without <code>enforced;</code></td></tr><tr><td><code>SDL-L0007</code></td><td>top-level field/index/event that could nest inside its table</td></tr><tr><td><code>SDL-L0008</code></td><td>param without a value</td></tr><tr><td><code>SDL-L0009</code></td><td>api with no effective <code>any</code> catch-all (or no groups)</td></tr><tr><td><code>SDL-L0010</code></td><td>record-typed <code>in</code>/<code>out</code> field rewriting a relation's endpoints</td></tr><tr><td><code>SDL-L0011</code></td><td>access duration side the access's capability silently drops</td></tr><tr><td><code>SDL-L0012</code></td><td><code>raw</code> body the pinned SurrealQL parser rejects</td></tr><tr><td><code>SDL-L0013</code></td><td>applying a <code>'[REDACTED]'</code> sentinel as real credential material</td></tr><tr><td><code>SDL-L0014</code></td><td>table <code>delete: full;</code> — cannot round-trip</td></tr><tr><td><code>SDL-L0015</code></td><td>computed field shadowed by a field defined under it</td></tr><tr><td><code>SDL-L0016</code></td><td><code>reference;</code> on a field whose type isn't record-shaped</td></tr><tr><td><code>SDL-L0017</code></td><td><code>id</code> field type can't be a record-id key</td></tr><tr><td><code>SDL-L0018</code></td><td><code>flexible;</code> on a non-SCHEMAFULL host (where it does nothing)</td></tr><tr><td><code>SDL-L0019</code></td><td><code>inline;</code> field whose host isn't a relation table</td></tr><tr><td><code>SDL-L0020</code></td><td>table carrying more than 255 <code>inline;</code> fields</td></tr><tr><td><code>SDL-L0021</code></td><td>mixin no table spreads — it emits nothing anywhere</td></tr><tr><td><code>SDL-L0022</code></td><td>a later spread's member shadows an earlier spread's — the later definition wins at expansion</td></tr><tr><td><code>SDL-L0023</code></td><td>a <code>surform-lint-allow:</code> comment's own problem — unknown code, misspelled marker, or no statement to attach to</td></tr><tr><td><code>SDL-L0024</code></td><td>a referenced table, analyzer, or <code>fn::</code> path (or a <code>fn::</code>-body param) that nothing in the linted files defines</td></tr><tr><td><code>SDL-L0025</code></td><td>RETIRED (2026-10-06) — the compiler owns emission order (see <a href="basics.html#who-owns-the-order">the basics</a>); the number keeps its gap</td></tr><tr><td><code>SDL-L0026</code></td><td>a diamond include — a file the composition already spliced, declared again (first inclusion wins)</td></tr></tbody></table></div>
+<h2 id="suppressing-a-warning-at-its-site">Suppressing a warning at its site</h2>
+<p>A deliberate exception does not need to live with the noise: a <code>// surform-lint-allow:</code> comment names the codes it excuses, and it excuses them on ONE statement — the statement it precedes (a same-line comment after the <code>;</code> works too, the one-liner's natural home):</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>verified: the linter reports nothing</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">// A public reference table: world-readable by design.</span>
+<span class="tok-c">// surform-lint-allow: SDL-L0001</span>
+<span class="tok-k">table</span> countries {
+  <span class="tok-k">field</span> code: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\n// A public reference table: world-readable by design.\n// surform-lint-allow: SDL-L0001\ntable countries {\n  field code: string;\n  field name: string;\n  permissions: full;\n};"}</script>
+</figure>
+<p>The allow is statement-scoped, not file-wide — moved onto another statement, it excuses nothing:</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">// surform-lint-allow: SDL-L0001</span>
+<span class="tok-k">table</span> settings {
+  <span class="tok-k">field</span> key: <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">table</span> orders {
+  <span class="tok-k">field</span> id: <span class="tok-k">int</span>;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0001 (spec/table.md)
+
+  ! table `orders` in database `acme/shop`: permissions are `full` — anyone, even unauthenticated users, can access every record
+    ,-[9:1]
+  8 |     
+  9 | ,-&gt; table orders {
+ 10 | |     field id: int;
+ 11 | |     permissions: full;
+ 12 | |-&gt; };
+    : `---- `permissions: full` on this table
+    `----
+  help: `full` grants everyone — including unauthenticated connections — access to every record; omit the clause for the secure default (implicit `none`), or scope operations in a `permissions`
+        block
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\n// surform-lint-allow: SDL-L0001\ntable settings {\n  field key: string;\n};\n\ntable orders {\n  field id: int;\n  permissions: full;\n};"}</script>
+</figure>
+<p>The <code>orders</code> table warns — its statement carries no allow. Codes are comma-listed on one line (<code>// surform-lint-allow: SDL-L0001, SDL-L0006</code>), and the comment rides its anchor through <code>fmt</code> and <code>normalize</code>, so the suppression survives reformatting. The same-line form after a one-liner's <code>;</code>:</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>verified: the linter reports nothing</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> person {
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">field</span> nickname: <span class="tok-k">string</span> { <span class="tok-k">on:</span> person; }; <span class="tok-c">// surform-lint-allow: SDL-L0007</span></code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable person {\n  field name: string;\n};\n\nfield nickname: string { on: person; }; // surform-lint-allow: SDL-L0007"}</script>
+</figure>
+<p>A typo'd code suppresses nothing, so it gets its own warning instead of silence:</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">// surform-lint-allow: SDL-L0099</span>
+<span class="tok-k">table</span> countries {
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0023 (spec/README.md#the-linter)
+
+  ! this allow comment names unknown lint code `SDL-L0099` — not in the registry (SDL-L0001 through SDL-L0026), so it suppresses nothing
+   ,-[4:3]
+ 3 | 
+ 4 | // surform-lint-allow: SDL-L0099
+   :   ^^^^^^^^^^^^^^^|^^^^^^^^^^^^^^
+   :                  `-- unknown lint code
+ 5 | table countries {
+   `----
+  help: spell a registered code exactly, comma-separating several — the registry is SDL-L0001 through SDL-L0026
+
+SDL-L0001 (spec/table.md)
+
+  ! table `countries` in database `acme/shop`: permissions are `full` — anyone, even unauthenticated users, can access every record
+   ,-[5:1]
+ 4 |     // surform-lint-allow: SDL-L0099
+ 5 | ,-&gt; table countries {
+ 6 | |     permissions: full;
+ 7 | |-&gt; };
+   : `---- `permissions: full` on this table
+   `----
+  help: `full` grants everyone — including unauthenticated connections — access to every record; omit the clause for the secure default (implicit `none`), or scope operations in a `permissions`
+        block
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\n// surform-lint-allow: SDL-L0099\ntable countries {\n  permissions: full;\n};"}</script>
+</figure>
+<p><code>SDL-L0099</code> is not a code — the linter reports <code>SDL-L0023</code> at the comment, and the table's <code>SDL-L0001</code> stands (only registered codes suppress). Misspelled markers (<code>surform-lint-alow:</code>) and allow comments with no statement after them report <code>SDL-L0023</code> too. Two limits are by design: a REGISTERED code that fires nothing on its statement stays silent (it may be guarding a future change), and findings the file carries no statement for (an adoptee-only table under <code>--info</code>) have no site to excuse — they never suppress. <code>SDL-L0023</code> itself cannot be allowed away.</p>
+<p>On a <a href="includes.html">composition root</a> the allow stays file-scoped: it excuses findings in its own file only, even though the other files' spans overlap numerically. Findings render against the file they came from.</p>
+<h2 id="resolved-state-not-source-text">Resolved state, not source text</h2>
+<p>Some warnings only make sense once the database's state is available. With <code>--info</code> tags, lint evaluates the <strong>resolved state</strong> — the merged, placed, elided file — so a table the database itself holds wide open warns even though the schema file never spells a permissions clause: the reader adopts the stored <code>PERMISSIONS FULL</code> into the merged file, and <code>SDL-L0001</code> evaluates that:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform lint schema.surdl --info db=acme/shop=info-db.txt</code></pre></div>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="users.html#credentials-and-the-re-apply-rule">Users</a> and <a href="access.html">access</a> — the pages behind the security-adjacent warnings.</li>
+<li><a href="migrate.html">Schema migration</a> — the other database-aware command.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-warnings-in-action">The warnings in action</a>
+<a class="toc-2" href="#the-catalog">The catalog</a>
+<a class="toc-2" href="#suppressing-a-warning-at-its-site">Suppressing a warning at its site</a>
+<a class="toc-2" href="#resolved-state-not-source-text">Resolved state, not source text</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/lint.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE ANALYZER · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE ANALYZER">
+<link rel="canonical" href="spec-analyzer.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html" class="active">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE ANALYZER</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE ANALYZER</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>parse_define_analyzer</code>, <code>parse_analyzer_function_name</code>) and emitter (<code>sql/statements/define/analyzer.rs</code>). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor move re-runs the corpus on the 3.3.0 embed (2026-09-25). Clause order free; no discriminant; the SDL AST is a plain struct. Emit order (canonical): <code>FUNCTION → TOKENIZERS → FILTERS → COMMENT</code>.</p>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>struct Analyzer {
+  name: Ident,
+  function: Option&lt;FnPath&gt;,            // SDL-lexed name path — see the
+                                        //   global &lt;fn-path&gt; notation rule
+  tokenizers: Option&lt;Vec&lt;Tokenizer&gt;&gt;,
+  filters: Option&lt;Vec&lt;Filter&gt;&gt;,
+  comment: Option&lt;DocComment&gt;,         // from ///
+}</code></pre></div>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>/// &lt;doc comment&gt;                        // optional — emitted as COMMENT
+analyzer &lt;name&gt; {
+  // optional (all clauses — an analyzer with none is accepted, though inert):
+  function: fn::&lt;seg&gt;[::&lt;seg&gt;…];        // preprocessing function — an SDL-
+                                         //   lexed NAME PATH (global &lt;fn-path&gt;
+                                         //   rule; NOT a call — trailing
+                                         //   parens rejected; ml::/silo::
+                                         //   rejected by SurrealQL;
+                                         //   mod::&lt;module&gt;[::&lt;seg&gt;…] is
+                                         //   accepted by SDL and enforced
+                                         //   by the server's surrealism
+                                         //   capability at define time)
+  tokenizers: &lt;tokenizer&gt;, …;           // blank | camel | class | punct
+  filters: &lt;filter&gt;, …;                 // ascii | lowercase | uppercase
+                                         // | edgengram(&lt;min&gt;, &lt;max&gt;)
+                                         // | ngram(&lt;min&gt;, &lt;max&gt;)
+                                         // | snowball(&lt;language&gt;)
+                                         // | mapper(&lt;string&gt;)
+};</code></pre></div>
+<p>Clause details (all SDL-lexed keyword clauses — none are SurrealQL expressions):</p>
+<ul><li>Lists are comma-separated, non-empty, no trailing comma, and may wrap across lines (the capture-to-<code>;</code> scan is bracket-depth-aware, so the parameterized forms' parens are handled). Repeating a list clause replaces the whole list (last-one-wins, SurrealQL parity). Duplicate entries within one list are accepted (parity) and flagged by the linter (SDL-L0005).</li>
+<li><code>edgengram</code>/<code>ngram</code> take two <strong>integers</strong> (<code>u16</code>) inside mandatory parentheses: <code>edgengram(2, 10)</code>. SurrealQL does not validate <code>min ≤ max</code> (it silently degrades); SDL validates it as a lint (SDL-L0004).</li>
+<li><code>snowball(&lt;language&gt;)</code> — the language is a <strong>bare keyword</strong>, not a string (<code>snowball('english')</code> is rejected by SurrealQL). Canonical full names (18): arabic, danish, dutch, english, finnish, french, german, greek, hungarian, italian, norwegian, portuguese, romanian, russian, spanish, swedish, tamil, turkish. SDL also accepts the lexer's short aliases — 2-letter: ar, da, nl, de, el, en, es, fi, fr, hu, it, no, pt, ro, ru, sv, ta, tr; 3-letter: ara, dan, deu, ell, eng, fin, fra, hun, ita, nld, nor, por, ron, rus, spa, swe, tam, tur (note the ISO 639-2/T spellings: deu not ger, ell not gre, nld not dut, ron not rum; <code>no</code> is a parser special-case, not a lexer alias). Canonical output normalizes to the full name.</li>
+<li><code>mapper('&lt;path&gt;')</code> — a string literal (single or double quotes, SurrealQL string escape rules); the path must appear in the runtime file allowlist for actual use.</li>
+</ul>
+<p>Emit: <code>DEFINE ANALYZER &lt;name&gt; [FUNCTION …] [TOKENIZERS …] [FILTERS …] [COMMENT …];</code> (<code>OVERWRITE</code> implied per the codegen model; keywords uppercased, language emitted as its canonical full name).</p>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p>INFO emits the plain <code>DEFINE</code> (no <code>OVERWRITE</code>) in the canonical order above. Nothing materializes for analyzers (comment defaults to absent; no clause defaults) — the reverse mapping is 1:1, and <strong>list order is preserved and significant</strong> (filter order affects runtime behavior). Languages always arrive as canonical full names; alias-authored SDL normalizes to full names (<code>snowball(en)</code> → <code>snowball(english)</code>). fn-path segments arrive escaped only when they are empty, start with a digit, contain non-<code>[A-Za-z0-9_]</code> characters, or equal <code>NaN</code>/ <code>Infinity</code> — keywords arrive bare (identifier-like token classes) — strip backticks when present. The analyzer <strong>name</strong> arrives escaped against SurrealQL's reserved-keyword set (plus digit-start/non-word conditions) — same rule, strip backticks when present. Tokenizers are printed comma-without-space and filters with <code>, </code> — irrelevant to parsing, noted for text-diff avoidal (the differ compares resolved state). External DDL with <code>min &gt; max</code> (legal SurrealQL) is accepted and linted, not rejected.</p>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): empty analyzer ✅; bare snowball language ✅; <code>FUNCTION fn::strip</code> with a defined function ✅; multi-value tokenizer/filter lists with <code>edgengram(2, 10)</code> ✅.</p>
+<h2 id="examples-one-per-clause">Examples (one per clause)</h2>
+<p>tokenizers + filters + doc comment:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">/// English text search</span>
+<span class="tok-k">analyzer</span> english {
+  <span class="tok-k">tokenizers:</span> <span class="tok-k">class</span>;
+  <span class="tok-k">filters:</span> snowball(english), lowercase;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> `english`
+    <span class="tok-k">TOKENIZERS</span> <span class="tok-k">CLASS</span>
+    <span class="tok-k">FILTERS</span> SNOWBALL(ENGLISH), LOWERCASE
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'English text search'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"/// English text search\nanalyzer english {\n  tokenizers: class;\n  filters: snowball(english), lowercase;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ANALYZER english TOKENIZERS CLASS FILTERS SNOWBALL(ENGLISH), LOWERCASE
+  COMMENT 'English text search';</code></pre></div>
+<p>tokenizers only:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">analyzer</span> raw_split {
+  <span class="tok-k">tokenizers:</span> camel, punct;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> raw_split <span class="tok-k">TOKENIZERS</span> CAMEL,PUNCT;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"analyzer raw_split {\n  tokenizers: camel, punct;\n};"}</script>
+</figure>
+<p>filters only — autocomplete (edgengram) and fuzzy (ngram):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">analyzer</span> autocomplete {
+  <span class="tok-k">filters:</span> lowercase, edgengram(<span class="tok-n">2</span>, <span class="tok-n">10</span>);
+};
+<span class="tok-k">analyzer</span> fuzzy {
+  <span class="tok-k">filters:</span> ascii, ngram(<span class="tok-n">3</span>, <span class="tok-n">5</span>);
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> autocomplete <span class="tok-k">FILTERS</span> LOWERCASE, EDGENGRAM(<span class="tok-n">2</span>,<span class="tok-n">10</span>);
+<span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> fuzzy <span class="tok-k">FILTERS</span> ASCII, NGRAM(<span class="tok-n">3</span>,<span class="tok-n">5</span>);
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"analyzer autocomplete {\n  filters: lowercase, edgengram(2, 10);\n};\nanalyzer fuzzy {\n  filters: ascii, ngram(3, 5);\n};"}</script>
+</figure>
+<p>mapper (custom lemmatization dictionary — allowlisted at runtime):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean (engine-gated shape; SurrealDB 3.3.0 parses the DDL)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">analyzer</span> domain {
+  <span class="tok-k">tokenizers:</span> <span class="tok-k">class</span>;
+  <span class="tok-k">filters:</span> mapper(<span class="tok-s">'/etc/surreal/domain-map.txt'</span>);
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> domain <span class="tok-k">TOKENIZERS</span> <span class="tok-k">CLASS</span> <span class="tok-k">FILTERS</span> MAPPER(<span class="tok-s">'/etc/surreal/domain-map.txt'</span>);
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"analyzer domain {\n  tokenizers: class;\n  filters: mapper('/etc/surreal/domain-map.txt');\n};"}</script>
+</figure>
+<p>(The mapper path must appear in the runtime file allowlist, so define time rejects it until the server knows the file — this fence is verified through the parse oracle, not the engine.)</p>
+<p>function (v3 preprocessing — runs before tokenization; the function must accept and return a string):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">analyzer</span> preprocessed {
+  <span class="tok-k">function:</span> fn::strip_markup;
+  <span class="tok-k">tokenizers:</span> blank;
+  <span class="tok-k">filters:</span> lowercase;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> preprocessed <span class="tok-k">FUNCTION</span> fn::strip_markup <span class="tok-k">TOKENIZERS</span> BLANK <span class="tok-k">FILTERS</span> LOWERCASE;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"analyzer preprocessed {\n  function: fn::strip_markup;\n  tokenizers: blank;\n  filters: lowercase;\n};"}</script>
+</figure>
+<p>wrapped multi-line list:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">analyzer</span> everything {
+  <span class="tok-k">tokenizers:</span> blank,
+              camel,
+              punct;
+  <span class="tok-k">filters:</span> ascii, lowercase, snowball(english);
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ANALYZER</span> <span class="tok-k">OVERWRITE</span> everything
+    <span class="tok-k">TOKENIZERS</span> BLANK,CAMEL,PUNCT
+    <span class="tok-k">FILTERS</span> ASCII, LOWERCASE, SNOWBALL(ENGLISH);
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"analyzer everything {\n  tokenizers: blank,\n              camel,\n              punct;\n  filters: ascii, lowercase, snowball(english);\n};"}</script>
+</figure>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-clause">Examples (one per clause)</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/analyzer.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schema migration · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Schema migration">
+<link rel="canonical" href="migrate.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html" class="active">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">Schema migration</span></div>
+  <article>
+<h1 class="page-title">Schema migration</h1>
+<p>Schemas drift. Someone adds a table by hand, a migration half-ran, a colleague's branch applied first — and your schema file no longer describes the database it names. <code>surform migrate generate</code> makes the drift visible and closes it: it compares your file against the database's rendered <code>INFO</code> output (or one schema version against the next, <a href="#from-one-schema-version-to-the-next">below</a>), prints the differences, and generates the one script that converges the database to your file — defines and removals, per scope section, each in its own runnable transaction. The script can stay a pipe (printed to stdout, run today), or become a migration FILE — numbered, saved, filled, committed, self-recording — <a href="#saving-drafts-and-committing-them">the pipeline below</a>.</p>
+<h2 id="a-live-walkthrough">A live walkthrough</h2>
+<p>Start from a schema file. This is the whole drift demo — your file declares <code>user</code> and nothing else:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>live drift against SurrealDB 3.3.0</span><div class="ex-block"><div class="ex-label">your schema file</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemaless</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">someone ran this by hand</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> archived_orders <span class="tok-k">SCHEMALESS</span>;</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">surform migrate generate — the drift report</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>1 finding - 0 defines, 1 removal, 1 data-migration slot, 0 staged tables
+− db:acme/shop table archived_orders (required data-migration slot)
+
+== required data-migration slots ==
+  db:acme/shop table archived_orders - the removal deletes the table and every document in it; the script carries the fill-in slot above the removal; when the script removes a whole namespace or database instead, the WARNING above that REMOVE names this finding
+</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">the convergence script (one transaction — SURFORM WARNING marks the data-destroying lines)</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">-- generated by `surform migrate generate` - the</span>
+<span class="tok-c">--    convergence script.</span>
+<span class="tok-c">-- Re-runs are safe: OVERWRITE redefines; IF EXISTS</span>
+<span class="tok-c">--    no-ops on absence.</span>
+<span class="tok-c">-- Lines marked SURFORM WARNING destroy data;</span>
+<span class="tok-c">--    SURFORM REQUIRED marks fill-in data-migration</span>
+<span class="tok-c">--    slots; SURFORM NOTE lines are advice.</span>
+<span class="tok-c">-- summary: 1 finding - 0 defines, 1 removal, 1</span>
+<span class="tok-c">--    data-migration slot, 0 staged tables, 1 frame</span>
+
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+
+<span class="tok-c">-- ------------------------------------------------------------</span>
+<span class="tok-c">-- ## Scope db:acme/shop</span>
+<span class="tok-c">-- section: db:acme/shop (0 defines, 1 removal)</span>
+
+BEGIN TRANSACTION;
+
+<span class="tok-c">-- ------------------------------------------------------------</span>
+<span class="tok-c">-- ## Removals - objects the schema file no longer declares</span>
+<span class="tok-c">--</span>
+<span class="tok-c">-- Each removal is idempotent (IF EXISTS): a re-run skips it.</span>
+
+<span class="tok-c">-- &gt;&gt;&gt; SURFORM WARNING: DATA LOSS &lt;&lt;&lt;</span>
+<span class="tok-c">-- Removes table archived_orders - every document in it is</span>
+<span class="tok-c">--    deleted.</span>
+
+<span class="tok-c">-- &gt;&gt;&gt; SURFORM REQUIRED: DATA MIGRATION &lt;&lt;&lt;</span>
+<span class="tok-c">-- - Write the export, archive, or move query between the</span>
+<span class="tok-c">--   markers; it runs before the removal, in this same</span>
+<span class="tok-c">--   transaction.</span>
+<span class="tok-c">-- e.g. INSERT INTO archive (SELECT * FROM archived_orders);</span>
+<span class="tok-c">-- &gt;&gt;&gt; SURFORM REQUIRED: END &lt;&lt;&lt;</span>
+<span class="tok-k">REMOVE</span> <span class="tok-k">TABLE</span> <span class="tok-k">IF</span> <span class="tok-k">EXISTS</span> archived_orders;
+
+COMMIT;
+</code></pre></div>
+</div>
+</figure>
+<p>Reading the report: the <code>−</code> sigil marks a <strong>database-only</strong> definition — the <code>archived_orders</code> table exists in the database but not in your file. The row carries the <code>(required data-migration slot)</code> marker — the removal orphans data — and the report's manifest lists the obligation. The convergence script removes it under a <code>SURFORM WARNING</code> block: <code>REMOVE TABLE</code> deletes the table's key range, so every document in it is destroyed. Between the warning and the removal sits a <code>SURFORM REQUIRED</code> slot — an empty, editable region where you write the query that moves the data you need (an <code>e.g.</code> example line — delete its <code>-- e.g. </code> prefix and adjust the target). <code>IF EXISTS</code> makes the removal a no-op on re-runs.</p>
+<h2 id="the-other-direction-sdl-the-database-lacks">The other direction: SDL the database lacks</h2>
+<p>Definitions in your file that the database hasn't got are <em>apply pending</em> in the report (<code>+</code>) — and the script closes that direction too: it defines them from your file's side, <code>DEFINE … OVERWRITE</code>, in the same dependency-aware order <code>surform build</code> emits under. There is no separate &quot;apply by hand&quot; step anymore; the script is the whole migration.</p>
+<p>Kinds drift too. If someone redefines a field's type by hand, the report shows it as a change (<code>~</code>) with the clause-level delta — and the script does more than re-define the field from your file's side: it <strong>stages the table</strong>, because a type change over live rows needs a data step in the middle:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>live drift against SurrealDB 3.3.0</span><div class="ex-block"><div class="ex-label">your schema file</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">someone ran this by hand</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> name <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">option</span>&lt;<span class="tok-k">string</span>&gt;;</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">surform migrate generate — the drift report</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>1 finding - 1 define, 0 removals, 0 data-migration slots, 1 staged table
+~ db:acme/shop field name
+    header: sdl `field name: string` / db `field name: option&lt;string&gt;`
+  note: the kind changes (db `option&lt;string&gt;` -&gt; sdl `string`); existing rows keep their values (the engine validates no rows at define time), but a data step that rewrites them fails while the old kind is in force; run the data step after the definitions - the script stages this table (relaxed shell -&gt; REQUIRED data section -&gt; final definitions)
+
+== staged migrations ==
+  db:acme/shop table user - the data section re-keys these fields: `name`; fill the section (or delete it) before commit
+</code></pre></div>
+</div>
+<div class="ex-block"><div class="ex-label">the convergence script (one transaction — SURFORM WARNING marks the data-destroying lines)</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">-- generated by `surform migrate generate` - the</span>
+<span class="tok-c">--    convergence script.</span>
+<span class="tok-c">-- Re-runs are safe: OVERWRITE redefines; IF EXISTS</span>
+<span class="tok-c">--    no-ops on absence.</span>
+<span class="tok-c">-- Lines marked SURFORM WARNING destroy data;</span>
+<span class="tok-c">--    SURFORM REQUIRED marks fill-in data-migration</span>
+<span class="tok-c">--    slots; SURFORM NOTE lines are advice.</span>
+<span class="tok-c">-- summary: 1 finding - 1 define, 0 removals, 0</span>
+<span class="tok-c">--    data-migration slots, 1 staged table, 1 frame</span>
+
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+
+<span class="tok-c">-- ------------------------------------------------------------</span>
+<span class="tok-c">-- ## Scope db:acme/shop</span>
+<span class="tok-c">-- section: db:acme/shop (1 define, 0 removals)</span>
+
+BEGIN TRANSACTION;
+
+<span class="tok-c">-- ------------------------------------------------------------</span>
+<span class="tok-c">-- ## Staged migration - the re-keyed tables take a data step</span>
+<span class="tok-c">--</span>
+<span class="tok-c">-- The shells below drop schema modes and permissions to the</span>
+<span class="tok-c">--    engine defaults: schemaless, permissions denied.</span>
+<span class="tok-c">-- The kind relaxes below lift the old field kinds.</span>
+<span class="tok-c">-- A data step fails while the old kind stands.</span>
+<span class="tok-c">-- The final defines re-validate no rows.</span>
+<span class="tok-c">-- - Write each data step between its markers; it runs before</span>
+<span class="tok-c">--   the final defines, in this same transaction.</span>
+
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">ANY</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> name <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">any</span>;
+
+<span class="tok-c">-- &gt;&gt;&gt; SURFORM REQUIRED: DATA MIGRATION &lt;&lt;&lt;</span>
+<span class="tok-c">-- The definitions above relax user for this data step.</span>
+<span class="tok-c">-- Re-keyed fields: `name` -&gt; string.</span>
+<span class="tok-c">-- - Write the data step between the markers; it runs after</span>
+<span class="tok-c">--   the relaxes and before the final defines, in this same</span>
+<span class="tok-c">--   transaction.</span>
+<span class="tok-c">-- - Delete the region when no data moves.</span>
+<span class="tok-c">-- e.g. UPDATE `user` SET name = &lt;string&gt; name;</span>
+<span class="tok-c">-- &gt;&gt;&gt; SURFORM REQUIRED: END &lt;&lt;&lt;</span>
+
+<span class="tok-c">-- ------------------------------------------------------------</span>
+<span class="tok-c">-- ## Defines - the state the schema file describes</span>
+<span class="tok-c">--</span>
+<span class="tok-c">-- Each define carries OVERWRITE: a re-run redefines it.</span>
+
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> name <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+
+COMMIT;
+</code></pre></div>
+</div>
+</figure>
+<p>Read the generated script top to bottom and the staged shape falls out — <a href="#staged-migrations-re-keying-a-field-over-live-rows">why the engine demands this order</a>: the relaxed shell first, then the kind relax, then the fill-in data section, then the final definitions. The report's note under the delta says so, and the <code>== staged migrations ==</code> manifest lists the obligation.</p>
+<h2 id="from-one-schema-version-to-the-next">From one schema version to the next</h2>
+<p>The database's <code>INFO</code> output is one input; a schema file can be the other. To evolve a deployed schema — v1 lives in the database, you have written v2 — hand <code>migrate generate</code> both versions:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate --from schema-v1.surdl --to schema-v2.surdl</code></pre></div>
+<p>The comparison is the same comparator, the report and script the same shape: definitions v2 holds that v1 doesn't are apply-pending (<code>+</code>, the script defines them), definitions only v1 holds are database-only (<code>−</code>, the script removes them — data-migration slots and warnings riding exactly as above), and definitions both hold but differ on drift (<code>~</code>, the script re-defines from v2's side). Running the script against a database at the v1 state lands it exactly at v2 — that property is executed against the embedded engine in the test suite, not assumed.</p>
+<p>The scope rules read like the files do:</p>
+<ul><li>A scope (namespace or database) that only <strong>v2</strong> declares is new — the script defines its namespace and database, then their content.</li>
+<li>A scope that only <strong>v1</strong> declares is retired — the script says so under a <code>SURFORM WARNING</code> block with a single <code>REMOVE DATABASE</code> / <code>REMOVE NAMESPACE</code> (the subtree goes with it, and the warning names every finding it consumed), not a scatter of per-table removals.</li>
+<li>Scopes both declare compare ordinarily.</li>
+</ul>
+<p><code>--check</code> rides here too, with the same contract: the report only, exit 1 on drift — the gate for &quot;every deployed environment carries the latest schema version&quot; once your deployment tooling records which version it applied.</p>
+<h2 id="adopting-the-pipeline-the-baseline-migration">Adopting the pipeline: the baseline migration</h2>
+<p>Everything above assumes the pipeline already runs. A database your file already converges has no migration history — the ledger is empty, <code>migrate status</code> starts blank, <code>revert</code> has no row to revert to, and the first real drift becomes <code>0001</code> against a database that has silently been converging for months. The fix is a <strong>baseline</strong>: migration <code>0001</code> records the state the database already stands at, and every later migration descends from it.</p>
+<p>The recipe is the bare-FILE input: hand <code>migrate generate</code> one file and the file is the TO side of a migration whose FROM side is empty - every definition rides apply-pending (<code>+</code>) and lands as <code>DEFINE … OVERWRITE</code>:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl --save
+<span class="tok-c"># == drift ==           every definition apply-pending (+)</span>
+<span class="tok-c"># == draft ==</span>
+<span class="tok-c"># migrations/0001_schema.surql</span>
+surform migrate commit migrations/0001_schema.surql -m &quot;baseline: the schema as it stands&quot;
+surform migrate push --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<p>The spelling is the version pair with an empty file on the from side, minus the scaffolding - the two runs produce byte-identical reports and scripts, and the longhand still works when a from-side file already exists.</p>
+<p>Three properties make the baseline safe to run over a database that already matches the file (all engine-verified, and the recipe's artifacts are the same files the tests execute):</p>
+<ul><li><strong>No slots.</strong> An empty from side removes nothing, so nothing can orphan data — the draft carries no <code>SURFORM REQUIRED</code> regions and commits as-is.</li>
+<li><strong>The apply is a no-op on the schema.</strong> Every line re-defines from the file's side (<code>DEFINE … OVERWRITE</code>), so applying it over the converged database redefines what is already there and changes nothing — and if the database has quietly drifted, the baseline converges that drift too. The re-run is a no-op as with any OVERWRITE script.</li>
+<li><strong>The ledger row is the only new thing.</strong> The push (or applying the committed file through any SurrealDB tooling) lands row <code>0001</code> — <code>migrate status</code> then reports directory and ledger in agreement, and the first real drift drafts <code>0002</code> with history behind it.</li>
+</ul>
+<p>One rule holds as on any commit: run <code>commit</code> from the directory the draft's <code>-- source:</code> file resolves from, or record an absolute path (<a href="#saving-drafts-and-committing-them">above</a>).</p>
+<h2 id="the-data-migration-slots">The data-migration slots</h2>
+<p>Removing schema can orphan data, and the script says so where it happens. Two classes carry a <code>SURFORM REQUIRED: DATA MIGRATION</code> block — a named, greppable, editable region — immediately before the removal that orphans the data:</p>
+<ul><li><strong>A removed table</strong> destroys every document in it (the key range goes with the table). The slot asks for the export, archive, or move query for the data you need; its example line is runnable — delete the <code>-- e.g. </code> prefix and adjust the target.</li>
+<li><strong>A removed field</strong> drops the field from the schema, but the stored values are NOT deleted — they remain on the rows, outside every field definition, until you clean them up. The slot asks for the copy to the values' new home, names the table and the dropped field, and hints the later cleanup (<code>UPDATE t UNSET a;</code>).</li>
+</ul>
+<p>Fill the slots before running the script. The queries you write run inside their section's transaction, before their removals — and after the scope's defines, so a table the same section creates is already a valid target for the move.</p>
+<p>Everything else stays quiet: events, indexes, and analyzers are catalog machinery (nothing is lost removing them), and no other class orphans data. There is no rename detection — even an obvious candidate (a table with one field out and one field in) gets no automatic suggestion: the human names the move, the slot names the stakes.</p>
+<p>The manifest under the report — <code>== required data-migration slots ==</code> — lists every slot (scope, family, key, the stakes), so CI and reviewers see the unfilled obligations without reading the whole script. <code>--check</code> shows it too.</p>
+<h2 id="staged-migrations-re-keying-a-field-over-live-rows">Staged migrations: re-keying a field over live rows</h2>
+<p>The hardest migration shape is the re-key: a field's type changes while the table holds rows — an edge table's <code>in</code> moving from <code>record&lt;user&gt; | record&lt;fleet_account&gt;</code> to a new <code>record&lt;seat&gt;</code>, say. Two engine facts (verified against the embedded engine, not assumed) make the naive script fail:</p>
+<ul><li><strong>The define itself never validates existing rows.</strong> <code>DEFINE FIELD OVERWRITE in ON t TYPE record&lt;seat&gt;;</code> applies cleanly over a table full of stale values — in or out of a transaction, schemaful or not. Rows keep their old values.</li>
+<li><strong>A data step that rewrites the values fails under the OLD kind.</strong> <code>UPDATE t SET in = seat:r1;</code> — run before the new kind lands — is rejected with <code>Couldn't coerce value for field 'in' … Expected record&lt;user&gt; | record&lt;fleet_account&gt; but found seat:r1</code>. The error names an existing row, so it reads like the define validated rows — it is the write the old kind rejected.</li>
+</ul>
+<p>So the workable order is the opposite of instinct: the definitions land first, the data step runs under them. The script stages exactly that, inside the section's one transaction:</p>
+<ol><li><strong>The relaxed shell</strong> — <code>DEFINE TABLE OVERWRITE t TYPE ANY SCHEMALESS;</code>. Schema mode and permissions drop to the engine's defaults: schemaless accepts every write, and a table defined without a <code>PERMISSIONS</code> clause denies every non-privileged session — the relaxed state is writable by the migration and closed to everyone else, and the window never commits (the whole sequence shares the section's transaction).</li>
+<li><strong>The kind relaxes</strong> — <code>DEFINE FIELD OVERWRITE in ON t TYPE any;</code>. Field definitions survive a table overwrite (that is why the shell alone is not enough), so the old kind must be lifted explicitly. The relax line is deliberately minimal — no <code>default</code>, <code>value</code>, <code>assert</code>, or <code>flexible</code> rides, since those would constrain or rewrite the data step itself.</li>
+<li><strong>A <code>SURFORM REQUIRED: DATA MIGRATION</code> section</strong> — the fill-in region between the relaxed definitions and the final ones. Its prose names the re-keyed fields and their new kinds, and each spellable re-keyed field carries a runnable example: the engine's own <code>&lt;kind&gt;</code> cast for the scalar kinds (<code>UPDATE t SET age = &lt;string&gt; age;</code> — verified against the engine; the fn-call casts like <code>string::from</code> are rejected — no such builtin), the record's id for <code>record&lt;...&gt;</code>. Write the backfill (<code>UPDATE member_of SET in = seat:r1;</code>); it runs under the relaxed kinds, before the final definitions, in the same transaction. Delete the region if no data needs moving — the marker gate makes that decision explicit at <code>commit</code>.</li>
+<li><strong>The final definitions</strong> — the state the schema file describes, wholesale.</li>
+<li><strong>A <code>SURFORM NOTE: INDEX REBUILD</code> block</strong> — commented out, after the final defines: every UNIQUE index on the table, plus every index whose fields name a re-keyed field, each offered as <code>REMOVE INDEX …</code> + the SDL's own define. Uncomment what applies: a data section that rewrote indexed fields very likely needs the rebuild, and a UNIQUE index's define is the one row-validating statement in the engine — it fails outright if two rewritten rows collide.</li>
+</ol>
+<p>Views and lightweight relations never stage: a view's <code>AS SELECT</code> is its whole definition (a <code>SCHEMALESS</code> shell would destroy it), and a lightweight relation refuses child defines. A table whose own definition converged (only its field re-keyed) still stages — and its own <code>DEFINE TABLE</code> rides the final defines so the relaxed shell never persists. A staged table the SDL never declares (a standalone field's host) takes no shell at all — it is unmanaged database-side, the kind relax line alone lifts the old kind, and the script touches nothing the file never owned.</p>
+<p>The report names the class twice: the note under the field's delta (&quot;the script stages this table&quot;) and the <code>== staged migrations ==</code> manifest (scope, table, the re-keyed fields - fill the section or delete it before commit).</p>
+<h2 id="reading-the-report">Reading the report</h2>
+<p>The report leads with a summary line — findings, defines, removals, data-migration slots, staged tables — the whole drift at a glance before the rows. A changed kind reads one line (<code>field x: string</code> vs <code>field x: int</code>), a nested child never appears twice (its own row is the only listing), and a block held on one side quotes whole.</p>
+<div class="tablewrap"><table><thead><tr><th>sigil</th><th>class</th><th>meaning</th></tr></thead><tbody><tr><td><code>~</code></td><td>drift</td><td>both sides have it, and it differs — clause deltas follow; the script re-defines it from your file</td></tr><tr><td><code>−</code></td><td>database-only</td><td>in the database, not in your file — the script removes it; when the removal orphans data the row is marked and lands in the slot manifest</td></tr><tr><td><code>+</code></td><td>SDL-only</td><td>in your file, not yet applied — the script defines it</td></tr><tr><td><code>·</code></td><td>expected-unmanaged</td><td>informational — e.g. the auto-seeded default namespace; never removed, never trips the exit</td></tr></tbody></table></div>
+<p>Exit codes: <strong>0</strong> converged, <strong>1</strong> drift in either direction when nothing was saved (CI signal) — expected-unmanaged never trips it. A successful <code>--save</code> exits 0: the draft is the artifact, so <code>generate --save &amp;&amp; surform migrate commit …</code> composes. With <code>--check</code> the report is all you get — no script, and the drift exit stays — which is exactly the CI gate:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --check \
+  || echo &quot;schema drifted!&quot;</code></pre></div>
+<h2 id="the-scripts-shape">The script's shape</h2>
+<ul><li><strong>The staged prelude rides before the defines.</strong> A re-keyed table's section opens with the relaxed shell, the kind relaxes, and the <code>SURFORM REQUIRED</code> data sections (<a href="#staged-migrations-re-keying-a-field-over-live-rows">above</a>) — the engine's own order — before the defines half.</li>
+<li><strong>Defines first.</strong> Every SDL-only and drifted definition renders as <code>DEFINE … OVERWRITE</code> from your file's side — the desired state, wholesale. A standalone field/event/index define renders inside its host table's emission, after the host's <code>DEFINE TABLE</code> and before the nested members that name it. Both halves of that placement are load-bearing: a migration can hold a table in a form the engine refuses to hang a member on, and an index refuses to define against a <code>SCHEMAFULL</code> table that lacks the field. A member your table block nests renders once, inside that block's emission; a raw-authored define follows its header's <code>ON &lt;table&gt;</code> the same way (a raw body with no readable <code>ON</code> keeps its place). A view defines after every table it selects from, and a raw fulltext index after its analyzer — either side may be a raw block. Every define-time value slot orders after what it reads: a param's <code>VALUE</code>, a sequence's <code>BATCH</code>/<code>START</code>/<code>TIMEOUT</code>, a user's or access's <code>DURATION</code> sides, an access jwt's <code>url:</code>, a bucket's <code>backend:</code>, api middleware args, and <code>config default</code>'s sides all sort behind the param/fn/module they name whenever that target defines in the same scope, whether the reader, the target, or both are raw. (A param read before its raw define rolls the migration back; an access <code>url:</code> read before it silently stores <code>NONE</code>.) <code>OVERWRITE</code> redefines cleanly and creates if absent, so the defines are idempotent too — re-runs are safe for typed statements and single-statement raw bodies, while a multi-statement raw block re-pairs by its first header alone and its unpaired tail statements re-drift on re-runs (a known, tracked corner).</li>
+<li><strong>Removals last.</strong> Children (fields, events, indexes) before their table, tables before the analyzer an index points at (the engine refuses to remove an in-use analyzer), then <code>REMOVE DATABASE</code>, then <code>REMOVE NAMESPACE</code>.</li>
+<li><strong>One transaction per scope section.</strong> A scope's defines and removals share one <code>BEGIN TRANSACTION … COMMIT</code> frame — each content frame opens with a <code>## Scope</code> header block over a <code>-- section:</code> comment naming its scope and counts (a retired scope's frame labels its <code>REMOVE</code> instead) — and the scope's <code>USE</code> switch sits above the frame, as do the namespace and database owner defines (a failed content section never un-creates an owner). A failed statement rolls its own section back — sections before it stay applied. The file format wraps exactly one transaction, and a script spanning several scopes saves as a draft GROUP — one file per scope section (<a href="#draft-groups-multi-scope-schemas">below</a>) — so every saved file still wraps exactly one. One boundary: a fulltext index over a table that already holds records builds at define and cannot see an analyzer the same transaction defines — let that analyzer converge first (the build defers on an empty table, so a fresh pair is fine).</li>
+<li><strong><code>USE</code> lines</strong> switch session context as scopes change, always outside the frames they precede.</li>
+<li><strong><code>SURFORM WARNING</code> blocks</strong> mark every data-destroying statement — <code>REMOVE TABLE</code> (the documents go with it), <code>REMOVE DATABASE</code>, <code>REMOVE NAMESPACE</code> (the whole subtree). Read the warnings before running.</li>
+<li><strong><code>SURFORM REQUIRED</code> blocks</strong> are the data-migration slots (above): an empty editable region before every removal that orphans data — a removed table's documents, a removed field's surviving values — and between the staged prelude and the final defines for every re-keyed table — with a runnable example line. Everything else (events, analyzers, plain clause retypes) carries neither block: nothing is lost.</li>
+<li><strong><code>SURFORM NOTE</code> blocks</strong> are advice, commented out and never executed — today, the staged table's index-rebuild offers (above). So is the one-line note above any UNIQUE index define whose table already exists database-side: the unique build is the one row-validating define (it fails if any two rows collide), and the note says when the index's fields cover re-keyed fields.</li>
+<li><strong>The header and the sections read as one page.</strong> The script is laid out in ASCII markdown comments: a short header — what generated the script, the re-run safety, the marker vocabulary — closes with a <code>-- summary:</code> line (findings, defines, removals, data-migration slots, staged tables, transaction frames — the script's own counts — its defines half, staged set, and slot count after the SDL-side filters and the retired-scope collapse — can differ from the report's same-named numbers); every scope section and every region inside it (staged prelude, defines, index rebuilds, removals) opens with a rule-and-<code>##</code> header block; and blank lines separate every block. The header's one conditional stanza (the raw re-run corner) rides only the scripts that carry raw bodies; the staged contract rides the staged prelude's own header.</li>
+</ul>
+<h2 id="the-command">The command</h2>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl \
+  --info root=info-root.txt \
+  --info ns=acme=info-ns.txt \
+  --info db=acme/shop=info-db.txt</code></pre></div>
+<p>The <code>--info</code> tags are the same interchange files <a href="normalize.html">normalize</a> uses, and the migration covers exactly the scopes the tags present — a scope nobody tagged makes no claim either way. The tags need the file beside them — a lone <code>--info</code> is a usage error.</p>
+<p>The three input modes are mutually exclusive — the bare file is the baseline (<a href="#adopting-the-pipeline-the-baseline-migration">above</a>); the file with its <code>--info</code> tags compares against a live database; <code>--from &lt;file&gt; --to &lt;file&gt;</code> compares two schema versions (above). All print the same report, generate the same shape of script, honor <code>--check</code> and <code>--save</code>, and exit 1 on drift in either direction when nothing was saved (a successful <code>--save</code> exits 0). Every invocation names exactly one complete mode: the CLI refuses anything less — a bare run, a lone side, or a mix of the modes' flags — with the usage error before anything loads.</p>
+<h2 id="pulling-the-interchange">Pulling the interchange</h2>
+<p>The tags' files are a command's output now — the hand-rolled shell loop's day is done:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate pull --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>== pull ==
+  surform-info-root.txt                written (INFO FOR ROOT)
+  surform-info-ns-acme.txt             written (INFO FOR NS acme)
+  surform-info-db-acme-shop.txt        written (INFO FOR DB acme/shop, 2 table(s))
+
+next:
+  surform migrate generate schema.surdl --info 'db=acme/shop=surform-info-db-acme-shop.txt'
+  the wider compares: add --info root='surform-info-root.txt' and --info 'ns=acme=surform-info-ns-acme.txt' to the command above
+  a scope the schema file does not manage classifies as removals (the server's root users among them) - read the drift report before running a wider compare's script</code></pre></div>
+<p><code>pull</code> fetches the database's rendered INFO over the same endpoint push applies through — <code>INFO FOR ROOT</code>, <code>INFO FOR NS</code>, <code>INFO FOR DB</code>, and one <code>INFO FOR TABLE</code> per table, each statement its own query — and writes the interchange files the <code>--info</code> mode consumes (a full pull writes all three), the db file carrying every table's child map under the reserved <code>&quot;@tables&quot;</code> key. The printed command is the ready-made next step, database scope only: run it verbatim and the compare reads what pull just fetched. The wider compares are deliberate acts — the root and namespace files join through their <code>--info</code> tags, named on the advice line — because a schema file does not manage the server's root users or the default config (the secrets rule keeps them out of SDL): whenever root-scope interchange joins a compare, those statements classify as removals. Read the drift report before running a wider compare's script.</p>
+<p>A restricted credential pulls what it can read. The scopes leg still sends the whole three-statement batch, and a scope the credential cannot read answers the engine's permission refusal — so a database-level user (the audience the bearer token serves) pulls its database alone, a namespace-level user keeps its namespace and database, and the printed advice names every refused scope and the fact that a credential which can read them completes the pull. The database scope is the pull's subject and never degrades: its permission refusal refuses the run, and any other failure at any scope refuses the run naming its scope — a mistyped <code>--ns</code>/<code>--db</code> still says so. Nothing but the INFO statements goes over the wire; nothing but pull's own <code>surform-info-*.txt</code> files land on disk (the prefix keeps hand-written interchange files out of the way — a re-pull refreshes exactly its own names, nothing else). <code>--dir</code> moves where the files land (created when missing; the printed lines name them there), and the connection coordinates ride the same flags and environment variables as push — <code>--endpoint</code>/<code>--ns</code>/<code>--db</code> over <code>SURFORM_ENDPOINT</code>/<code>SURFORM_NS</code>/<code>SURFORM_DB</code>, the credentials as on push (a Basic pair or a bearer token — never both). A refusal — a dead endpoint, credentials that do not verify, a mistyped <code>--ns</code>/<code>--db</code> — names itself and writes nothing.</p>
+<h2 id="saving-drafts-and-committing-them">Saving drafts and committing them</h2>
+<p>The stdout script runs today; a migration you want to <em>keep</em> — fill at your own pace, review, apply through your SurrealDB tooling — lives in a file instead. <code>--save</code> writes it as a numbered draft and prints the report, the file's path, and the next command:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --save
+<span class="tok-c"># == drift ==</span>
+<span class="tok-c"># …the report…</span>
+<span class="tok-c"># == draft ==</span>
+<span class="tok-c"># migrations/0001_schema.surql</span>
+<span class="tok-c"># fill the SURFORM SLOT regions, then: surform migrate commit migrations/0001_schema.surql</span></code></pre></div>
+<p>A successful save exits 0 — the draft is the artifact, so the save composes into the next command. (The drift exit belongs to <code>--check</code>, and to the plain run when nothing was saved.) A converged run prints one <code>(converged)</code> line and writes nothing.</p>
+<p>The draft lands under <code>migrations/</code> as <code>NNNN_&lt;name&gt;.surql</code> — the number is the highest existing draft's plus one (four digits, the order an apply loop walks), and the name defaults to the SDL file's stem, slug-folded (<code>schema-v2.surdl</code> → <code>schema-v2</code>); <code>--name</code> spells it yourself and <code>--dir</code> moves the directory. A number collision — two branches converged on one, or a race at the write — is an error, never a silent bump or overwrite. (A script spanning several scopes saves as a draft GROUP instead — one file per scope section, <code>NNNNa_…</code>/<code>NNNNb_…</code> — <a href="#draft-groups-multi-scope-schemas">below</a>.)</p>
+<p>The edit-regenerate loop has a pile-up guard. Regenerating a script the directory already drafts prints a note and saves anyway —</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>note: an existing draft carries this exact script: 0001_schema.surql</code></pre></div>
+<p>— informational, because the stale draft may be exactly what your fill-in-progress edits want to keep. When it is not, <code>--save --replace &lt;n&gt;</code> takes the named draft's number instead of stacking: the draft <code>&lt;n&gt;</code> on disk must carry THIS exact script (its hash must match the regeneration), then it is removed and the new draft saves under its number — the pile-up never grows, and a stale draft cannot be committed out from under its replacement. A missing number, a committed draft (history is not replaceable), or a differently-scripted target refuses, both hashes named.</p>
+<p>The draft's header is the migration's identity, and <code>migrate commit</code> re-reads it later (a blank line separates it from the script's own header below):</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>-- surform migration 0001 — schema
+-- generated: 2026-10-07T18:04:05Z
+-- source: schema.surdl
+-- source-sha256: 3f2a…64 hex…
+-- input: info db=acme/shop=info-db.txt
+-- status: draft</code></pre></div>
+<p>The <code>-- input:</code> line records the diff's INPUTS, not just their class: the <code>--info</code> mode spells its tag specs (<code>-- input: info root=… | ns=&lt;name&gt;=… | db=&lt;ns&gt;/&lt;db&gt;=…</code>, as given), the version pair names both files (<code>-- input: versions from=&lt;file&gt; to=&lt;file&gt;</code>), and a revert drafts <code>from=(live) to=&lt;sidecar&gt;</code> (the live schema has no file spelling). Paths carrying whitespace ride double-quoted; the parse takes the extended forms back exactly, and the bare <code>info</code>/<code>versions</code> spellings of pre-#75 drafts still parse.</p>
+<p>(The <code>-- source-sha256:</code> line pins the source's canonical-form hash at generate — <a href="#saving-drafts-and-committing-them">commit refuses a source edited in between</a>.)</p>
+<p>Inside the draft, every <code>SURFORM REQUIRED</code> slot region is delimited by git-style <strong>resolution markers</strong> — bare text lines, not comments:</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; SURFORM SLOT (db:acme/shop: table stale)
+-- - Write the export, archive, or move query between the
+--   markers; it runs before the removal, in this same
+--   transaction.
+-- e.g. INSERT INTO archive (SELECT * FROM stale);
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; SURFORM SLOT END</code></pre></div>
+<p>An unresolved draft is deliberately un-runnable SurrealQL — the same semantics as an unresolved git merge. Resolution is the whole point: replace the delimited region with your query, markers gone. (The <code>SURFORM WARNING</code> anchors are documentation and persist either way; the stdout script keeps its comment banners and never renders markers — those scripts run today.)</p>
+<p><code>migrate commit</code> turns a filled draft into the committed migration:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate commit migrations/0001_schema.surql -m &quot;drop the stale table&quot;</code></pre></div>
+<p>The command refuses — naming each unresolved slot — while any marker remains, and refuses a draft carrying statements AFTER its transaction frame (the script must be exactly one <code>BEGIN TRANSACTION; … COMMIT;</code> block: the engine runs the frame and anything after it independently, so a tail failure would leave the frame committed — its ledger row self-recorded — while a push re-run skipped the file as already applied, the tail never applying). It then does three things. It <strong>hashes the filled script</strong> (SHA-256 over its normal form — the bytes from <code>BEGIN TRANSACTION;</code> through the final <code>COMMIT;</code>, newline-normalized — what you certified, not the header and not the machinery below; the normalization is what makes an unchanged file's re-commit recognize itself) and marks the header <code>-- status: committed sha256:&lt;hash&gt; &lt;message&gt;</code>. Line endings normalize at parse — a draft saved or edited with CRLF line endings commits as clean LF, whatever it carried in. It <strong>appends the migration ledger's statements inside the script's one transaction</strong>, before the final <code>COMMIT;</code>: a <code>DEFINE TABLE IF NOT EXISTS _surform_migrations</code> plus typed fields (number, name, hash, message, applied_at, sdl) and one idempotent record insert for this file — <code>INSERT IGNORE</code> keyed on the migration number, so running the script twice writes one row, and applying it through <em>any</em> SurrealDB tooling records itself. <code>applied_at</code> is <code>time::now()</code>: evaluated when the script RUNS, so the ledger records the true apply time. The ledger's <code>sdl</code> column holds the canonical SDL of the state the migration converges to — <code>commit</code> re-loads the header's <code>-- source:</code> file (it must be present and clean) — which is the revert substrate (the ledger's recorded state can regenerate a migration later). The <code>-- source:</code> path is recorded as given and re-loaded from the directory the <code>commit</code> invocation runs in: commit from the same root you generated from, or record an absolute path. <code>--ledger-table</code> renames the ledger table everywhere it appears (the default <code>_surform_migrations</code> is a convention, not a law).</p>
+<p>Two conventions the machinery assumes. <strong>Migration numbers are unique per database, not just per directory</strong>: the ledger's record id is the number, so two different directories' <code>0001</code>s applied to one database collide — the second script's self-record silently skips. Keep one migrations directory per database. And <strong>do not edit the appended ledger region</strong> — from the banner line through the final <code>COMMIT;</code> — not just because it is tool-owned text: edits there are invisible to the hash (the region is excluded by construction), so they surface at apply time as whatever the edited statements do, never as a drift report.</p>
+<p>Commit is once per file. A second commit refuses: unchanged, &quot;already committed&quot;; edited, &quot;edited after its commit&quot; — the ledger keeps the recorded hash, so a post-commit edit to the SCRIPT is a mismatch <a href="#checking-status"><code>migrate status</code> surfaces</a> (below); <code>push</code>, also below, is the apply half.</p>
+<p>The draft's header also pins the SOURCE it was generated against: <code>-- source-sha256:</code> records the source SDL's canonical-form hash at generate time, and commit re-canonicalizes the re-loaded source and refuses a mismatch (naming both hashes) — without the pin, a schema tweaked between generate and commit would silently certify: the script converges the old shape while the ledger's revert substrate describes the new one. Drafts predating the line carry no pin and commit as before. The recorded source must also be RE-READABLE at commit — it is re-loaded (from this directory; the path is recorded as given) to store the ledger's <code>sdl</code> — and a missing file refuses naming the mechanism and both ways out (commit from the generation root, or record an absolute path).</p>
+<p>Commit also refuses a draft whose FILE NAME carries a different number than its header (<code>0009_…</code> with a header saying <code>0001</code> — the natural git-merge rename). Push walks file names while the ledger self-records the header's number, so committing the mismatch would split the identity into permanent phantom drift: status would show a pending <code>0009</code> and a ledger row <code>0001</code> with no local file. The repair is <code>surform migrate renumber &lt;file&gt; &lt;n&gt;</code> — the header's number line and the file name move together, the one operation that cannot split the identity. Renumber refuses a COMMITTED migration (the number is the ledger's record id), a number another draft already carries, and a number outside the four-digit convention (1–9999).</p>
+<h3 id="draft-groups-multi-scope-schemas">Draft groups (multi-scope schemas)</h3>
+<p>A schema spanning several namespaces and databases saves as a draft GROUP — the layouts SurrealDB itself encourages: <code>generate --save</code> splits the script at its transaction frames (one per scope section) and writes ONE DRAFT PER SCOPE SECTION under one number, the letters ordering the group:</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>migrations/0005a_schema.surql
+migrations/0005b_schema.surql
+migrations/0005c_schema.surql</code></pre></div>
+<p>Each file is exactly one transaction — the file format's invariant holds per member — and carries its scope's own slot regions (the script's comment header rides every member; each member's frame carries its own hoisted <code>USE</code> switch and any owner defines its scope needs). The members share ONE header identity — the same <code>-- source:</code>, <code>-- source-sha256:</code>, <code>-- input:</code>, <code>-- generated:</code> — plus a line of their own:</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>-- group: 0005 a/3</code></pre></div>
+<p>The number is the GROUP's number — every member's, and the ledger row's: the once-per-number contract holds, number 5 IS the group. The name order is the apply order (<code>0005a</code> &lt; <code>0005b</code> &lt; <code>0005c</code>), and the save's stdout names every member with its commit command, in that order. A group's members are not rewritten one at a time: <code>--replace</code> refuses them, <code>renumber</code> refuses them, and the pile-up note stays a single-draft feature — delete a stale group by hand and regenerate (a fresh save takes a fresh number).</p>
+<p>Committing follows the letters. A member's file name must carry its header's letter (the name order is push's walk order; the header's letter decides which member records), and an earlier member still an uncommitted draft refuses a later member's commit — the group applies whole, so committing the tail first would let a push record a group whose head never shipped. The earlier members' commits mark their headers but write NO ledger region; the LAST member's commit splices the ledger block — the group records ONCE (the number, the LAST member's filled hash, the base slug).</p>
+<p>Push walks the members in name order and applies them as one run: an unapplied group applies EVERY member — a mid-group failure leaves the earlier members applied but unrecorded (the row is the last member's to write), and the re-run re-applies them (<code>DEFINE … OVERWRITE</code> makes that idempotent — and the failure report says so: a data-migration query you filled into an earlier member RUNS AGAIN on the re-run, so keep those queries idempotent); an applied group — the ledger holds the number with the last member's hash — skips EVERY member. A group only PARTLY committed blocks the run (a real push refuses; a dry run classifies it <code>blocked</code>): the row could otherwise claim a group whose head never shipped. A structurally broken group — a missing letter, a member count disagreeing with the headers' total, a name/header disagreement (a lettered file name over a headerless draft, either direction) — refuses before anything is sent.</p>
+<p>Status drives a member's verdict from the GROUP's row through the recording member — applied, pending, or (the last member edited after the apply) DRIFTED, both hashes named, the earlier members applied — and the rows render grouped with their positions. The one corner that verdict cannot see: an EARLIER member edited after the group applied still renders applied (the row carries only the last member's hash) — push's pre-flight drift check is the guard there (every committed member must still hash to its own header's record before anything applies). Two hand-crafted states sit outside the tool's own flows, both refused or inert rather than silent where the machinery sees them: a <code>USE</code> line hand-edited onto a committed EARLIER member rides above its frame — outside the drift hash — and would apply its statements to the scope it names (nothing checks it; the hash cannot); and committing past a hand-DELETED middle member succeeds — commit certifies one file, and the broken letter run refuses at the next push, before anything is sent.</p>
+<h2 id="pushing-to-a-live-database">Pushing to a live database</h2>
+<p><code>migrate push</code> applies the directory's committed migrations to a live database — in number order, each file in one HTTP call, skipping what the ledger already records, stopping at the first failure:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate push --endpoint http://127.0.0.1:8000 \
+  --ns acme --db shop --user acme-admin</code></pre></div>
+<p>Every connection coordinate falls back to its environment variable when the flag is absent — <code>SURFORM_ENDPOINT</code>, <code>SURFORM_NS</code>, <code>SURFORM_DB</code>, <code>SURFORM_DB_USER</code>, <code>SURFORM_DB_PASS</code>, <code>SURFORM_DB_TOKEN</code> (the recommended form for secrets: a flag lands in shell history; a flag over a variable wins, and a present-but-empty variable counts as given). The credentials come in two EXCLUSIVE kinds — a Basic pair (<code>--user</code>/<code>--pass</code>, give both or neither; neither speaks to a server run with <code>--unauthenticated</code>) or a bearer token (<code>--token</code>, sent as <code>Authorization: Bearer &lt;token&gt;</code>). The token is one YOU minted — a single <code>POST /signin</code> with the database-level credential; the run carries it verbatim and never mints or refreshes it, so a 401 means mint a fresh one and re-run. Giving a token alongside a user or password refuses before anything dials, and on a terminal a Basic run with a user but no password ASKS (<code>password:</code> on stderr; it is read plainly — std offers no echo suppression — and no credential ever appears in any output, on any path).</p>
+<p>The transport is SurrealDB's raw HTTP <code>POST /sql</code> endpoint — the connection surface the docs pin: the server ROOT goes in <code>--endpoint</code> (<code>/sql</code> is appended), <code>--ns</code>/<code>--db</code> ride the <code>Surreal-NS</code>/ <code>Surreal-DB</code> headers, and the response is read as the documented per-statement result array. Before anything is sent, push reads the ledger — <code>SELECT number, name, hash FROM &lt;ledger&gt;;</code> — and walks the directory:</p>
+<ul><li>a file the ledger records with the SAME hash is <strong>already applied</strong> — skipped;</li>
+<li>a file the ledger records with a DIFFERENT hash refuses the run — another migration owns that number on this database (one migrations directory per database);</li>
+<li>an uncommitted draft is <strong>skipped — draft</strong>: commit declares a migration part of the database's history; push ships committed history;</li>
+<li>a draft GROUP applies whole (<a href="#draft-groups-multi-scope-schemas">above</a>): every member in name order, the row recorded once by the last; a group only partly committed blocks the run, and an applied group skips every member;</li>
+<li>a committed file that no longer hashes to its header (edited after its commit) refuses the WHOLE run before anything is sent;</li>
+<li>a committed file carrying statements OUTSIDE its one transaction frame — content after the <code>COMMIT;</code> close, or a second <code>BEGIN … COMMIT</code> block — refuses the run before anything is sent (the rollback guarantee below needs the file to be exactly one transaction; commit refuses the same shape, so a tool-committed file never carries one);</li>
+<li>everything else applies in number order.</li>
+</ul>
+<p>Each apply POSTs the file's full text — the script's own <code>BEGIN TRANSACTION; … COMMIT;</code> wraps it, so a failed statement rolls the whole file back and the engine saw nothing. The first failure stops the run with the engine's own error message and the count applied before it; fixing the file and re-running resumes — standalone files skip by the ledger, while a draft group's earlier members re-apply (<a href="#draft-groups-multi-scope-schemas">above</a>; the failure report says so). That mid-apply stop renders as plain multi-line stderr even under <code>--json</code> — the one failure report the JSON shape does not cover (every pre-flight refusal JSON-ifies; the stop is the engine's own report, quoted). A missing ledger table — a fresh database — reads as an empty ledger, so the first push applies everything and each file's ledger block creates the table as it goes.</p>
+<p>Two things the pipeline checks so you don't discover them at apply time. A script whose text carries its own <code>USE NS … DB …</code> statement targeting OTHER names refuses — the whole file is scanned, the <code>USE</code> lines above the transaction frames included: a <code>USE</code> switches the session mid-request (verified against 3.3.0), so the migration — and its ledger self-record — would land in a different database than the one push reads the ledger from; point <code>--ns</code>/<code>--db</code> at the names the schemas declare. A draft group's members are the deliberate exception in part: each earlier member carries its OWN scope's <code>USE</code> (that is the split's point — every request is its own HTTP session, so the switch never leaves its file), while the LAST member — the one whose script writes the ledger row — keeps the full rule and must name the push's target. And a ledger table push cannot find is only an empty ledger when the not-found names the TABLE — a not-found on the namespace or database (a mistyped <code>--ns</code>/<code>--db</code>) and a permission failure are errors, never a silent &quot;nothing applied&quot;.</p>
+<p><code>--dry-run</code> answers &quot;what would this push do?&quot; without answering it with the database: the entire pre-flight runs — the directory walk, the drift checks, the one ledger SELECT — and the plan prints,</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>== push (dry run — nothing was sent) ==
+  0001_add-users                       already applied
+  0002_add-indexes                     would apply
+  0003_work-in-progress                skipped — draft (commit it first)
+
+dry run: 3 migration file(s) — 1 would apply, 1 already applied, 1 draft(s) skipped; zero statements sent</code></pre></div>
+<p>— with ZERO migration POSTs (the SELECT is the only request). A collision the real push would die on — the ledger recording a number with a different hash — rides the plan as a would-refuse row (both hashes named), a partly-committed group as a <code>blocked</code> row, and either exits 1, so the dry run works as a CI gate; every pre-flight refusal (drift, a tail-bearing file, a body-<code>USE</code> mismatch) refuses it exactly as it refuses a push.</p>
+<h2 id="checking-status">Checking status</h2>
+<p><code>migrate status</code> compares the migrations directory against the live ledger — one ledger SELECT through the same endpoint push applies through, and status never applies anything:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate status --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>== status ==
+  0001_add-users                       applied
+  0002_add-indexes                     pending
+  0003_fix-thing                       DRIFTED — file sha256:9f2c7a1b3d4e…, ledger sha256:c3d4e5f6a7b8…
+  0004_work-in-progress                draft (commit it first)
+  0005_lost-migration                  in the ledger, no local file
+
+5 migration file(s): 1 applied, 1 pending, 1 draft, 1 drifted; 1 ledger row(s) without a local file</code></pre></div>
+<ul><li><strong>applied</strong> — the ledger records the number and the file's current script still hashes to what the database recorded.</li>
+<li><strong>pending</strong> — committed, not yet pushed: the normal state between commit and push, not a problem.</li>
+<li><strong>DRIFTED</strong> — the ledger records the number with a DIFFERENT hash: the file was edited after the database applied it (or another directory's migration owns the number — both hashes named). Push refuses a drifted file outright; status shows it before push gets there.</li>
+<li><strong>draft</strong> — no committed header yet.</li>
+<li>A draft group's members render grouped, each verdict naming its position (<code>applied — group 0005 a/2</code>); the verdict is the GROUP row's, judged through the last member (<a href="#draft-groups-multi-scope-schemas">above</a>).</li>
+<li>and ledger rows the directory has no file for — history the directory lost (a deleted file, a branch without it).</li>
+</ul>
+<p>The exit code is the CI gate for history integrity, not progress: exit 0 when directory and ledger agree, exit 1 when anything is DRIFTED or missing —</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate status --endpoint http://127.0.0.1:8000 --ns acme --db shop \
+  || echo &quot;migration history is inconsistent!&quot;</code></pre></div>
+<p><code>--dir</code> and <code>--ledger-table</code> thread exactly as on <code>push</code>. Without an endpoint (flag or <code>SURFORM_ENDPOINT</code>) the run is OFFLINE — half of status is local state, and a dead endpoint cannot take it away:</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>== status ==
+  0001_add-users                       committed — ledger state unknown (no endpoint)
+  0002_work-in-progress                draft (commit it first)
+
+2 migration file(s): 1 draft, 1 committed (offline — the ledger was not read, no endpoint)</code></pre></div>
+<p>Nothing dials, nothing authenticates (no credentials are asked for), and the exit is 0 always — nothing can be DRIFTED or MISSING without a ledger to compare against.</p>
+<h2 id="reverting-a-migration">Reverting a migration</h2>
+<p><code>migrate revert</code> is a convenience over generate, not a down-chain: it drafts the migration that undoes a recorded one, and the revert then travels the same road as any migration — fill, commit, push.</p>
+<p>Every committed migration's ledger row carries the canonical schema the migration converged TO. Name a row by its number or its hash's prefix:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform migrate revert --to 1 --endpoint http://127.0.0.1:8000 --ns acme --db shop</code></pre></div>
+<p>Revert fetches the live database's schema — <code>INFO FOR DB</code> plus each table's <code>INFO FOR TABLE</code>, the same interchange <a href="#the-command"><code>--info</code> reads</a>, over the same endpoint — and drafts the convergence from there to the recorded state: the same script <code>migrate generate --from &lt;live&gt; --to &lt;recorded&gt;</code> would emit, with data-migration slots riding wherever the recorded state orphans data. Two files land in the migrations directory: the next numbered draft (<code>0003_revert-to-0001-add-users.surql</code>) and a <code>.surdl</code> sidecar holding the recorded state verbatim. The sidecar is the draft's <code>-- source:</code>, which is what makes the revert committable: <code>migrate commit</code> re-loads it into the new ledger row's <code>sdl</code> column — exactly the recorded state — so reverting the revert works, wherever the working tree has drifted since. The sidecar must SURVIVE until that commit (it is the draft's source — deleting it first fails the commit at the source load) and is safely deletable once the row is committed (the ledger then carries the recorded state itself). Nothing is applied: fill the slots, commit, push.</p>
+<p>Two boundaries; both refuse rather than silently no-op. The LEDGER TABLE itself never joins the compare — it is the pipeline's own machinery (every migration's self-record creates it), so no revert can draft its removal and wipe the history it is about to append to. And the revert compares at DATABASE scope: the recorded schema must declare <code>--ns</code>/<code>--db</code>'s database (a namespace-free schema compares under its database name), and root- or namespace-level drift stays out of its view — the ledger is a database-level history.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="in-database.html">Surform inside SurrealDB</a> — the same pipeline as a Surrealism module: migrate from within SurrealQL.</li>
+<li><a href="normalize.html">Adopting a database</a> — when the database wins, merge it into the file instead.</li>
+<li><a href="cli.html">The CLI</a> — the migrate command's flags and exits.</li>
+</ul>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#a-live-walkthrough">A live walkthrough</a>
+<a class="toc-2" href="#the-other-direction-sdl-the-database-lacks">The other direction: SDL the database lacks</a>
+<a class="toc-2" href="#from-one-schema-version-to-the-next">From one schema version to the next</a>
+<a class="toc-2" href="#adopting-the-pipeline-the-baseline-migration">Adopting the pipeline: the baseline migration</a>
+<a class="toc-2" href="#the-data-migration-slots">The data-migration slots</a>
+<a class="toc-2" href="#staged-migrations-re-keying-a-field-over-live-rows">Staged migrations: re-keying a field over live rows</a>
+<a class="toc-2" href="#reading-the-report">Reading the report</a>
+<a class="toc-2" href="#the-scripts-shape">The script's shape</a>
+<a class="toc-2" href="#the-command">The command</a>
+<a class="toc-2" href="#pulling-the-interchange">Pulling the interchange</a>
+<a class="toc-2" href="#saving-drafts-and-committing-them">Saving drafts and committing them</a>
+<a class="toc-3" href="#draft-groups-multi-scope-schemas">Draft groups (multi-scope schemas)</a>
+<a class="toc-2" href="#pushing-to-a-live-database">Pushing to a live database</a>
+<a class="toc-2" href="#checking-status">Checking status</a>
+<a class="toc-2" href="#reverting-a-migration">Reverting a migration</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/migrate.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

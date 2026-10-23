@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: MIXIN · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: MIXIN">
+<link rel="canonical" href="spec-mixin.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html" class="active">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: MIXIN</span></div>
+  <article>
+<h1 class="page-title">Spec: MIXIN</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p><strong>SDL-only statement</strong> — <code>mixin</code> has no SurrealQL counterpart: it names a group of member definitions that expands, at compile time, into every table that spreads it. No parser ground truth applies to the statement itself (the surface is SDL's own, 2026-09-29); its member grammar is a table block's body minus <code>on:</code> clauses — fields (<a href="spec-field.html">field.md</a>), indexes (<a href="spec-index.html">index.md</a>), and events (<a href="spec-event.html">event.md</a>) — and the expansion emits the plain <code>DEFINE</code> statements each member spells: every engine-level guarantee is the member's own spec's.</p>
+<p><strong>Surface decisions (settled):</strong></p>
+<ul><li><strong>Licensed sugar (rule 6's one licensed deviation):</strong> mixins are compile-time expansion and nothing else. A <code>mixin</code> statement emits no DDL of its own; a spread expands to the member statements, in place, at the spread's position in the table's nested order. The database never sees a mixin — only the expanded members.</li>
+<li><strong>Members are the table body minus <code>on:</code> clauses</strong> — fields (the <a href="spec-field.html">field.md</a> grammar: bare <code>name: type &lt;clauses&gt;;</code> with the optional <code>field</code> prefix, dotted paths and wildcards, computed forms, permissions both forms), indexes, and events (their own specs' clause grammars, <code>on:</code> never appearing — the host is whichever table spreads the mixin). A bare field head named <code>index</code> or <code>event</code> needs the <code>field</code> prefix or quoting, exactly as in a table block (the keys are active in this body). <code>///</code> is rejected on the statement itself — it emits nothing, so there is no <code>COMMENT</code> target (the <code>sequence</code>/<code>config</code> precedent, rule 5) — and on members, the nested-statement rule (spec/table.md: doc comments are top-level-only; a member that must carry a <code>COMMENT</code> spells the statement explicitly on the spreading table, overshadowing). The kind-local validations (<code>fields:</code> arity per index kind, an event's required <code>then:</code>) fire at the member's own parse, host-independent; the host-dependent rules re-run at the table fold (below).</li>
+<li><strong>The spread</strong> — <code>...&lt;name&gt;;</code> — is a <strong>body entry</strong> of a non-view <code>table</code> block, not a clause: sigil-led, no key, no colon (the taxonomy's clause forms do not apply). One name per entry; the name follows identifier rules (quoted forms legal). It is legal nowhere else — a view block (views take no nested definitions), a mixin body (v1: no mixin-into-mixin), and every other block reject it.</li>
+<li><strong>Members collide per KIND</strong>: the collision key is the family plus its name — a field's dotted path, an index's or event's name. A field <code>x</code>, an index <code>x</code>, and an event <code>x</code> never collide with one another (distinct namespaces, the merge's family+key model). The same key TWICE within ONE body — a mixin's or a table's — is an error (SDL-E1067, the E1064 copy-paste rationale: the engine's last-one-wins would silently hide the duplicate); the same key in two different mixins, or a mixin member against a spread-carrying table's explicit member, is the collision machinery above instead (last-wins between spreads, explicit overshadow, never this error).</li>
+<li><strong>Explicit members wholly overshadow</strong> — an explicit field, index, or event anywhere in the table with the same family key as a member replaces that member in that table entirely: position-independent (order of the spread and the explicit statement is irrelevant), whole-statement (no clause merging — the explicit statement <em>is</em> the definition). Overriding is per-table; other tables spreading the same mixin are unaffected.</li>
+<li><strong>Spread collisions resolve last-occurrence-wins</strong> (the 2026-09-30 amendment): when two spreads carry the same family key and no explicit member decides it, the LATER spread's member wholly wins — the loser is skipped at expansion, never emitted-then-overwritten. Engine parity is the ground truth (<code>DEFINE FIELD OVERWRITE x</code> twice applies the second; the expanded DDL of a collision was always legal) and rule 7's own clause fold already plays last-one-wins. Spread order is therefore semantic — which is why the formatter preserves it and the linter advises on the possibly-unintended class (SDL-L0022: a later spread's member shadows an earlier spread's; an explicit member's overshadow stays unlinted — the author decided it). The same mixin spread twice into one table stays an error (SDL-E1064): under last-wins it would be a harmless no-op, which is exactly the copy-paste smell to reject.</li>
+<li><strong>Resolution is global</strong> (the declarative namespace): a spread resolves against the document's WHOLE mixin set — defined anywhere, any file of the composition, any position. Parse carries the entry as an opaque name; a post-parse resolution pass checks every entry against the set, so a name resolving to nothing is SDL-E1061 — an error, never a silent empty expansion — in every check-class context (the CLI's loader runs it; fmt never does, which is why any single file formats standalone). Within a mixin body, the table-block discipline carries over as PRESENTATION: fields before the indexes that use them reads best, but the compiler's emission order (README rule 7) places an index after the fields it names regardless of authored position.</li>
+<li><strong>Names</strong>: mixin names are their own namespace (they collide with nothing); a duplicate mixin name — within one file (the parse), or across a composition's files (the order pass) — is an error, not a last-one-wins fold: the reference would be ambiguous in intent. Every other definition family shares the class since the declarative namespace (README rule 7's duplicates rule: one error, any file, any position). <code>mixin</code> is not a SurrealQL keyword and is never reserved at field positions (<code>mixin: string;</code> is an ordinary field; quoting and the <code>field</code> prefix escape it at the ambiguous positions like any word).</li>
+<li><strong>Validation at expansion</strong>: the rules a nested member meets at the table fold are re-run over each LANDED member (an explicitly overshadowed member and a later-spread-beaten loser never land): the LIGHTWEIGHT rejection rides the spread entry itself; <code>inline;</code>'s host-relation rule re-runs at the fold, anchored at the member's authored site with the host named in its message; subfield-under-computed re-runs the same way (the rule's own message, no host); the host-independent member grammar (<code>id</code>, computed shape, flexible's kind, the index/event kind-local rules) fires at the member's own parse like any nested statement's. Engine-level validations that fire at define time (an index needing an existing field, a computed referencing a missing sibling) apply to the expanded DDL unchanged.</li>
+<li><strong>fmt round-trips spreads</strong>: the canonical writer prints the <code>mixin</code> statement and each <code>...&lt;name&gt;;</code> entry (rule 5 anchoring applies — a member's or a spread entry's <code>//</code> lines ride it). Expansion is never visible in canonical SDL written from an authored file. The table body prints in the canonical member layout (spec/table.md): clauses, then fields, then spreads (relative order preserved — the semantics lives there), then indexes, then events, each group a stable sort — fields before the spreads so a spread-carried index can never define above an explicit field it names (the engine validates field existence at define); a mixin body prints its members in the same layout minus spreads.</li>
+<li><strong>Reverse path</strong> (the spread-preserving merge): INFO cannot carry mixins — the reader never adopts or synthesizes one (the class <code>raw</code> occupies: apply-pending, never a define the tool emits). The merge keeps the <code>mixin</code> statement and every <code>...&lt;name&gt;;</code> entry authored; per member, the spread's LANDED definition pairs against the database child of its key — <strong>state-equal</strong> (the differ's own resolution: elisions, the kind algebra, comments stripped) and the child is covered by the spread (the merged file declares it through the entry); <strong>diverged</strong> and the child materializes as an explicit statement on the table — the overshadow rule performing the adoption, the spread surviving with its member overshadowed position-independently (the canonical layout prints the override before the spread — order is semantic-free there; idempotent: round two sees the override as an explicit member and converges); <strong>absent from the database</strong> and the member stays declared through the spread (apply-pending). A spread never dies of MEMBER drift — a single-member divergence materializes only that member, because no later merge could re-derive a removed spread (the reader never synthesizes one) and the suddenly-unspread mixin would lint L0021 on the merge's own output. The one representation-level exception: a database that redefines the whole table as a VIEW merges to the view statement — a view body takes no nested definitions (SDL-E1065's class), so no spread can ride it; the mixin lints L0021 and the differ reports the kind drift. The differ expands the SDL side itself: a diverged member is reported as drift on that member's statement, never as a mixin-level finding.</li>
+</ul>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>// no /// on the statement — rejected, no COMMENT target; members
+// take none either (the nested-statement rule)
+mixin &lt;name&gt; {
+  &lt;member entries — the field/index/event grammars, on: never present&gt;;
+};                                      // block optional when empty
+                                        //   (`mixin base;`)
+
+// inside a non-view table block only:
+...&lt;name&gt;;                              // expands to the mixin's
+                                        //   members, in place</code></pre></div>
+<p><strong>Errors</strong> (SDL-E1061 block; the numbering keeps its gap — codes are hand-assigned, the E2xxx precedent):</p>
+<p>| code | error | | --- | --- | | SDL-E1061 | <code>...&lt;name&gt;;</code> naming no mixin of the document — spreads resolve against the composition's whole mixin set (the resolution pass's finding: any file, any position; a typo'd spread is an error, never a silent empty expansion) | | SDL-E1062 | duplicate mixin name — within one file (parse) or across a composition's files (the order pass); the same code generalizes to every definition family (README rule 7's duplicates rule — one error, any file, any position) | | SDL-E1063 | <em>(retired with the last-occurrence-wins amendment — a collision between two spreads no longer errors; SDL-L0022 advises)</em> | | SDL-E1064 | the same mixin spread twice into one table | | SDL-E1065 | a spread entry in any block that is not a non-view table body | | SDL-E1066 | <em>(retired with the spread-preserving merge — <code>normalize</code> merges mixin-carrying files instead of refusing)</em> | | SDL-E1067 | the same member key (family + name) defined twice within one body — a mixin's or a table's |</p>
+<p><strong>Linter:</strong> SDL-L0021 — a mixin defined but never spread (advisory; the definition is dead weight — it emits nothing anywhere); SDL-L0022 — a later spread's member shadows an earlier spread's (advisory; the file compiles to the later definition — the possibly-unintended class; an explicit member's overshadow stays unlinted, the author decided it).</p>
+<h2 id="examples">Examples</h2>
+<p>a mixin, spread, and an overshadowing explicit field:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">mixin</span> timestamped {
+  created_at: <span class="tok-k">datetime</span>;
+  updated_at: <span class="tok-k">datetime</span>;
+};
+
+<span class="tok-k">table</span> post <span class="tok-k">schemafull</span> {
+  ...timestamped;
+  title: <span class="tok-k">string</span>;
+  <span class="tok-c">// explicit field wholly replaces the mixin's created_at here:</span>
+  created_at: <span class="tok-k">datetime</span> {
+    <span class="tok-k">default:</span> time::now();
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> updated_at <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> title <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> created_at <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span> <span class="tok-k">DEFAULT</span> time::now();
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"mixin timestamped {\n  created_at: datetime;\n  updated_at: datetime;\n};\n\ntable post schemafull {\n  ...timestamped;\n  title: string;\n  // explicit field wholly replaces the mixin's created_at here:\n  created_at: datetime {\n    default: time::now();\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE post TYPE NORMAL SCHEMAFULL;
+DEFINE FIELD updated_at ON post TYPE datetime;
+DEFINE FIELD title ON post TYPE string;
+DEFINE FIELD created_at ON post TYPE datetime DEFAULT time::now();</code></pre></div>
+<p>the same mixin spread into a second table (per-table override, no cross-table effect):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">mixin</span> stamp {
+  created_at: <span class="tok-k">datetime</span>;
+  updated_at: <span class="tok-k">datetime</span>;
+};
+
+<span class="tok-k">table</span> account <span class="tok-k">schemafull</span> {
+  ...stamp;
+  email: <span class="tok-k">string</span> {
+    <span class="tok-k">assert:</span> string::is_email(<span class="tok-v">$value</span>);
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> account <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> created_at <span class="tok-k">ON</span> account <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> updated_at <span class="tok-k">ON</span> account <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> account <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::is_email(<span class="tok-v">$value</span>);
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"mixin stamp {\n  created_at: datetime;\n  updated_at: datetime;\n};\n\ntable account schemafull {\n  ...stamp;\n  email: string {\n    assert: string::is_email($value);\n  };\n};"}</script>
+</figure>
+<p>members carry the full field grammar — dotted paths, computed forms, permissions:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">mixin</span> metadata {
+  meta.created_by: <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt;;
+  meta.created_at: <span class="tok-k">datetime</span> {
+    <span class="tok-k">default:</span> time::now();
+  };
+  label = string::uppercase(title);
+  secret_key: <span class="tok-k">string</span> {
+    <span class="tok-k">permissions</span> {
+      <span class="tok-k">select:</span> <span class="tok-k">none</span>;
+    };
+  };
+};
+
+<span class="tok-k">table</span> invoice <span class="tok-k">schemafull</span> {
+  ...metadata;
+  amount: <span class="tok-k">decimal</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> invoice <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> meta.created_by <span class="tok-k">ON</span> invoice <span class="tok-k">TYPE</span> <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> meta.created_at <span class="tok-k">ON</span> invoice <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span> <span class="tok-k">DEFAULT</span> time::now();
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> label <span class="tok-k">ON</span> invoice <span class="tok-k">COMPUTED</span> string::uppercase(title);
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> secret_key <span class="tok-k">ON</span> invoice <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">NONE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> amount <span class="tok-k">ON</span> invoice <span class="tok-k">TYPE</span> <span class="tok-k">decimal</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"mixin metadata {\n  meta.created_by: record\u003cuser>;\n  meta.created_at: datetime {\n    default: time::now();\n  };\n  label = string::uppercase(title);\n  secret_key: string {\n    permissions {\n      select: none;\n    };\n  };\n};\n\ntable invoice schemafull {\n  ...metadata;\n  amount: decimal;\n};"}</script>
+</figure>
+<p>members of every kind — indexes and events spread with the fields (<code>on:</code> never appears on a member; the spreading table becomes the <code>on</code> at expansion):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">mixin</span> slug_source {
+  slug: <span class="tok-k">string</span>;
+  <span class="tok-k">index</span> slug_u {
+    <span class="tok-k">fields:</span> slug;
+    <span class="tok-k">concurrently</span>;
+  };
+  <span class="tok-k">event</span> slug_touched {
+    <span class="tok-k">when:</span> slug != <span class="tok-s">''</span>;
+    <span class="tok-k">then:</span> <span class="tok-n">1</span>;
+  };
+};
+
+<span class="tok-k">table</span> article <span class="tok-k">schemafull</span> {
+  ...slug_source;
+  body: <span class="tok-k">string</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> article <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> slug <span class="tok-k">ON</span> article <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> slug_u <span class="tok-k">ON</span> article <span class="tok-k">FIELDS</span> slug <span class="tok-k">CONCURRENTLY</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">EVENT</span> <span class="tok-k">OVERWRITE</span> slug_touched <span class="tok-k">ON</span> article <span class="tok-k">WHEN</span> slug != <span class="tok-s">''</span> <span class="tok-k">THEN</span> <span class="tok-n">1</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> body <span class="tok-k">ON</span> article <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"mixin slug_source {\n  slug: string;\n  index slug_u {\n    fields: slug;\n    concurrently;\n  };\n  event slug_touched {\n    when: slug != '';\n    then: 1;\n  };\n};\n\ntable article schemafull {\n  ...slug_source;\n  body: string;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE article TYPE NORMAL SCHEMAFULL;
+DEFINE FIELD slug ON article TYPE string;
+DEFINE INDEX slug_u ON article FIELDS slug CONCURRENTLY;
+DEFINE EVENT slug_touched ON article WHEN slug != '' THEN 1;
+DEFINE FIELD body ON article TYPE string;</code></pre></div>
+<p>two spreads colliding — last-occurrence-wins (the later spread's member wholly wins, the loser skipped at expansion; the explicit field on the second table decides instead, position-independently):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">mixin</span> short_id {
+  id_hint: <span class="tok-k">int</span>;
+};
+
+<span class="tok-k">mixin</span> long_id {
+  id_hint: <span class="tok-k">string</span>;
+};
+
+<span class="tok-k">table</span> post <span class="tok-k">schemafull</span> {
+  ...short_id;
+  ...long_id;
+};
+
+<span class="tok-k">table</span> <span class="tok-k">comment</span> <span class="tok-k">schemafull</span> {
+  ...short_id;
+  ...long_id;
+  id_hint: <span class="tok-k">bool</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> id_hint <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">comment</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> id_hint <span class="tok-k">ON</span> `<span class="tok-k">comment</span>` <span class="tok-k">TYPE</span> <span class="tok-k">bool</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"mixin short_id {\n  id_hint: int;\n};\n\nmixin long_id {\n  id_hint: string;\n};\n\ntable post schemafull {\n  ...short_id;\n  ...long_id;\n};\n\ntable comment schemafull {\n  ...short_id;\n  ...long_id;\n  id_hint: bool;\n};"}</script>
+</figure>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#examples">Examples</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/mixin.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

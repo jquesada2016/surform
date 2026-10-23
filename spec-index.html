@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE INDEX · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE INDEX">
+<link rel="canonical" href="spec-index.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html" class="active">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE INDEX</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE INDEX</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>parse_define_index</code>), AST/enums (<code>sql/index.rs</code>, <code>sql/scoring.rs</code>), and emitters (<code>sql/statements/define/index.rs</code>, <code>catalog/schema/index.rs</code>). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor-move corpus re-runs on the 3.3.0 embed (2026-09-25).</p>
+<p>The kind is the discriminant and rides in the <strong>header variant slot</strong>: <code>index [unique | count | fulltext | hnsw | diskann] &lt;name&gt;</code>. A plain index omits the slot. Kind parameters are direct clauses — no extra nesting.</p>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>enum IndexKind {
+  Plain,
+  Unique,
+  Count { where? },
+  FullText { analyzer = 'like',          // defaults materialize in INFO
+             bm25 = (1.2, 0.75),         // omit for defaults
+             highlights? },
+  Hnsw { dimension,                       // required; u16
+         distance? = euclidean, type? = f32,
+         m? = 12 /* u8, ≤127 */, m0? = 2×m, lm? = 1/ln(m),
+         efc? = 150 /* u16 */,
+         extend_candidates?, keep_pruned_connections?, hashed_vector? },
+  DiskAnn { dimension,                    // u16
+            distance? = euclidean, type? = f32,
+            degree? = 64, l_build? = 100,   // u16, &gt; 0
+            alpha? = 1.2, hashed_vector? },
+}
+struct Index {
+  kind: IndexKind,                        // from the header slot
+  name: Ident,
+  on: TableRef,                           // standalone only
+  fields: Vec&lt;Expr&gt;,                      // `columns:` alias accepted
+  concurrently: bool,                     // build directive; not persisted
+  comment: Option&lt;DocComment&gt;,            // from ///
+}</code></pre></div>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>/// &lt;doc comment&gt;                        // optional — emitted as COMMENT
+index [unique | count | fulltext | hnsw | diskann] &lt;name&gt; {
+  // required when standalone (omit inside a table block):
+  on: &lt;table&gt;;
+
+  // shared:
+  fields: &lt;expr&gt;, …;                   // required; exactly ONE field for
+                                       //   fulltext/hnsw/diskann;
+                                       //   FORBIDDEN for count;
+                                       //   `columns:` alias accepted
+  concurrently;                        // flag — build in background
+
+  // variant `count`:
+  where: &lt;expr&gt;;                       // filtered count
+
+  // variant `fulltext`:
+  analyzer: &lt;ident&gt;;                   // default 'like' (materializes)
+  bm25: (&lt;number&gt;, &lt;number&gt;);          // SDL-lexed pair — two numbers,
+                                       //   parens mandatory; omit for the
+                                       //   (1.2, 0.75) default
+  highlights;                          // flag
+
+  // variant `hnsw`:
+  dimension: &lt;number&gt;;                 // required; u16
+  distance: &lt;distance&gt;;                // default euclidean; minkowski
+                                       //   takes (order) in SDL
+  type: &lt;vector-type&gt;;                 // default f32
+  m: &lt;number&gt;;                         // u8, ≤ 127 (parser-enforced);
+                                       //   default 12
+  m0: &lt;number&gt;;                        // u8; default 2×m
+  lm: &lt;number&gt;;                        //   lm default 1/ln(m) — omitted
+                                       //   params derive from m at parse;
+  efc: &lt;number&gt;;                       // u16; default 150
+  extend_candidates;                   // flags (underscore names kept
+  keep_pruned_connections;             //   from SurrealQL, lowercased)
+  hashed_vector;
+
+  // variant `diskann` (3.1+, not on WASM):
+  dimension: &lt;number&gt;;                 // required; u16
+  distance: &lt;distance&gt;;                // restricted domain below
+  type: &lt;vector-type&gt;;                 // restricted domain below;
+                                       //   cosine_normalized ⇒ f32|f16
+  degree: &lt;number&gt;;                    // u16, &gt; 0; default 64
+  l_build: &lt;number&gt;;                   // u16, &gt; 0; default 100
+  alpha: &lt;number&gt;;                     // default 1.2
+  hashed_vector;
+};</code></pre></div>
+<p><strong>Domains (ground-truthed from <code>parse_distance</code>/<code>parse_vector_type</code>):</strong></p>
+<ul><li><code>distance</code> — the SurrealQL distance set is 10 kinds: <code>euclidean</code>, <code>cosine</code>, <code>cosine_normalized</code>, <code>chebyshev</code>, <code>hamming</code>, <code>jaccard</code>, <code>pearson</code>, <code>inner_product</code>, <code>manhattan</code>, and <code>minkowski</code> — the last takes an order argument, spelled <strong>without parentheses</strong> in SurrealQL (<code>DISTANCE MINKOWSKI 3</code>); SDL spells it <code>distance: minkowski(3);</code> (paren form, consistent with <code>bm25:</code>) and codegen emits the bare form. <strong>Only DISKANN restricts the set</strong> (parser-enforced: <code>euclidean | cosine | inner_product | cosine_normalized</code>); HNSW accepts all ten.</li>
+<li><code>type</code> — the SurrealQL vector-type set is 8 kinds: <code>f64</code>, <code>f32</code>, <code>f16</code>, <code>i64</code>, <code>i32</code>, <code>i16</code>, <code>i8</code>, <code>u8</code>. <strong>Only DISKANN restricts</strong> (<code>f32 | f16 | i8 | u8</code>, and <code>cosine_normalized</code> ⇒ <code>f32 | f16</code>); HNSW accepts all eight.</li>
+</ul>
+<p>Validation (parser-enforced, verified): count forbids <code>fields:</code>; fulltext/hnsw/diskann require exactly one; unique/plain need ≥ 1; <code>m ≤ 127</code>; diskann degree/l_build &gt; 0 and combo checks. Float scalars are unsigned bounded decimals (verified): no sign, no <code>NaN</code>/<code>Infinity</code> spellings, magnitudes under 2⁶³ — SDL prints the value bare, so anything larger would emit an integer literal upstream's 64-bit lexer rejects (the bm25 sides additionally store f32, which the bound keeps finite).</p>
+<p>Emit: <code>DEFINE INDEX &lt;name&gt; ON &lt;table&gt; [FIELDS &lt;f&gt;, …] &lt;kind clause&gt; [COMMENT …] [CONCURRENTLY];</code> — kind params emit in SurrealQL keyword form; codegen writes <code>DISTANCE</code> (both it and the server's printed <code>DIST</code> alias parse — the reverse parser accepts both, canonical SDL says <code>distance:</code>). Note the trailing-clause order: the server's own canonical order is <code>… &lt;kind&gt; COMMENT … CONCURRENTLY</code>; both orders parse; the differ compares resolved state (kinds under the algebra, expressions over canonical text); the transient <code>concurrently;</code> directive never drifts — INFO cannot report it.</p>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p>Two always-materialized shapes (verified): bare <code>FULLTEXT</code> returns as <code>FULLTEXT ANALYZER like BM25(1.2,0.75)</code>, and a full HNSW param set is printed explicitly, <strong>including derived <code>M0</code>/<code>LM</code></strong> (computed from m at define). Canonical minimal form elides: analyzer/bm25 at defaults; <code>m0</code>/<code>lm</code> when they equal the values derived from the (possibly defaulted) <code>m</code> — compare by recomputing from <code>m</code> (relative epsilon 1e-9 for <code>lm</code>'s float; never string-compare); <code>m</code>/<code>efc</code>/<code>degree</code>/ <code>l_build</code>/<code>alpha</code>/<code>type</code>/<code>distance</code> at defaults. <code>CONCURRENTLY</code> never appears in INFO (transient — preserve from SDL). Unrepresentable-but- legal DDL (e.g. legacy <code>VS</code> scoring, or a DISKANN-restricted kind appearing where SDL's grammar can't express it) routes the statement to <code>raw</code>. <code>bm25:</code> values are stored as <strong>f32</strong> — INFO reprints the rounded pair (adopt per protocol). Indexes are listed by <code>INFO FOR TABLE &lt;t&gt;</code>; canonical placement nests them into their table block.</p>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): multi-field + <code>COLUMNS</code> alias ✅; <code>UNIQUE CONCURRENTLY</code> ✅; <code>COUNT</code> bare and <code>COUNT WHERE</code> ✅; count+fields → <code>Cannot create a count index with fields</code> ✅; bare <code>FULLTEXT</code> materializes <code>ANALYZER like BM25(1.2,0.75)</code> ✅; full HNSW param set incl. <code>EXTEND_CANDIDATES</code>/<code>KEEP_PRUNED_CONNECTIONS</code>/ <code>HASHED_VECTOR</code> ✅; <code>M 200</code> → <code>Invalid value for HNSW parameter M</code> ✅; DISKANN <code>COSINE_NORMALIZED</code>+<code>I8</code> → combo error ✅; full DISKANN params ✅; two-field HNSW → <code>Expected one column, found 2</code> ✅; <code>CONCURRENTLY</code> absent from INFO ✅.</p>
+<h2 id="examples-one-per-variant">Examples (one per variant)</h2>
+<p>plain multi-field + doc comment:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">/// Composite lookup for inbox queries</span>
+<span class="tok-k">index</span> by_account_thread {
+  <span class="tok-k">on:</span> message;
+  <span class="tok-k">fields:</span> account, thread_id;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> by_account_thread <span class="tok-k">ON</span> message <span class="tok-k">FIELDS</span> account, thread_id
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Composite lookup for inbox queries'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"/// Composite lookup for inbox queries\nindex by_account_thread {\n  on: message;\n  fields: account, thread_id;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX by_account_thread ON message FIELDS account, thread_id
+  COMMENT 'Composite lookup for inbox queries';</code></pre></div>
+<p>unique + concurrently:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">index</span> <span class="tok-k">unique</span> one_email {
+  <span class="tok-k">on:</span> <span class="tok-k">user</span>;
+  <span class="tok-k">fields:</span> email;
+  <span class="tok-k">concurrently</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> one_email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">FIELDS</span> email <span class="tok-k">UNIQUE</span> <span class="tok-k">CONCURRENTLY</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"index unique one_email {\n  on: user;\n  fields: email;\n  concurrently;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX one_email ON user FIELDS email UNIQUE CONCURRENTLY;</code></pre></div>
+<p>count — bare and filtered:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">index</span> <span class="tok-k">count</span> row_count {
+  <span class="tok-k">on:</span> reading;
+};
+<span class="tok-k">index</span> <span class="tok-k">count</span> active_count {
+  <span class="tok-k">on:</span> item;
+  <span class="tok-k">where:</span> status = <span class="tok-s">'active'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> row_count <span class="tok-k">ON</span> reading <span class="tok-k">COUNT</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> active_count <span class="tok-k">ON</span> item <span class="tok-k">COUNT</span> <span class="tok-k">WHERE</span> status = <span class="tok-s">'active'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"index count row_count {\n  on: reading;\n};\nindex count active_count {\n  on: item;\n  where: status = 'active';\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX row_count ON reading COUNT;
+DEFINE INDEX active_count ON item COUNT WHERE status = 'active';</code></pre></div>
+<p>fulltext — minimal (defaults materialize) and full:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">index</span> <span class="tok-k">fulltext</span> body_fts {
+  <span class="tok-k">on:</span> post;
+  <span class="tok-k">fields:</span> body;
+};
+<span class="tok-k">index</span> <span class="tok-k">fulltext</span> title_fts {
+  <span class="tok-k">on:</span> post;
+  <span class="tok-k">fields:</span> title;
+  <span class="tok-k">analyzer:</span> english;
+  <span class="tok-k">bm25:</span> (<span class="tok-n">1.2</span>, <span class="tok-n">0.75</span>);
+  <span class="tok-k">highlights</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> body_fts <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> body <span class="tok-k">FULLTEXT</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> title_fts <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> title
+    <span class="tok-k">FULLTEXT</span> <span class="tok-k">ANALYZER</span> `english` <span class="tok-k">BM25</span>(<span class="tok-n">1.2</span>,<span class="tok-n">0.75</span>) <span class="tok-k">HIGHLIGHTS</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"index fulltext body_fts {\n  on: post;\n  fields: body;\n};\nindex fulltext title_fts {\n  on: post;\n  fields: title;\n  analyzer: english;\n  bm25: (1.2, 0.75);\n  highlights;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX body_fts ON post FIELDS body FULLTEXT;
+DEFINE INDEX title_fts ON post FIELDS title
+  FULLTEXT ANALYZER english BM25(1.2, 0.75) HIGHLIGHTS;</code></pre></div>
+<p>hnsw — minimal and tuned (the tuned set exercises minkowski and the underscore flags; note the emitted <code>MINKOWSKI 3</code> — no parentheses):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">index</span> <span class="tok-k">hnsw</span> vec {
+  <span class="tok-k">on:</span> embedding;
+  <span class="tok-k">fields:</span> vector;
+  dimension: <span class="tok-n">768</span>;
+  distance: <span class="tok-k">cosine</span>;
+};
+<span class="tok-k">index</span> <span class="tok-k">hnsw</span> vec_tuned {
+  <span class="tok-k">on:</span> embedding;
+  <span class="tok-k">fields:</span> vector;
+  dimension: <span class="tok-n">768</span>;
+  distance: <span class="tok-k">minkowski</span>(<span class="tok-n">3</span>);
+  <span class="tok-k">type:</span> f16;
+  <span class="tok-k">m:</span> <span class="tok-n">16</span>;
+  <span class="tok-k">efc:</span> <span class="tok-n">200</span>;
+  extend_candidates;
+  keep_pruned_connections;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> vec <span class="tok-k">ON</span> embedding <span class="tok-k">FIELDS</span> vector <span class="tok-k">HNSW</span> DIMENSION <span class="tok-n">768</span> DISTANCE <span class="tok-k">COSINE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> vec_tuned <span class="tok-k">ON</span> embedding <span class="tok-k">FIELDS</span> vector
+    <span class="tok-k">HNSW</span> DIMENSION <span class="tok-n">768</span> DISTANCE <span class="tok-k">MINKOWSKI</span> <span class="tok-n">3</span> <span class="tok-k">TYPE</span> F16 <span class="tok-k">M</span> <span class="tok-n">16</span> <span class="tok-k">EFC</span> <span class="tok-n">200</span> EXTEND_CANDIDATES KEEP_PRUNED_CONNECTIONS;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"index hnsw vec {\n  on: embedding;\n  fields: vector;\n  dimension: 768;\n  distance: cosine;\n};\nindex hnsw vec_tuned {\n  on: embedding;\n  fields: vector;\n  dimension: 768;\n  distance: minkowski(3);\n  type: f16;\n  m: 16;\n  efc: 200;\n  extend_candidates;\n  keep_pruned_connections;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX vec ON embedding FIELDS vector HNSW DIMENSION 768 DISTANCE COSINE;
+DEFINE INDEX vec_tuned ON embedding FIELDS vector
+  HNSW DIMENSION 768 DISTANCE MINKOWSKI 3 TYPE F16 M 16 EFC 200
+  EXTEND_CANDIDATES KEEP_PRUNED_CONNECTIONS;</code></pre></div>
+<p>diskann — on-disk vectors:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">index</span> <span class="tok-k">diskann</span> big_vec {
+  <span class="tok-k">on:</span> document;
+  <span class="tok-k">fields:</span> embedding;
+  dimension: <span class="tok-n">1536</span>;
+  distance: cosine_normalized;
+  <span class="tok-k">type:</span> f16;
+  degree: <span class="tok-n">32</span>;
+  l_build: <span class="tok-n">50</span>;
+  alpha: <span class="tok-n">1.3</span>;
+  hashed_vector;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> big_vec <span class="tok-k">ON</span> document <span class="tok-k">FIELDS</span> embedding
+    <span class="tok-k">DISKANN</span> DIMENSION <span class="tok-n">1536</span> DISTANCE COSINE_NORMALIZED <span class="tok-k">TYPE</span> F16 DEGREE <span class="tok-n">32</span> L_BUILD <span class="tok-n">50</span> ALPHA <span class="tok-n">1.3</span> HASHED_VECTOR;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"index diskann big_vec {\n  on: document;\n  fields: embedding;\n  dimension: 1536;\n  distance: cosine_normalized;\n  type: f16;\n  degree: 32;\n  l_build: 50;\n  alpha: 1.3;\n  hashed_vector;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE INDEX big_vec ON document FIELDS embedding
+  DISKANN DIMENSION 1536 DISTANCE COSINE_NORMALIZED TYPE F16
+  DEGREE 32 L_BUILD 50 ALPHA 1.3 HASHED_VECTOR;</code></pre></div>
+<h2 id="nesting">Nesting</h2>
+<p>Indexes are table-scoped; inside a <code>table</code> block they omit <code>on:</code> — same rule as fields and events (see <a href="spec-table.html">table.md</a>).</p>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-variant">Examples (one per variant)</a>
+<a class="toc-2" href="#nesting">Nesting</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/index.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

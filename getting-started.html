@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Getting started">
+<link rel="canonical" href="getting-started.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html" class="active">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Start</span><span class="crumb-title">Getting started</span></div>
+  <article>
+<h1 class="page-title">Getting started</h1>
+<p>This page takes a small schema from an empty directory to a compiled, apply-ready script.</p>
+<h2 id="install">Install</h2>
+<p>Surform is a single Rust program with no runtime dependencies. You need the Rust toolchain (<a href="https://rustup.rs">rustup</a> installs it in one command), then clone this repository and build the compiler:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>cargo install --path .</code></pre></div>
+<p>That puts the <code>surform</code> binary on your PATH. Check it:</p>
+<div class="codebox"><span class="lang-chip">text</span><span class="code-note">captured output — the real thing, not prose</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>Declarative SurrealDB schemas — SDL to SurrealQL DDL and back
+
+Usage: surform [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  check      Parse an SDL file and report diagnostics
+  build      Compile an SDL file to SurrealQL DDL
+  fmt        Write an SDL file's canonical form
+  normalize  Merge rendered INFO interchange into an SDL file and re-emit the canonical SDL
+  migrate    Schema migrations — generate, commit, push, status, revert
+  lint       Lint an SDL file — advisory findings, exit 1 when any exist
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --json     Render diagnostics as JSON (one object per line) instead of the graphical format
+  -h, --help     Print help
+  -V, --version  Print version</code></pre></div>
+<h2 id="the-schema">The schema</h2>
+<p>Here is the quick-start schema — a shop with users and posts. This is <code>examples/shop.surdl</code> in the docs sources; every panel on this page is produced from this file. The examples on these pages are editable: the verdict and the DDL recompute as you type, and Reset brings the verified text back.</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">// The quick-start schema. `//` lines are ordinary comments — they</span>
+<span class="tok-c">// document the file and never reach the database.</span>
+
+<span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// People who buy things.</span>
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+
+  <span class="tok-c">// The engine rejects anything that does not look like an email.</span>
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span> { <span class="tok-k">assert:</span> string::is_email(<span class="tok-v">$value</span>); };
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+
+  <span class="tok-c">// No two accounts share an email — a plain comment, since doc</span>
+  <span class="tok-c">// comments only attach to top-level definitions.</span>
+  <span class="tok-k">index</span> <span class="tok-k">unique</span> email_unique {
+    <span class="tok-k">fields:</span> email;
+  };
+};
+
+<span class="tok-c">/// Anything a user publishes.</span>
+<span class="tok-k">table</span> post {
+  <span class="tok-k">schemafull</span>;
+
+  <span class="tok-k">field</span> title: <span class="tok-k">string</span> { <span class="tok-k">assert:</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>; };
+  <span class="tok-k">field</span> body: <span class="tok-k">string</span>;
+
+  <span class="tok-c">// Who wrote this post.</span>
+  <span class="tok-k">field</span> author: <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt;;
+
+  <span class="tok-k">index</span> author_idx {
+    <span class="tok-k">fields:</span> author;
+  };
+};
+</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span> <span class="tok-k">COMMENT</span> <span class="tok-s">'People who buy things.'</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::is_email(<span class="tok-v">$value</span>);
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> name <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> email_unique <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">FIELDS</span> email <span class="tok-k">UNIQUE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span> <span class="tok-k">COMMENT</span> <span class="tok-s">'Anything a user publishes.'</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> title <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> body <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> author_idx <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> author;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"// The quick-start schema. `//` lines are ordinary comments — they\n// document the file and never reach the database.\n\nnamespace acme;\ndatabase shop;\n\n/// People who buy things.\ntable user {\n  schemafull;\n\n  // The engine rejects anything that does not look like an email.\n  field email: string { assert: string::is_email($value); };\n  field name: string;\n\n  // No two accounts share an email — a plain comment, since doc\n  // comments only attach to top-level definitions.\n  index unique email_unique {\n    fields: email;\n  };\n};\n\n/// Anything a user publishes.\ntable post {\n  schemafull;\n\n  field title: string { assert: string::len($value) > 0; };\n  field body: string;\n\n  // Who wrote this post.\n  field author: record\u003cuser>;\n\n  index author_idx {\n    fields: author;\n  };\n};\n"}</script>
+</figure>
+<ul><li><code>///</code> <strong>doc comments</strong> become the definition's <code>COMMENT</code> in SurrealDB — your documentation travels with the schema.</li>
+<li><code>field email: string { assert: … };</code> — anything after <code>:</code> is SurrealQL, checked by SurrealDB itself. Surform does not invent a second expression language.</li>
+<li><code>index unique email_unique</code> is nested inside its table, the way you think about it; the compiler emits the standalone <code>DEFINE INDEX</code> SurrealDB expects.</li>
+<li><code>field author: record&lt;user&gt;</code> is a graph-style reference — types pass through verbatim.</li>
+</ul>
+<h2 id="check-it">Check it</h2>
+<p><code>check</code> parses the file and reports problems. On a clean file it says nothing at all — silence is success:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>captured from the real binary</span><div class="ex-block"><div class="ex-label">$ surform check shop.surdl</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code></code></pre></div>
+</div>
+</figure>
+<p>The same check on a file with a misspelled <code>permissions</code> clause:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> person {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  permisions: <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1003 (spec/README.md#design-rules-settled)
+
+  x unknown clause `permisions` in table definition
+   ,-[7:3]
+ 6 |   field name: string;
+ 7 |   permisions: full;
+   :   ^^^^^|^^^^
+   :        `-- unknown clause key
+ 8 | };
+   `----
+  help: did you mean `permissions`?
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"namespace acme;\ndatabase shop;\n\ntable person {\n  schemafull;\n  field name: string;\n  permisions: full;\n};"}</script>
+</figure>
+<p>The diagnostic points at the offending line, names the code, and suggests a fix. The <a href="cli.html">CLI reference</a> has more on reading diagnostics.</p>
+<h2 id="compile-it">Compile it</h2>
+<p><code>build</code> prints the SurrealQL DDL to stdout — pipe it to a file, to <code>surreal sql</code>, or to your deployment pipeline:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>captured from the real binary</span><div class="ex-block"><div class="ex-label">$ surform build shop.surdl</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE NAMESPACE OVERWRITE acme;
+USE NS acme;
+DEFINE DATABASE OVERWRITE shop;
+USE NS acme DB shop;
+DEFINE TABLE OVERWRITE `user` TYPE NORMAL SCHEMAFULL COMMENT 'People who buy things.';
+DEFINE FIELD OVERWRITE email ON `user` TYPE string ASSERT string::is_email($value);
+DEFINE FIELD OVERWRITE name ON `user` TYPE string;
+DEFINE INDEX OVERWRITE email_unique ON `user` FIELDS email UNIQUE;
+DEFINE TABLE OVERWRITE `post` TYPE NORMAL SCHEMAFULL COMMENT 'Anything a user publishes.';
+DEFINE FIELD OVERWRITE title ON `post` TYPE string ASSERT string::len($value) &gt; 0;
+DEFINE FIELD OVERWRITE body ON `post` TYPE string;
+DEFINE FIELD OVERWRITE author ON `post` TYPE record&lt;user&gt;;
+DEFINE INDEX OVERWRITE author_idx ON `post` FIELDS author;
+</code></pre></div>
+</div>
+</figure>
+<p>Two conventions the output relies on:</p>
+<ul><li>Every emitted <code>DEFINE</code> carries <strong><code>OVERWRITE</code></strong> (one exception: a user with no credential defines once — <a href="users.html">Users &amp; roles</a>). Applying the script twice — or applying it over a database that already has some of the definitions — redefines cleanly instead of erroring. Your schema file is the <em>desired state</em>; applying it converges the database to it.</li>
+<li>After each <code>DEFINE NAMESPACE</code> / <code>DEFINE DATABASE</code> the compiler emits the matching <strong><code>USE</code></strong> line, so one script crosses namespace and database boundaries safely (a database with no preceding namespace omits the <code>USE</code>).</li>
+</ul>
+<h2 id="apply-it">Apply it</h2>
+<p>The build output is ordinary SurrealQL — run it anywhere SurrealDB 3.3 runs. For example, with the SurrealDB CLI installed:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform build schema.surdl &gt; schema.surql
+surreal sql --conn ws://localhost:8000 --user root --pass … --ns acme --db shop &lt; schema.surql</code></pre></div>
+<p>Surform itself never touches your database connection — it produces the script, your existing tooling applies it. (Adopting a database — the reverse trip — is <a href="normalize.html">one command</a>.)</p>
+<h2 id="keep-it-tidy">Keep it tidy</h2>
+<p><code>fmt</code> prints the canonical form of a file: one clause style, one clause order, shortest spellings. Team members stop arguing about layout — the compiler owns it:</p>
+<figure class="example" data-interactive="fmt"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>canonical form verified (re-parses, stable)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">as you wrote it</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme; <span class="tok-k">database</span> shop;
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` { <span class="tok-k">schemafull</span>; <span class="tok-k">field</span> name:string; <span class="tok-k">field</span> email: <span class="tok-k">string</span> { <span class="tok-k">readonly</span>; }; }</code></pre></div>
+</div>
+<div class="ex-block" data-pane="fmt"><div class="ex-label">surform fmt</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span> {
+    <span class="tok-k">readonly</span>;
+  };
+};
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"fmt","body":"namespace acme; database shop;\ntable `user` { schemafull; field name:string; field email: string { readonly; }; }"}</script>
+</figure>
+<h2 id="let-the-linter-catch-the-traps">Let the linter catch the traps</h2>
+<p>Some mistakes are legal but dangerous. This table compiles, applies, and silently grants everyone everything — <code>permissions: full;</code> lets anyone, even unauthenticated users, read and write every record:</p>
+<figure class="example" data-interactive="lint"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform lint findings</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this file lints</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> secrets {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> payload: <span class="tok-k">string</span>;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="lint"><div class="ex-label">what Surform suggests</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-L0001 (spec/table.md)
+
+  ! table `secrets` in database `acme/shop`: permissions are `full` — anyone, even unauthenticated users, can access every record
+   ,-[4:1]
+ 3 |     
+ 4 | ,-&gt; table secrets {
+ 5 | |     schemafull;
+ 6 | |     field payload: string;
+ 7 | |     permissions: full;
+ 8 | |-&gt; };
+   : `---- `permissions: full` on this table
+   `----
+  help: `full` grants everyone — including unauthenticated connections — access to every record; omit the clause for the secure default (implicit `none`), or scope operations in a `permissions`
+        block
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"lint","body":"namespace acme;\ndatabase shop;\n\ntable secrets {\n  schemafull;\n  field payload: string;\n  permissions: full;\n};"}</script>
+</figure>
+<p><code>surform lint</code> explains why and links to the fix. Omitting the clause keeps the database's secure default — every operation denied — and never warns. The full catalog of warnings lives on <a href="lint.html">the linter page</a>.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="basics.html">How a schema file works</a> — files, ordering, comments, names, and the apply model in depth.</li>
+<li><a href="tables.html">Tables</a> is the first language page; the sidebar walks the rest.</li>
+<li><a href="cli.html">The surform CLI</a> — every command and flag.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#install">Install</a>
+<a class="toc-2" href="#the-schema">The schema</a>
+<a class="toc-2" href="#check-it">Check it</a>
+<a class="toc-2" href="#compile-it">Compile it</a>
+<a class="toc-2" href="#apply-it">Apply it</a>
+<a class="toc-2" href="#keep-it-tidy">Keep it tidy</a>
+<a class="toc-2" href="#let-the-linter-catch-the-traps">Let the linter catch the traps</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/getting-started.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

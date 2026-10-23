@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The VS Code extension · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: The VS Code extension">
+<link rel="canonical" href="vscode.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html" class="active">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">The VS Code extension</span></div>
+  <article>
+<h1 class="page-title">The VS Code extension</h1>
+<p>The repository ships a VS Code extension for the language: syntax highlighting for <code>.surdl</code> files, <strong>Format Document</strong> through the <code>surform</code> binary, and the compiler's diagnostics in an output channel. Its home is <a href="https://github.com/jquesada2016/surform/blob/main/editors/vscode/README.md"><code>editors/vscode/</code></a> in the repository — the README there carries the packaging and self-check details; this page is the overview.</p>
+<h2 id="install">Install</h2>
+<p>There is no Marketplace listing yet — the manifest's <code>publisher</code> is a placeholder, and publishing is a project-owner decision like the other release surfaces. Two ways to run it.</p>
+<p>Package a <code>.vsix</code> and install it:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>cd editors/vscode
+npx @vscode/vsce package
+code --install-extension surform-&lt;version&gt;.vsix</code></pre></div>
+<p>Or open <code>editors/vscode/</code> in VS Code and press F5 — the Extension Development Host.</p>
+<h2 id="syntax-highlighting">Syntax highlighting</h2>
+<p>The grammar (<code>syntaxes/surform.tmLanguage.json</code>, scope <code>source.surform</code>) covers <code>.surdl</code> — the canonical extension — and <code>.sdl</code>. It mirrors the language the compiler enforces: lowercase statement heads, clause keys ending at <code>:</code> / <code>{</code> / <code>;</code>, the three SurrealQL-verbatim bodies (<code>fn</code> bodies, view queries, <code>raw { … }</code>), and expression clauses captured to their depth-0 <code>;</code>.</p>
+<p>The SurrealQL-verbatim regions delegate to <strong>SurrealDB's official grammar by scope</strong> (<code>include: source.surrealql</code>), so embedded queries and function bodies get the same coloring SurrealDB's own tooling ships. The official extension (<code>surrealdb.surrealql</code>) is declared as an extension-pack member: installed alongside when available, never required. Without it, the delegated regions keep this grammar's own fallback string, comment, and bracket coloring. Highlighting is cosmetic either way — <code>surform check</code> remains the authority on what is valid.</p>
+<h2 id="formatting">Formatting</h2>
+<p><strong>Format Document</strong> (⇧⌥F on macOS, Shift+Alt+F elsewhere) pipes the buffer through the compiler: <code>surform fmt</code> with the text on stdin, the canonical SDL back on stdout — exactly what the <a href="fmt.html">CLI</a> would write, modulo the buffer's own line-ending convention (the buffer wins over the writer's LF).</p>
+<ul><li>The binary is looked up on <code>PATH</code>.</li>
+<li>A buffer that does not parse is left untouched — the diagnostics go to the output channel (below) and a toast names the first one.</li>
+<li>Unchanged output edits nothing.</li>
+</ul>
+<h2 id="diagnostics">Diagnostics</h2>
+<p>The compiler's <code>--json</code> diagnostics from a refused format land in the <strong>Surform</strong> output channel (View → Output) as <code>SDL-Exxxx: message</code> lines. A missing binary toasts once, then formatting stays a no-op until <code>surform</code> is findable again.</p>
+<h2 id="settings">Settings</h2>
+<div class="tablewrap"><table><thead><tr><th>setting</th><th>default</th><th>what it does</th></tr></thead><tbody><tr><td><code>surform.path</code></td><td><code>surform</code> on <code>PATH</code></td><td>the binary Format Document spawns; relative paths resolve against the workspace folder</td></tr></tbody></table></div>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="fmt.html">Formatting</a> — the canonical writer the extension pipes through.</li>
+<li><a href="cli.html">The surform CLI</a> — the commands and flags behind all three surfaces.</li>
+<li><a href="https://github.com/jquesada2016/surform/blob/main/editors/vscode/README.md"><code>editors/vscode/README.md</code></a> — the extension's own README: the grammar's self-checks (<code>selfcheck.mjs</code>), the formatter's (<code>fmtselfcheck.mjs</code>), licensing.</li>
+</ul>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#install">Install</a>
+<a class="toc-2" href="#syntax-highlighting">Syntax highlighting</a>
+<a class="toc-2" href="#formatting">Formatting</a>
+<a class="toc-2" href="#diagnostics">Diagnostics</a>
+<a class="toc-2" href="#settings">Settings</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/vscode.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

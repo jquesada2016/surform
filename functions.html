@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Functions · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Functions">
+<link rel="canonical" href="functions.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html" class="active">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">The language</span><span class="crumb-title">Functions</span></div>
+  <article>
+<h1 class="page-title">Functions</h1>
+<p>Functions are stored SurrealQL procedures — callable from queries, other functions, events, and permission expressions. The keyword is <code>fn</code>; parameters keep their <code>$</code>; the body is real SurrealQL.</p>
+<h2 id="the-shape">The shape</h2>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// Whether the current user may edit this post.</span>
+fn can_edit(<span class="tok-v">$p</span>: <span class="tok-k">record</span>&lt;post&gt;) -&gt; <span class="tok-k">bool</span> {
+  <span class="tok-k">return</span> <span class="tok-v">$auth</span>.id = <span class="tok-v">$p</span>.author or <span class="tok-v">$auth</span>.<span class="tok-k">role</span> = <span class="tok-s">'admin'</span>;
+} {
+  <span class="tok-k">permissions:</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::can_edit(<span class="tok-v">$p</span>: <span class="tok-k">record</span>&lt;post&gt;) -&gt; <span class="tok-k">bool</span> {
+    <span class="tok-k">RETURN</span> <span class="tok-v">$auth</span>.id = <span class="tok-v">$p</span>.author OR <span class="tok-v">$auth</span>.<span class="tok-k">role</span> = <span class="tok-s">'admin'</span>
+}
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Whether the current user may edit this post.'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\n/// Whether the current user may edit this post.\nfn can_edit($p: record\u003cpost>) -> bool {\n  return $auth.id = $p.author or $auth.role = 'admin';\n} {\n  permissions: $auth.admin = true;\n};"}</script>
+</figure>
+<p>Reading it: the signature <code>fn name($param: type) -&gt; return_type</code>, then a brace block with the <strong>body</strong>, then — optionally — a second brace block with ordinary clauses (<code>permissions:</code>, GraphQL hints). It is the one statement with two blocks.</p>
+<p>The body's last statement, without a trailing <code>;</code>, is the return value:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+fn tax_total(<span class="tok-v">$net</span>: <span class="tok-k">number</span>, <span class="tok-v">$rate</span>: <span class="tok-k">option</span>&lt;<span class="tok-k">number</span>&gt;) {
+  let <span class="tok-v">$r</span> = <span class="tok-v">$rate</span> ?? <span class="tok-n">0.15</span>;
+  let <span class="tok-v">$tax</span> = math::floor(<span class="tok-v">$net</span> * <span class="tok-v">$r</span>);
+  <span class="tok-v">$net</span> + <span class="tok-v">$tax</span>
+};
+
+fn ping() -&gt; <span class="tok-k">string</span> {
+  <span class="tok-s">'pong'</span>
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::tax_total(<span class="tok-v">$net</span>: <span class="tok-k">number</span>, <span class="tok-v">$rate</span>: <span class="tok-k">option</span>&lt;<span class="tok-k">number</span>&gt;) {
+    LET <span class="tok-v">$r</span> = <span class="tok-v">$rate</span> ?? <span class="tok-n">0.15f</span>;
+    LET <span class="tok-v">$tax</span> = math::floor(<span class="tok-v">$net</span> * <span class="tok-v">$r</span>);
+    <span class="tok-v">$net</span> + <span class="tok-v">$tax</span>;
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::ping() -&gt; <span class="tok-k">string</span> { <span class="tok-s">'pong'</span> };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nfn tax_total($net: number, $rate: option\u003cnumber>) {\n  let $r = $rate ?? 0.15;\n  let $tax = math::floor($net * $r);\n  $net + $tax\n};\n\nfn ping() -> string {\n  'pong'\n};"}</script>
+</figure>
+<p>Zero-parameter functions are legal (<code>fn ping() { … };</code>), and the body is re-emitted in the engine's canonical form — the compiler hands your SurrealQL to the official parser and prints its result, so a stored body and your file agree after a round-trip.</p>
+<h2 id="permissions">Permissions</h2>
+<p>Functions default to <code>permissions: full</code> — anyone who can run queries can call them. Lock them down per function:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> log {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> at: <span class="tok-k">datetime</span>;
+};
+
+fn purge_logs(<span class="tok-v">$before</span>: <span class="tok-k">datetime</span>) {
+  <span class="tok-k">delete</span> log <span class="tok-k">where</span> at &lt; <span class="tok-v">$before</span>;
+} {
+  <span class="tok-k">permissions:</span> <span class="tok-k">none</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> log <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> `at` <span class="tok-k">ON</span> log <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::purge_logs(<span class="tok-v">$before</span>: <span class="tok-k">datetime</span>) { <span class="tok-k">DELETE</span> log <span class="tok-k">WHERE</span> at &lt; <span class="tok-v">$before</span> }
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">NONE</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable log {\n  schemafull;\n  field at: datetime;\n};\n\nfn purge_logs($before: datetime) {\n  delete log where at \u003c $before;\n} {\n  permissions: none;\n};"}</script>
+</figure>
+<p><code>permissions:</code> takes <code>none</code>, <code>full</code>, or an expression (which the compiler emits as <code>PERMISSIONS WHERE …</code>).</p>
+<h2 id="optional-parameters">Optional parameters</h2>
+<p>A trailing <code>option&lt;T&gt;</code> parameter may be omitted at the call site — <code>fn::last_opt(5)</code> and <code>fn::last_opt(5, 2)</code> both work:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+fn last_opt(<span class="tok-v">$req</span>: <span class="tok-k">number</span>, <span class="tok-v">$opt</span>: <span class="tok-k">option</span>&lt;<span class="tok-k">number</span>&gt;) {
+  <span class="tok-v">$opt</span> ?? <span class="tok-v">$req</span>
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::last_opt(<span class="tok-v">$req</span>: <span class="tok-k">number</span>, <span class="tok-v">$opt</span>: <span class="tok-k">option</span>&lt;<span class="tok-k">number</span>&gt;) { <span class="tok-v">$opt</span> ?? <span class="tok-v">$req</span> };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nfn last_opt($req: number, $opt: option\u003cnumber>) {\n  $opt ?? $req\n};"}</script>
+</figure>
+<h2 id="names-with-segments-graphql-hints">Names with segments, GraphQL hints</h2>
+<p>Names may carry <code>::</code> segments — <code>fn util::slugify(…)</code> defines <code>fn::util::slugify</code>. GraphQL hints ride the second block:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+fn util::slugify(<span class="tok-v">$s</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  string::lowercase(string::replace(<span class="tok-v">$s</span>, <span class="tok-s">' '</span>, <span class="tok-s">'-'</span>))
+} {
+  <span class="tok-k">graphql</span> {
+    alias: <span class="tok-s">'slugify'</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::util::slugify(<span class="tok-v">$s</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+    string::lowercase(string::replace(<span class="tok-v">$s</span>, <span class="tok-s">' '</span>, <span class="tok-s">'-'</span>))
+}
+    GRAPHQL_ALIAS <span class="tok-s">'slugify'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nfn util::slugify($s: string) -> string {\n  string::lowercase(string::replace($s, ' ', '-'))\n} {\n  graphql {\n    alias: 'slugify';\n  };\n};"}</script>
+</figure>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="access.html">Access (sign-in &amp; tokens)</a> — <code>signin:</code> and <code>signup:</code> take query blocks, projected with the same <code>Fields</code> machinery.</li>
+<li><a href="events.html">Events</a> — call <code>fn::…</code> from a trigger.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-shape">The shape</a>
+<a class="toc-2" href="#permissions">Permissions</a>
+<a class="toc-2" href="#optional-parameters">Optional parameters</a>
+<a class="toc-2" href="#names-with-segments-graphql-hints">Names with segments, GraphQL hints</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/functions.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

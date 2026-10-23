@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playground · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Playground">
+<link rel="canonical" href="playground.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html" class="active">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Start</span><span class="crumb-title">Playground</span></div>
+  <article>
+<h1 class="page-title">Playground</h1>
+<p>This page runs the Surform compiler in your browser, compiled to WebAssembly (3.3.0 grammar) — the same parser and codegen the <code>surform</code> CLI runs. Edit the schema; the diagnostics, the DDL, and the canonical form update as you type. Nothing you type leaves this tab.</p>
+<div class="pg-toolbar">
+  <label class="pg-example"><span>Examples</span>
+    <select id="pg-example" aria-label="Load an example schema"></select>
+  </label>
+  <button id="pg-compile" class="pg-compile" type="button">Compile now <kbd>⌘/Ctrl</kbd>+<kbd>↵</kbd></button>
+  <button id="pg-format" class="pg-compile" type="button">Format</button>
+  <span class="badge" id="pg-status">loading the compiler…</span>
+  <span class="pg-version" id="pg-version"></span>
+</div>
+<div class="pg-editor"><div id="pg-editor" aria-label="SDL schema editor"></div></div>
+<div id="pg-diags" class="pg-diags" aria-live="polite"></div>
+<div class="pg-outputs">
+  <div class="ex-block"><div class="ex-label">surform build — the DDL the engine would run</div>
+    <div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy DDL">Copy</button><pre><code id="pg-ddl-code"></code></pre></div>
+  </div>
+  <div class="ex-block"><div class="ex-label">surform fmt — the same schema, canonical form</div>
+    <div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy canonical SDL">Copy</button><pre><code id="pg-canon-code"></code></pre></div>
+  </div>
+</div>
+<p class="pg-foot">On a clean parse the emission is re-checked through the official SurrealQL parser; if the diagnostics card shows <code>SDL-E1060</code>, the compiler emitted DDL the parser rejects — a Surform bug (see <a href="verification.html">how this site is verified</a>). The editor's SDL highlighting uses the compiler's keyword table; SurrealQL itself — the DDL pane, and the expressions, function bodies, and views embedded in the SDL — is inked by SurrealDB's official SurrealQL grammar (the same one their editors ship).</p>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="application/json" id="surform-examples">[{"label":"quick","content":"namespace acme;\ndatabase shop;\n\n// Shared audit columns, spread into every table below.\nmixin timestamped {\n  field created_at: datetime { default: time::now(); };\n  field updated_at: datetime;\n};\n\n/// A person in the company directory.\ntable person {\n  schemafull;\n  ...timestamped;\n  field name: string;\n  field email: string { assert: string::is_email($value); };\n  index unique email_unique {\n    fields: email;\n  };\n};\n","ok":true},{"label":"shop","content":"// The quick-start schema. `//` lines are ordinary comments — they\n// document the file and never reach the database.\n\nnamespace acme;\ndatabase shop;\n\n/// People who buy things.\ntable user {\n  schemafull;\n\n  // The engine rejects anything that does not look like an email.\n  field email: string { assert: string::is_email($value); };\n  field name: string;\n\n  // No two accounts share an email — a plain comment, since doc\n  // comments only attach to top-level definitions.\n  index unique email_unique {\n    fields: email;\n  };\n};\n\n/// Anything a user publishes.\ntable post {\n  schemafull;\n\n  field title: string { assert: string::len($value) > 0; };\n  field body: string;\n\n  // Who wrote this post.\n  field author: record\u003cuser>;\n\n  index author_idx {\n    fields: author;\n  };\n};\n","ok":true},{"label":"surform-migrate-apply","content":"// The Surform migration snippet — the APPLY artifact's wrappers\n// (\"Surform inside SurrealDB\" in the docs). Append to your schema\n// file: the functions are ordinary schema and migrate like everything\n// else. This variant calls `mod::surform_apply` (surform-apply.surli,\n// the capability-granting artifact — read the security section before\n// registering it) and `migrate` converges AND executes in one call,\n// at the calling session's permissions; the zero-capability twin\n// (surform-migrate.surdl) returns the script instead.\n\nfn surform::compile($sdl: string) -> string {\n  mod::surform_apply::compile($sdl)\n};\n\n// The module's live-info carrier: the rendered INFO of the session's\n// database, minus the flow's own scaffolding — the registration (the\n// readers refuse its org::name keys), the bucket (the compare\n// would draft its removal), and the pipeline's ledger table (its\n// self-record creates it; the module drops the default name itself,\n// the wrapper's pruning is what makes the same capture file safe to\n// feed the CLI's `--info`, which does not) — with each table's\n// rendered INFO FOR TABLE under the reserved `@tables` key\n// (full-fidelity: field-level drift is visible). `apply` captures\n// the same shape itself (host-side); this wrapper serves `converge`\n// — the dry run.\nfn surform::capture() -> string {\n  let $info = object::remove((INFO FOR DB), ['modules', 'buckets']);\n  let $tables = object::remove($info.tables, ['_surform_migrations']);\n  let $children = object::from_entries(array::map(object::keys($tables), |$name| [$name, (INFO FOR TABLE $name)]));\n  \u003cstring>(object::extend(object::extend($info, { tables: $tables }), object::from_entries([['@tables', $children]])))\n};\n\n// The dry run: the script `migrate` would apply (empty: converged).\nfn surform::converge($sdl: string) -> string {\n  mod::surform_apply::converge($sdl, fn::surform::capture())\n};\n\n// The /sql response body of the ledger SELECT, bridged in-database —\n// the module's `status` carrier. A database with no ledger yet (the\n// fresh case) bridges as the documented empty-ledger envelope.\nfn surform::ledger_rows() -> string {\n  let $names = object::keys((INFO FOR DB).tables);\n  if '_surform_migrations' in $names {\n    let $rows = (select value '{\"number\":' + \u003cstring>(number) + ',\"name\":\"' + string::replace(string::replace(name, '\\\\', '\\\\\\\\'), '\"', '\\\\\"') + '\",\"hash\":\"' + hash + '\"}' from _surform_migrations order by number);\n    '[{\"result\":[' + array::join($rows, ',') + '],\"status\":\"OK\"}]'\n  } else {\n    '[{\"status\":\"ERR\",\"kind\":\"NotFound\",\"details\":{\"kind\":\"Table\"}}]'\n  }\n};\n\n// The migration classification (pass the migrations directory as the\n// serialized files carrier — see the docs page for its JSON shape).\nfn surform::status($files: string) -> string {\n  mod::surform_apply::status($files, fn::surform::ledger_rows())\n};\n\n// The two-artifact contract, apply side: converge AND execute, one\n// transaction — the outcome string comes back (`applied N\n// statement(s); recorded NNNN_apply in the ledger`, the converged\n// note, or a refusal naming itself). The destructive class never\n// auto-applies: scripts carrying removals or SURFORM markers refuse.\nfn surform::migrate($sdl: string) -> string {\n  mod::surform_apply::apply($sdl)\n};\n","ok":true},{"label":"surform-migrate","content":"// The Surform migration snippet — the zero-capability artifact's\n// wrappers (\"Surform inside SurrealDB\" in the docs). Append to your\n// schema file: the functions are ordinary schema and migrate like\n// everything else. This variant calls `mod::surform` (surform.surli)\n// and `migrate` returns the convergence script for you to run; the\n// apply artifact's twin (surform-migrate-apply.surdl) applies instead.\n\nfn surform::compile($sdl: string) -> string {\n  mod::surform::compile($sdl)\n};\n\n// The module's live-info carrier: the rendered INFO of the session's\n// database, minus the flow's own scaffolding — the registration (the\n// readers refuse its org::name keys), the bucket (the compare\n// would draft its removal), and the pipeline's ledger table (its\n// self-record creates it; the module drops the default name itself,\n// the wrapper's pruning is what makes the same capture file safe to\n// feed the CLI's `--info`, which does not) — with each table's\n// rendered INFO FOR TABLE under the reserved `@tables` key\n// (full-fidelity: field-level drift is visible).\nfn surform::capture() -> string {\n  let $info = object::remove((INFO FOR DB), ['modules', 'buckets']);\n  let $tables = object::remove($info.tables, ['_surform_migrations']);\n  let $children = object::from_entries(array::map(object::keys($tables), |$name| [$name, (INFO FOR TABLE $name)]));\n  \u003cstring>(object::extend(object::extend($info, { tables: $tables }), object::from_entries([['@tables', $children]])))\n};\n\n// The convergence script for this database (empty string: converged).\nfn surform::converge($sdl: string) -> string {\n  mod::surform::converge($sdl, fn::surform::capture())\n};\n\n// The /sql response body of the ledger SELECT, bridged in-database —\n// the module's `status` carrier. A database with no ledger yet (the\n// fresh case) bridges as the documented empty-ledger envelope.\nfn surform::ledger_rows() -> string {\n  let $names = object::keys((INFO FOR DB).tables);\n  if '_surform_migrations' in $names {\n    let $rows = (select value '{\"number\":' + \u003cstring>(number) + ',\"name\":\"' + string::replace(string::replace(name, '\\\\', '\\\\\\\\'), '\"', '\\\\\"') + '\",\"hash\":\"' + hash + '\"}' from _surform_migrations order by number);\n    '[{\"result\":[' + array::join($rows, ',') + '],\"status\":\"OK\"}]'\n  } else {\n    '[{\"status\":\"ERR\",\"kind\":\"NotFound\",\"details\":{\"kind\":\"Table\"}}]'\n  }\n};\n\n// The migration classification (pass the migrations directory as the\n// serialized files carrier — see the docs page for its JSON shape).\nfn surform::status($files: string) -> string {\n  mod::surform::status($files, fn::surform::ledger_rows())\n};\n\n// The two-artifact contract, pure side: this artifact makes no host\n// calls, so migrate IS converge — the script comes back for you to\n// run yourself (empty string: already converged).\nfn surform::migrate($sdl: string) -> string {\n  fn::surform::converge($sdl)\n};\n","ok":true},{"label":"broken — broken on purpose, see the diagnostics","content":"namespace acme;\ndatabase shop;\n\ntable person {\n  schemafull;\n  permisions: full;\n};\n","ok":false}]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. </span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

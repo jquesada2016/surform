@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tables · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Tables">
+<link rel="canonical" href="tables.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html" class="active">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">The language</span><span class="crumb-title">Tables</span></div>
+  <article>
+<h1 class="page-title">Tables</h1>
+<p>Tables are the largest unit of a schema file: the kind of the table lives in the header, and everything else — permissions, changefeeds, nested fields and indexes — lives in the block.</p>
+<h2 id="the-everyday-table">The everyday table</h2>
+<p>A bare table is a <strong>normal</strong> table, and the DDL says so even when you don't — <code>TYPE NORMAL</code> is always emitted, because a normal table rejects SurrealQL's <code>RELATE</code> statements:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// Application users.</span>
+<span class="tok-k">table</span> <span class="tok-k">user</span> <span class="tok-k">schemafull</span> {
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span> <span class="tok-k">COMMENT</span> <span class="tok-s">'Application users.'</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+</code></pre></div>
+</div>
+<div class="ex-block" data-pane="canonical"><div class="ex-label">the engine's own record of it (canonical form)</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+
+<span class="tok-k">database</span> shop;
+
+<span class="tok-c">/// Application users.</span>
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+};
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\n/// Application users.\ntable user schemafull {\n  field email: string;\n};"}</script>
+</figure>
+<p>The third panel is the round trip: the DDL was applied to an in-process SurrealDB 3.3.0 engine, its <code>INFO</code> report read back, and the canonical form is what Surform writes from that — engine-side defaults (<code>PERMISSIONS NONE</code>, the explicit <code>TYPE NORMAL</code>) elide again.</p>
+<p><code>schemafull</code> (records must match their declared fields) or <code>schemaless</code> (records may carry anything) — the schema flag is always emitted, either way. You can also spell it in the header: <code>table user schemafull { … };</code> is the same table.</p>
+<h2 id="the-kind-rides-the-header">The kind rides the header</h2>
+<p>Four kinds, four header shapes:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> person { };                          <span class="tok-c">// normal (the default, emitted as TYPE NORMAL)</span>
+<span class="tok-k">table</span> <span class="tok-k">any</span> thing { };                       <span class="tok-c">// any — accepts RELATE without being a relation</span>
+<span class="tok-k">table</span> <span class="tok-k">relation</span> generic_edge;               <span class="tok-c">// relation, unconstrained</span>
+<span class="tok-k">table</span> post { <span class="tok-k">schemaless</span>; <span class="tok-k">field</span> author: <span class="tok-k">string</span>; };
+
+<span class="tok-c">/// Posts per author — a view. The block IS the query.</span>
+<span class="tok-k">table</span> <span class="tok-k">view</span> post_stats {
+  <span class="tok-k">select</span> author, <span class="tok-k">count</span>() <span class="tok-k">as</span> posts <span class="tok-k">from</span> post <span class="tok-k">group</span> by author;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> person <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> thing <span class="tok-k">TYPE</span> <span class="tok-k">ANY</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> generic_edge <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> post_stats <span class="tok-k">TYPE</span> <span class="tok-k">ANY</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">AS</span> <span class="tok-k">SELECT</span>
+    author,
+    <span class="tok-k">count</span>() <span class="tok-k">AS</span> posts
+    <span class="tok-k">FROM</span> post
+    <span class="tok-k">GROUP</span> BY author
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Posts per author — a view. The block IS the query.'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable person { };                          // normal (the default, emitted as TYPE NORMAL)\ntable any thing { };                       // any — accepts RELATE without being a relation\ntable relation generic_edge;               // relation, unconstrained\ntable post { schemaless; field author: string; };\n\n/// Posts per author — a view. The block IS the query.\ntable view post_stats {\n  select author, count() as posts from post group by author;\n};"}</script>
+</figure>
+<p>Only relation tables accept <code>RELATE</code>, plus tables explicitly declared <code>any</code>. If your table must take graph edges some day but is schemaless for now, say <code>any</code>.</p>
+<h2 id="relations-and-graph-edges">Relations and graph edges</h2>
+<p>Relations get their own page — <a href="relations.html">Relations</a> — because the arrow forms, <code>enforced</code>, and the 3.3 <code>lightweight</code> edges have a lot to say. The one-line version:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span>-&gt;wrote-&gt;post {
+  <span class="tok-k">enforced</span>;
+  at: <span class="tok-k">datetime</span> {
+    <span class="tok-k">default:</span> time::now();
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> wrote <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> `<span class="tok-k">user</span>` <span class="tok-k">OUT</span> `post` <span class="tok-k">ENFORCED</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> `at` <span class="tok-k">ON</span> wrote <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span> <span class="tok-k">DEFAULT</span> time::now();
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user->wrote->post {\n  enforced;\n  at: datetime {\n    default: time::now();\n  };\n};"}</script>
+</figure>
+<p><code>from -&gt; edge -&gt; to</code>, spelled in <code>RELATE</code>'s own order, with <code>enforced</code> checking that both endpoints exist on every edge.</p>
+<h2 id="permissions-the-default-is-no">Permissions: the default is NO</h2>
+<p><strong>A table with no permissions clause denies record users everything.</strong> That default is stored (<code>PERMISSIONS NONE</code> in the database's record) — omitting the clause is the secure default, and the linter never warns on it. What the linter does warn on is the opposite extreme, <code>permissions: full;</code>, which hands the table to everyone. The per-operation form scopes each operation independently, and unlisted field operations default the other way — to FULL:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> <span class="tok-k">schemafull</span> {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> <span class="tok-k">full</span>;
+    <span class="tok-k">create:</span> <span class="tok-k">full</span>;
+    <span class="tok-k">update:</span> <span class="tok-v">$auth</span>.id = id;
+    <span class="tok-k">delete:</span> <span class="tok-k">none</span>;
+  };
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> password_hash: <span class="tok-k">string</span> {
+    <span class="tok-k">permissions</span> {
+      <span class="tok-k">select:</span> <span class="tok-k">none</span>;
+      <span class="tok-k">update:</span> <span class="tok-k">none</span>;
+      <span class="tok-c">// create stays allowed — fields default unlisted</span>
+      <span class="tok-c">// operations to FULL (the opposite of tables).</span>
+    };
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>
+    <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">FULL</span>,
+    FOR <span class="tok-k">create</span> <span class="tok-k">FULL</span>,
+    FOR <span class="tok-k">update</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.id = id,
+    FOR <span class="tok-k">delete</span> <span class="tok-k">NONE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> password_hash <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>
+    <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">NONE</span>,
+    FOR <span class="tok-k">update</span> <span class="tok-k">NONE</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user schemafull {\n  permissions {\n    select: full;\n    create: full;\n    update: $auth.id = id;\n    delete: none;\n  };\n  field email: string;\n  field password_hash: string {\n    permissions {\n      select: none;\n      update: none;\n      // create stays allowed — fields default unlisted\n      // operations to FULL (the opposite of tables).\n    };\n  };\n};"}</script>
+</figure>
+<p>Unlisted operations are <strong>none</strong> for tables. Operations can be comma-grouped when they share a value, and the whole clause has a one-line shorthand (<code>permissions: full;</code>) when every operation gets the same answer. Expressions are real SurrealQL — <code>$auth</code> is the signed-in record.</p>
+<h2 id="lifecycle-drop-and-changefeed">Lifecycle: drop and changefeed</h2>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> audit {
+  <span class="tok-k">drop</span>;
+  <span class="tok-k">schemaless</span>;
+  <span class="tok-k">changefeed</span> {
+    <span class="tok-k">expiry:</span> <span class="tok-n">30d</span>;
+    <span class="tok-k">include</span> <span class="tok-k">original</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> audit <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">DROP</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">CHANGEFEED</span> <span class="tok-n">4w2d</span> <span class="tok-k">INCLUDE</span> <span class="tok-k">ORIGINAL</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable audit {\n  drop;\n  schemaless;\n  changefeed {\n    expiry: 30d;\n    include original;\n  };\n};"}</script>
+</figure>
+<p><code>drop;</code> tells the server to silently skip storing, indexing, and edge-linking anything written to the table — useful to keep history flowing without keeping data. <code>changefeed</code> keeps a change log for the given duration; <code>include original;</code> stores each change's before-image. (Durations print value-normalized — <code>30d</code> appears as <code>4w2d</code> in the DDL, SurrealDB's canonical decomposition. The value is identical.)</p>
+<h2 id="inline-cache-caps-surrealdb-33">Inline cache caps (SurrealDB 3.3)</h2>
+<p>Two numeric clauses tune the per-table inline caches. The number is mandatory, 0–256, and the caps are legal on every table SDL can author (views don't carry them — SDL has no spelling there):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> person-&gt;likes-&gt;post <span class="tok-k">lightweight</span> {
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+  <span class="tok-k">inline</span> <span class="tok-k">edges:</span> <span class="tok-n">8</span>;
+};
+
+<span class="tok-k">table</span> hot {
+  <span class="tok-k">schemaless</span>;
+  <span class="tok-k">inline</span> <span class="tok-k">references:</span> <span class="tok-n">16</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> likes <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> person <span class="tok-k">OUT</span> `post` <span class="tok-k">ENFORCED</span> <span class="tok-k">LIGHTWEIGHT</span> <span class="tok-k">SCHEMALESS</span>
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>
+    <span class="tok-k">INLINE</span> <span class="tok-k">EDGES</span> <span class="tok-n">8</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> hot <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">INLINE</span> <span class="tok-k">REFERENCES</span> <span class="tok-n">16</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable person->likes->post lightweight {\n  permissions: full;\n  inline edges: 8;\n};\n\ntable hot {\n  schemaless;\n  inline references: 16;\n};"}</script>
+</figure>
+<p>Above the bound Surform rejects it at check time:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> hot {
+  <span class="tok-k">schemaless</span>;
+  <span class="tok-k">inline</span> <span class="tok-k">references:</span> <span class="tok-n">257</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1057 (spec/table.md)
+
+  x table clause value out of domain: an INLINE cache cap cannot exceed 256 — `inline references: 257;` is out of domain
+   ,-[6:3]
+ 5 |   schemaless;
+ 6 |   inline references: 257;
+   :   ^^^^^^^^|^^^^^^^^
+   :           `-- out of this clause's domain
+ 7 | };
+   `----
+  help: each `table` clause constrains its own value — the INLINE cache caps take 0–256 (the engine rejects anything larger at define time too)
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"namespace acme;\ndatabase shop;\n\ntable hot {\n  schemaless;\n  inline references: 257;\n};"}</script>
+</figure>
+<h2 id="views-the-block-is-the-query">Views: the block is the query</h2>
+<p>A view is a stored, read-only query pretending to be a table. There is no clause key — the block's first statement is the <code>SELECT</code> itself, validated by SurrealQL's own parser:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> post { <span class="tok-k">schemaless</span>; <span class="tok-k">field</span> author: <span class="tok-k">string</span>; };
+
+<span class="tok-c">/// Posts per author.</span>
+<span class="tok-k">table</span> <span class="tok-k">view</span> post_stats {
+  <span class="tok-k">select</span> author, <span class="tok-k">count</span>() <span class="tok-k">as</span> posts <span class="tok-k">from</span> post <span class="tok-k">group</span> by author;
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> post_stats <span class="tok-k">TYPE</span> <span class="tok-k">ANY</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">AS</span> <span class="tok-k">SELECT</span>
+    author,
+    <span class="tok-k">count</span>() <span class="tok-k">AS</span> posts
+    <span class="tok-k">FROM</span> post
+    <span class="tok-k">GROUP</span> BY author
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Posts per author.'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable post { schemaless; field author: string; };\n\n/// Posts per author.\ntable view post_stats {\n  select author, count() as posts from post group by author;\n  permissions: full;\n};"}</script>
+</figure>
+<p>Views always emit as <code>TYPE ANY SCHEMALESS AS SELECT …</code>. A view reads other tables — <code>build</code> orders the view after them in the emitted DDL, so the view may stand anywhere in the file (a view chain that reads itself is the SDL-E0015 error — <a href="basics.html#who-owns-the-order">who owns the order</a>).</p>
+<h2 id="graphql-hints">GraphQL hints</h2>
+<p>If you serve the table through SurrealDB's GraphQL interface, the <code>graphql</code> block carries its per-table hints:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> legacy_reports {
+  <span class="tok-k">schemaless</span>;
+  <span class="tok-k">graphql</span> {
+    alias: <span class="tok-s">'old_reports'</span>;
+    deprecated: <span class="tok-s">'use reports instead'</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> legacy_reports <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span>
+    GRAPHQL_ALIAS <span class="tok-s">'old_reports'</span>
+    GRAPHQL_DEPRECATED <span class="tok-s">'use reports instead'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable legacy_reports {\n  schemaless;\n  graphql {\n    alias: 'old_reports';\n    deprecated: 'use reports instead';\n  };\n};"}</script>
+</figure>
+<h2 id="nesting-fields-indexes-events-live-in-the-table">Nesting: fields, indexes, events live in the table</h2>
+<p>The common pattern — children nested in their table, no <code>on:</code> line needed. They emit as standalone <code>DEFINE FIELD/INDEX/EVENT</code> statements, right after their table, in authored order (the emission sort's tie-break — an index that names a field always follows that field, however the file orders them):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> post <span class="tok-k">schemafull</span> {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> published = <span class="tok-k">true</span> or author = <span class="tok-v">$auth</span>.id;
+    <span class="tok-k">create</span>, <span class="tok-k">update:</span> author = <span class="tok-v">$auth</span>.id;
+    <span class="tok-k">delete:</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+  };
+
+  author: <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; {
+    <span class="tok-k">reference</span> {
+      <span class="tok-k">on</span> <span class="tok-k">delete:</span> cascade;
+    };
+  };
+  title: <span class="tok-k">string</span> {
+    <span class="tok-k">assert:</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>;
+  };
+  slug: <span class="tok-k">string</span>;
+
+  <span class="tok-k">index</span> <span class="tok-k">unique</span> slug_unique {
+    <span class="tok-k">fields:</span> slug;
+  };
+
+  <span class="tok-k">event</span> audit_title {
+    <span class="tok-k">when:</span> <span class="tok-v">$event</span> = <span class="tok-s">'UPDATE'</span> and <span class="tok-v">$before</span>.title != <span class="tok-v">$after</span>.title;
+    <span class="tok-k">then:</span> { <span class="tok-k">create</span> audit <span class="tok-k">set</span> at = time::now(), id = <span class="tok-v">$after</span>.id; };
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>
+    <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">WHERE</span> published = <span class="tok-k">true</span> OR author = <span class="tok-v">$auth</span>.id,
+    FOR <span class="tok-k">create</span>, <span class="tok-k">update</span> <span class="tok-k">WHERE</span> author = <span class="tok-v">$auth</span>.id,
+    FOR <span class="tok-k">delete</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; <span class="tok-k">REFERENCE</span> <span class="tok-k">ON</span> <span class="tok-k">DELETE</span> CASCADE;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> title <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> slug <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> slug_unique <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> slug <span class="tok-k">UNIQUE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">EVENT</span> <span class="tok-k">OVERWRITE</span> audit_title <span class="tok-k">ON</span> `post`
+    <span class="tok-k">WHEN</span> <span class="tok-v">$event</span> = <span class="tok-s">'UPDATE'</span> AND <span class="tok-v">$before</span>.title != <span class="tok-v">$after</span>.title
+    <span class="tok-k">THEN</span> { <span class="tok-k">CREATE</span> audit <span class="tok-k">SET</span> at = time::now(), id = <span class="tok-v">$after</span>.id };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable post schemafull {\n  permissions {\n    select: published = true or author = $auth.id;\n    create, update: author = $auth.id;\n    delete: $auth.admin = true;\n  };\n\n  author: record\u003cuser> {\n    reference {\n      on delete: cascade;\n    };\n  };\n  title: string {\n    assert: string::len($value) > 0;\n  };\n  slug: string;\n\n  index unique slug_unique {\n    fields: slug;\n  };\n\n  event audit_title {\n    when: $event = 'UPDATE' and $before.title != $after.title;\n    then: { create audit set at = time::now(), id = $after.id; };\n  };\n};"}</script>
+</figure>
+<p>Standalone forms (<code>index … on post { … };</code> at top level) exist and read back from the database too — see <a href="fields.html">Fields</a>, <a href="indexes.html">Indexes</a>, and <a href="events.html">Events</a>.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="fields.html">Fields</a> — the type system, defaults, assertions, computed fields.</li>
+<li><a href="relations.html">Relations</a> — arrows, <code>enforced</code>, <code>lightweight</code>.</li>
+<li><a href="lint.html">The linter</a> — the world-open-table warning, among others.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-everyday-table">The everyday table</a>
+<a class="toc-2" href="#the-kind-rides-the-header">The kind rides the header</a>
+<a class="toc-2" href="#relations-and-graph-edges">Relations and graph edges</a>
+<a class="toc-2" href="#permissions-the-default-is-no">Permissions: the default is NO</a>
+<a class="toc-2" href="#lifecycle-drop-and-changefeed">Lifecycle: drop and changefeed</a>
+<a class="toc-2" href="#inline-cache-caps-surrealdb-33">Inline cache caps (SurrealDB 3.3)</a>
+<a class="toc-2" href="#views-the-block-is-the-query">Views: the block is the query</a>
+<a class="toc-2" href="#graphql-hints">GraphQL hints</a>
+<a class="toc-2" href="#nesting-fields-indexes-events-live-in-the-table">Nesting: fields, indexes, events live in the table</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/tables.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

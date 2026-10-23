@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE TABLE · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE TABLE">
+<link rel="canonical" href="spec-table.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html" class="active">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE TABLE</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE TABLE</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>parse_define_table</code>, <code>parse_relation_schema</code>, <code>parse_tables</code>, <code>parse_view</code> in <code>stmt/parts.rs</code>), executor (<code>expr/statements/define/table.rs</code>), and emitters (<code>sql/statements/define/table.rs</code>, <code>sql/permission.rs</code>). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor-move corpus re-runs on the 3.3.0 embed (2026-09-25).</p>
+<p><strong>Semantics you must know (all verified):</strong></p>
+<ul><li><strong>Default table permissions are <code>NONE</code></strong> and materialize in INFO (<code>DEFINE TABLE t SCHEMALESS;</code> round-trips with <code>PERMISSIONS NONE</code>). Record users can do nothing on a table unless permissions are granted — omission is the secure default and never warns; SDL's linter warns on <code>permissions: full</code> (SDL-L0001 — anyone, even unauthenticated users, can access every record; advisory: it evaluates the resolved state, so a table the database itself holds wide open warns through INFO).</li>
+<li><strong>Variant resolution is total and explicit at emit.</strong> A bare table (no qualifier, no arrow) is <code>normal</code> and <strong>emits <code>TYPE NORMAL</code></strong> — a deliberate fail-closed default that rejects <code>RELATE</code> (verified), unlike SurrealQL's bare-schemaless→<code>TYPE ANY</code> materialization quirk (bare <code>SCHEMAFULL</code> sets NORMAL in the parser — DDL-level trivia SDL no longer depends on). <code>any</code> is the explicit escape hatch for tables that must accept <code>RELATE</code> without being declared relations (verified: RELATE into ANY succeeds, into NORMAL fails). The normalizer's round-trip is bijective: <code>TYPE ANY ↔ any</code>, <code>TYPE NORMAL ↔ bare</code>, <code>TYPE RELATION ↔ arrow (full, IN-only, or OUT-only) | relation</code>, view ↔ <code>view</code> — every <code>TYPE RELATION</code> shape INFO can report is expressible (the unconstrained one in two spellings: <code>table relation &lt;name&gt;;</code> canonical, <code>table -&gt; &lt;name&gt; -&gt;;</code> equivalent).</li>
+<li><strong><code>SCHEMALESS</code> materializes in INFO</strong> (the emitter prints SCHEMAFULL/SCHEMALESS unconditionally). SDL adopts this: codegen always emits the schema flag explicitly — <code>schemaless;</code> is not elided from canonical SDL (a licensed deviation from omission-parity, keeping emitted DDL byte-stable against INFO).</li>
+<li><strong><code>FOR delete FULL</code> is elided by the emitter while re-parsing yields NONE</strong> — a definition with <code>delete: full;</code> must never be downgraded by retro-apply (preserve rule). The differ's posture is converged-silently in every reachable shape: the projection both sides compare through drops the delete slot unless it carries a real expression (the only delete value INFO can report), so SDL-said-full converges against whatever the database holds (one-directional by construction; the linter owns the ambiguity — SDL-L0014).</li>
+<li>Per-op <strong>unlisted operations are NONE</strong> for tables (the parser seeds deny — the opposite of fields); SurrealQL also accepts the single-value <code>PERMISSIONS NONE | FULL</code> on tables (verified) — SDL allows it as the all-operations shorthand.</li>
+<li><strong><code>LIGHTWEIGHT</code> relations (3.3)</strong> are the record-less edge form: <code>lightweight</code> trails the relation header (<code>table person -&gt; likes -&gt; post lightweight { … };</code>), requires both sides named (the engine: &quot;a LIGHTWEIGHT relation requires explicit IN and OUT tables&quot;), and <strong>implies <code>enforced</code></strong> — the engine normalizes the flag at define (vertex deletion is a record-less edge's only cleanup, so dangling endpoints would be permanent garbage) and INFO always prints <code>ENFORCED LIGHTWEIGHT</code>. SDL folds the implication at parse: the AST never holds <code>lightweight</code> without <code>enforced</code>, the emission always carries both words, and the differ needs no default-equivalence arm. The record-consuming clauses are rejected (the engine's define-time rejections mirrored at the fold, rule 10's ADT pattern): <code>drop;</code>, <code>changefeed { … };</code>, <code>schemafull;</code> (either spelling), and nested field/index/event definitions — the engine auto-installs <code>in</code>/<code>out</code> from the header and rejects every <code>DEFINE FIELD/INDEX/EVENT</code> on the table (&quot;a LIGHTWEIGHT relation cannot carry …: its edges store no records&quot;). <code>PERMISSIONS</code>, <code>graphql</code>, the schema-less default, and the INLINE caps all remain legal on it (probe-pinned). Write-path facts (engine-pinned, outside SDL's grammar): edge ids are canonical <code>edge:[in, out]</code> two-record arrays, <code>RELATE</code> is idempotent per pair, and no data mutations are possible beyond the endpoints. A table can leave the lightweight form while it holds no edges (<code>table &lt;from&gt; -&gt; &lt;name&gt; -&gt; &lt;to&gt;;</code> without the word).</li>
+<li><strong>The INLINE cache caps (3.3)</strong> — <code>inline edges: &lt;n&gt;;</code> and <code>inline references: &lt;n&gt;;</code> — cap the per-table inline caches; the number is mandatory and the domain is 0–256 (the engine's <code>MAX_INLINE_CACHE_CAP</code>, enforced at define/alter; SDL mirrors the bound at the fold — SDL-E1057). The clauses are <strong>kind-independent</strong>: the engine accepts them on NORMAL/ANY/relation/lightweight tables and even views (where SDL does not author them — semantically inert there, and SDL's view grammar stays the two-clause table; the reader routes a cap-bearing view to <code>raw</code> as deviant). They print only when written, EDGES before REFERENCES, as bare integers.</li>
+<li>The schema flags fold <strong>last-one-wins, never error</strong>: upstream's clause loop silently takes the last spelling (no conflict tracking), and the header and block spellings are one fold — <code>table t schemafull { schemaless; };</code> is <code>SCHEMALESS</code> (rule 7, SurrealQL parity; probe-verified against v3.2.4 <code>parse_define_table</code>).</li>
+</ul>
+<p>The kind is the discriminant and rides in the <strong>header</strong>:</p>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>enum TableKind {
+  Any,                                  // explicit escape hatch
+  Normal,                               // bare tables — emits TYPE NORMAL
+  Relation { from?: Vec&lt;Table&gt;,         // header arrows in RELATE's own
+             to?: Vec&lt;Table&gt;,           //   order: from -&gt; name -&gt; to
+             enforced?,                 //   (SurrealQL: IN a | b / OUT c —
+             lightweight? },            //   independent, each optional,
+                                        //   both seeded empty). The arrow
+                                        //   spelling always flanks the
+                                        //   name with `-&gt;`; either side
+                                        //   list may be omitted, and both
+                                        //   omitted (`table -&gt; name -&gt;;`)
+                                        //   is equivalent to `table
+                                        //   relation &lt;name&gt;;`. A side is
+                                        //   None exactly when unnamed —
+                                        //   Some never wraps an empty vec
+                                        //   (the forward and reverse
+                                        //   parsers must agree; the
+                                        //   differ compares resolved
+                                        //   state). `lightweight` is
+                                        //   3.3-only, header-only, and
+                                        //   implies `enforced` (the fold).
+  View { query: Expr },                 // AS SELECT … — read-only
+}
+struct Table {
+  name, kind: TableKind,
+  full: bool,                           // schemafull; / schemaless; flags
+  drop: bool,                           // skip storing/indexing/edge-linking
+  changefeed: Option&lt;ChangeFeed&gt;,       // { expiry, include_original }
+  permissions: Permission,              // per-op (all four) + none|full
+  graphql: Option&lt;Graphql&gt;,             // alias?, deprecated?
+  inline_edges: Option&lt;u16&gt;,            // 3.3: `inline edges: &lt;n&gt;;` (0–256)
+  inline_references: Option&lt;u16&gt;,       // 3.3: `inline references: &lt;n&gt;;`
+  nested: Vec&lt;Definition&gt;,              // fields, indexes, events
+  comment: Option&lt;DocComment&gt;,          // from ///
+}</code></pre></div>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>/// &lt;doc comment&gt;                        // optional — emitted as COMMENT
+table &lt;name&gt; { … };                      // NORMAL — bare means normal and
+                                         //   emits TYPE NORMAL (fail-closed)
+table any &lt;name&gt; { … };                  // ANY — explicit escape hatch
+
+table [&lt;from&gt; [| &lt;from&gt; …]] -&gt; &lt;name&gt; -&gt; [&lt;to&gt; [| &lt;to&gt; …]] [lightweight] { … };
+                                         // the relation variant, spelled in
+                                         //   RELATE's own from -&gt; edge -&gt; to
+                                         //   order; the name is always
+                                         //   flanked by `-&gt;` on both sides
+                                         //   (arrow detection skips
+                                         //   whitespace, so `a-&gt;b-&gt;c` and
+                                         //   `a -&gt; b -&gt; c` are the same
+                                         //   header — the canonical writer
+                                         //   prints it compact). An omitted
+                                         //   side list is
+                                         //   unconstrained (IN-only /
+                                         //   OUT-only are legal SurrealQL —
+                                         //   the emitter prints only the
+                                         //   non-empty side), and both
+                                         //   omitted (`table -&gt; &lt;name&gt; -&gt;;`)
+                                         //   is equivalent to the
+                                         //   `table relation &lt;name&gt;;` form
+                                         //   below. Excludes the any
+                                         //   qualifier. The `lightweight`
+                                         //   word trails the header (3.3 —
+                                         //   below); it needs both sides
+                                         //   named.
+
+// Header reading: left to right, no backtracking — a from-list is
+// the `|`-separated identifiers before the first `-&gt;` (absent when
+// `-&gt;` comes straight after `table`), the name is the identifier
+// between the two arrows, and the to-list is the `|`-separated
+// identifiers following the second arrow, up to the block or `;`.
+// A header with only one arrow is a parse
+// error — the second arrow is mandatory. The variant words (`any`,
+// `relation`, `view`) are variant words only when followed by a
+// name — a table literally named `any` in a from-list
+// (`table any -&gt; wrote -&gt;;`) is an identifier like any other. The
+// to-list read is GREEDY: an endpoint named `lightweight` reads as
+// an endpoint (`table a -&gt; b -&gt; lightweight;` — OUT [lightweight],
+// no flag), and the flag needs its list closed before it
+// (`-&gt; c lightweight { … }`); the quoted spelling is always an
+// endpoint (rule 9). Missing-FROM is therefore the only sides
+// violation the arrow form can spell — the validation still guards
+// the hand-built AST. The `relation` spelling cannot carry the word
+// (`table relation &lt;name&gt; lightweight` diagnoses loud — the word is
+// junk after the name, and the engine's own define would reject the
+// sides-less shape).
+
+table relation &lt;name&gt; { … };             // canonical spelling — the bare
+                                         //   skeleton `table -&gt; &lt;name&gt; -&gt;;`
+                                         //   is equivalent
+
+table view &lt;name&gt; {
+  &lt;select-query&gt;;                        // the block IS the query — a single
+                                       //   `;`-terminated expression, no
+  // optional trailing clauses:          //   clause key; SurrealQL views are
+  permissions: none | full;              //   a RESTRICTED select (field list,
+  permissions { … };                     //   FROM table list, WHERE, GROUP)
+  graphql { … };                         //   — validated by the embedded
+};                                     //   parser; anything beyond routes
+                                       //   to raw. changefeed;/drop; are
+                                       //   meaningless on views — SDL
+                                       //   rejects them.
+
+// clauses valid in any non-view table block:
+{
+  // optional:
+  schemafull;                         // flag — see the fold note above;
+                                       //   also legal in the HEADER
+                                       //   (before the block): the
+                                       //   examples' `table user
+                                       //   schemafull { … }` spelling
+  schemaless;                         // flag — always emitted
+  drop;                               // flag — the server silently skips
+                                       //   storing/indexing/edge-linking
+                                       //   records written to this table
+  changefeed {
+    expiry: &lt;duration&gt;;               // required inside the sub-block
+    include original;                 // flag
+  };
+  permissions: none | full;            // all-ops shorthand, or:
+  permissions {                        // per-op; unlisted ops are NONE
+    select: none | full | &lt;expr&gt;;
+    create, update: none | full | &lt;expr&gt;;
+    delete: none | full | &lt;expr&gt;;
+  };
+  graphql {
+    alias: &lt;string&gt;;
+    deprecated: &lt;string&gt;;
+  };
+  inline edges: &lt;n&gt;;                   // 3.3 — the inline cache cap, 0–256
+                                       //   (number mandatory; SDL-E1057
+                                       //   above the bound). Kind-
+                                       //   independent; not authorable
+                                       //   on views
+  inline references: &lt;n&gt;;              // 3.3 — same shape
+
+  // relation only:
+  enforced;                           // flag — see the semantics matrix;
+                                       //   legal on the unconstrained form
+                                       //   too (checks existence only).
+                                       //   Implied by `lightweight` —
+                                       //   canonical SDL prints the word
+                                       //   only when NOT lightweight
+
+  // nested definitions (fields, indexes, events):
+  &lt;field | index | event definitions&gt;  // forbidden under `lightweight`
+                                       //   (the engine auto-installs
+                                       //   `in`/`out` and rejects every
+                                       //   DEFINE FIELD/INDEX/EVENT on
+                                       //   the table)
+};</code></pre></div>
+<h2 id="relation-semantics-verified-v323">Relation semantics (verified, v3.2.3)</h2>
+<p><code>RELATE</code> <strong>requires</strong> <code>TYPE RELATION</code> — a normal table with typed <code>in</code>/ <code>out</code> fields is rejected as an edge target (<code>… which is a relation, but expected a NORMAL</code>). Within a relation table:</p>
+<p>| declaration | endpoint table types | dangling endpoints | | --- | --- | --- | | both endpoint lists empty, no <code>enforced;</code> (<code>table relation generic_edge;</code> or the equivalent bare skeleton <code>table -&gt; generic_edge -&gt;;</code>) | unconstrained | allowed | | arrow with a present side, no <code>enforced;</code> | the present side <strong>typed</strong> (<code>record&lt;…&gt;</code> coercion); an omitted side unconstrained (bare <code>record</code>) | <strong>allowed</strong> (<code>user:99</code> need not exist) | | any relation shape (arrow or relation-word) + <code>enforced;</code> | enforced | <strong>rejected</strong> (<code>The record 'user:99' does not exist</code>) — both endpoints' existence is checked, including on an omitted (unconstrained) side | | <code>lightweight</code> (both sides <strong>mandatory</strong>) | both sides typed, <code>enforced</code> <strong>implied</strong> (the engine normalizes the flag at define — INFO always prints <code>ENFORCED LIGHTWEIGHT</code>) | rejected (as <code>enforced;</code>) — and the table is <strong>record-less</strong>: edges are canonical <code>[in, out]</code> id pairs, <code>RELATE</code> is idempotent per pair, no data mutations, no fields/indexes/events/changefeed/drop/schemafull (see the semantics list) |</p>
+<p>The arrow implies typed endpoints on the sides it names; <code>enforced;</code> adds exactly the endpoint-existence check — unconditionally on both endpoints, regardless of the lists (source: <code>doc/edges.rs</code> <code>store_edges_data</code>, <code>record_exists</code> on <code>in</code> and <code>out</code>; the type constraint itself rides the materialized <code>in</code>/<code>out</code> fields).</p>
+<h2 id="nesting">Nesting</h2>
+<p>Fields, indexes, and events are table-scoped and nest inside the table block, omitting their <code>on:</code> clause (standalone forms keep it — exactly one of the two applies). A non-view table block also carries <strong>spread entries</strong> — <code>...&lt;name&gt;;</code> — which expand to a <a href="spec-mixin.html">mixin</a>'s members at compile time, in place; an explicit member of the same family key wholly overshadows the member (<a href="spec-mixin.html">mixin.md</a>). Collision rule (from <a href="spec-field.html">field.md</a>): a field named like an active clause key takes the <code>field</code> prefix. Emission order: the <code>DEFINE TABLE …</code> header+clauses first, then nested definitions in the compiler's order (rule 7 — an index lands after the fields it names regardless of authored position, a fulltext index's analyzer rides the table's own top-level edge, and authored order breaks the ties; on schemafull tables SurrealDB validates field existence at define time). The canonical SDL body prints in the member layout: the table's clauses, then fields, then the spread entries (relative order preserved — the last-occurrence-wins resolution's semantics lives there), then indexes, then events, each group a stable sort — fields before the spreads so a spread-carried index can never define above an explicit field it names; DDL emission reorders only by the rule-7 sort.</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> post <span class="tok-k">schemafull</span> {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> published = <span class="tok-k">true</span> or author = <span class="tok-v">$auth</span>.id;
+    <span class="tok-k">create</span>, <span class="tok-k">update:</span> author = <span class="tok-v">$auth</span>.id;
+    <span class="tok-k">delete:</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+  };
+
+  author: <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; {
+    <span class="tok-k">reference</span> {
+      <span class="tok-k">on</span> <span class="tok-k">delete:</span> cascade;
+    };
+  };
+  title: <span class="tok-k">string</span> {
+    <span class="tok-k">assert:</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>;
+  };
+  slug: <span class="tok-k">string</span>;
+  body: <span class="tok-k">string</span>;
+
+  <span class="tok-k">index</span> <span class="tok-k">unique</span> slug_unique {
+    <span class="tok-k">fields:</span> slug;
+  };
+  <span class="tok-k">index</span> <span class="tok-k">fulltext</span> body_fts {
+    <span class="tok-k">fields:</span> body;
+    <span class="tok-k">analyzer:</span> english;
+    <span class="tok-k">highlights</span>;
+  };
+
+  <span class="tok-k">event</span> audit_title {
+    <span class="tok-k">when:</span> <span class="tok-v">$event</span> = <span class="tok-s">'UPDATE'</span> and <span class="tok-v">$before</span>.title != <span class="tok-v">$after</span>.title;
+    <span class="tok-k">then:</span> { <span class="tok-k">create</span> audit <span class="tok-k">set</span> at = time::now(), id = <span class="tok-v">$after</span>.id; };
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>
+    <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">WHERE</span> published = <span class="tok-k">true</span> OR author = <span class="tok-v">$auth</span>.id,
+    FOR <span class="tok-k">create</span>, <span class="tok-k">update</span> <span class="tok-k">WHERE</span> author = <span class="tok-v">$auth</span>.id,
+    FOR <span class="tok-k">delete</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; <span class="tok-k">REFERENCE</span> <span class="tok-k">ON</span> <span class="tok-k">DELETE</span> CASCADE;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> title <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::len(<span class="tok-v">$value</span>) &gt; <span class="tok-n">0</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> slug <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> body <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> slug_unique <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> slug <span class="tok-k">UNIQUE</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> body_fts <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> body <span class="tok-k">FULLTEXT</span> <span class="tok-k">ANALYZER</span> `english` <span class="tok-k">HIGHLIGHTS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">EVENT</span> <span class="tok-k">OVERWRITE</span> audit_title <span class="tok-k">ON</span> `post`
+    <span class="tok-k">WHEN</span> <span class="tok-v">$event</span> = <span class="tok-s">'UPDATE'</span> AND <span class="tok-v">$before</span>.title != <span class="tok-v">$after</span>.title
+    <span class="tok-k">THEN</span> { <span class="tok-k">CREATE</span> audit <span class="tok-k">SET</span> at = time::now(), id = <span class="tok-v">$after</span>.id };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table post schemafull {\n  permissions {\n    select: published = true or author = $auth.id;\n    create, update: author = $auth.id;\n    delete: $auth.admin = true;\n  };\n\n  author: record\u003cuser> {\n    reference {\n      on delete: cascade;\n    };\n  };\n  title: string {\n    assert: string::len($value) > 0;\n  };\n  slug: string;\n  body: string;\n\n  index unique slug_unique {\n    fields: slug;\n  };\n  index fulltext body_fts {\n    fields: body;\n    analyzer: english;\n    highlights;\n  };\n\n  event audit_title {\n    when: $event = 'UPDATE' and $before.title != $after.title;\n    then: { create audit set at = time::now(), id = $after.id; };\n  };\n};"}</script>
+</figure>
+<p>Emit (SDL canonical order; <code>OVERWRITE</code> implied): <code>DEFINE TABLE &lt;name&gt; [TYPE …] [DROP] [SCHEMAFULL|SCHEMALESS] [CHANGEFEED …] [AS SELECT …] [PERMISSIONS …] [GRAPHQL_* …] [INLINE EDGES &lt;n&gt;] [INLINE REFERENCES &lt;n&gt;] [COMMENT …];</code> then nested <code>DEFINE FIELD/INDEX/EVENT …</code> in order. The server's own ToSql order differs slightly (COMMENT/GRAPHQL before AS/CHANGEFEED, the INLINE caps after COMMENT/GRAPHQL but before AS/CHANGEFEED, permission groups merged by equal value with delete-Full elided) — both parse; the differ compares resolved state: kinds under the algebra, expressions over canonical text, raw bodies as trimmed text — never authored spellings.</p>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p><code>PERMISSIONS</code> always renders: all-none as the single value <code>NONE</code>, per-op lines grouped by equal value (<code>FOR select, create FULL</code> — op words lowercase, the emitter's own spelling), with <code>FOR delete FULL</code> <strong>elided</strong> (see the semantics list; engine-probed 2026-09-21). Canonical minimal form: <code>PERMISSIONS NONE</code> (the default) elides entirely; <code>TYPE</code>/<code>SCHEMALESS</code> materialize per the bijective mapping above.</p>
+<ul><li><strong>View emission is fixed:</strong> SDL views always emit <code>TYPE ANY SCHEMALESS AS SELECT …</code>. A parsed view whose INFO deviates — <code>TYPE NORMAL</code>/<code>SCHEMAFULL</code>, or carrying <code>DROP</code>/<code>CHANGEFEED</code> (legal SurrealQL; SDL rejects those clauses on views) — cannot round-trip through the <code>table view</code> form and <strong>routes to <code>raw</code></strong> (re-emitting the SDL form would silently mutate the table on re-apply).</li>
+<li><strong><code>in</code>/<code>out</code> field fold (relation tables):</strong> every relation table's executor materializes <code>in</code>/<code>out</code> field definitions (<code>record&lt;from-list&gt;</code> / <code>record&lt;to-list&gt;</code> — an <strong>empty list renders as bare <code>record</code></strong>: the unconstrained form's sides, or the omitted side of a one-sided arrow). The reverse parser reads them as the ordinary nested fields they print as — faithful reads carry the materialization (elision is the normalizer's verb); the <strong>normalizer</strong> folds each into the table's relation shape exactly when its kind equals the endpoint list's kind and all other clauses are defaults (<code>PERMISSIONS FULL</code>, nothing else); folds are independent per side (in may fold while a customized out is kept). A divergent or user-customized <code>in</code>/<code>out</code> (own clauses, different kind) is kept as a nested field and never a REMOVE candidate. <strong>Exception — lightweight hosts drop them:</strong> a LIGHTWEIGHT relation's <code>in</code>/<code>out</code> fields are the header's own implication (the engine auto-installs them and rejects every DEFINE FIELD on the table), so nesting them would print SDL the engine itself rejects; the reader drops them <strong>in their implied shape</strong> — the endpoint kind under the algebra, the FULL default, no other clause — the endpoints in the kind being the source of truth, exactly as <code>enforced</code> is. Any other child (a divergent hand-carried <code>in</code>/<code>out</code> included — impossible live, and dropping it would mis-represent state) keeps the faithful-read behavior and the written SDL trips the parser's lightweight validation loud (fail-closed; issue #21). A sides-less LIGHTWEIGHT (<code>TYPE RELATION LIGHTWEIGHT …</code> with no IN/OUT) diagnoses — the writer's <code>(None, None)</code> spelling could not carry the word, so reading one would silently drop the flag on fmt.</li>
+<li><strong>The 3.3 shapes adopt:</strong> <code>ENFORCED LIGHTWEIGHT</code> prints after the sides; <code>ENFORCED</code> stops the side captures and <code>LIGHTWEIGHT</code> rides the payload, where the trailing-flag peel splits it (<code>lightweight</code> is also a legal endpoint ident — a candidate at the payload's head or preceded by <code>|</code> is an endpoint, mirroring the SDL-side greedy read); a hand-fed <code>LIGHTWEIGHT</code> without <code>ENFORCED</code> reads the same AST — the parse-fold. <code>INLINE EDGES|REFERENCES &lt;n&gt;</code> read after COMMENT (the printer's position). A cap the engine would reject (&gt;256, non-integer) diagnoses. A cap-bearing <strong>view</strong> deviates to <code>raw</code> (SDL does not author the caps on views). <code>ENFORCED</code>/<code>LIGHTWEIGHT</code> on a NORMAL/ANY table trips the kind guard.</li>
+<li>Fields/indexes/events arrive via <code>INFO FOR TABLE</code> as separate statements and nest into their table (the map's <code>lives</code> and <code>tables</code> keys — live queries and the foreign-view registry — are ignored). Every <code>TYPE RELATION</code> shape is expressible: full, IN-only (<code>table user -&gt; wrote -&gt;;</code>), OUT-only (<code>table -&gt; wrote -&gt; post;</code>), and the unconstrained <code>table relation &lt;name&gt;;</code> (or the equivalent bare skeleton <code>table -&gt; name -&gt;;</code>, emitted canonically as the relation-word form) — the header arrows re-spell exactly the non-empty <code>IN</code>/<code>OUT</code> sides. One exception: a FIRST <code>IN</code> endpoint whose name is not word-shaped (<code></code> <code>a.b</code> <code></code> — engine-legal; the header position prints that first element bare, so only shape-conforming names re-parse) cannot ride the arrow form — the statement routes to verbatim <code>raw</code>; later elements and the <code>OUT</code> side re-parse quoted.</li>
+</ul>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): default <code>PERMISSIONS NONE</code> materialized ✅; <code>TYPE NORMAL SCHEMALESS</code> combo ✅; RELATE into NORMAL rejected / into ANY accepted ✅; relation pipe lists <code>IN user | org OUT post | comment ENFORCED</code> ✅; bare <code>TYPE RELATION</code> (unconstrained) ✅; view <code>AS SELECT count() AS total FROM post GROUP ALL</code> ✅; <code>DROP</code> + <code>CHANGEFEED 1d INCLUDE ORIGINAL</code> ✅; <code>GRAPHQL_ALIAS</code> ✅; single-value <code>PERMISSIONS NONE|FULL</code> on tables ✅; comma endpoint lists rejected ✅ (<code>|</code> is the separator); unlisted-op=NONE seeding ✅. Live probes (2026-09-25): a lightweight relation authored without ENFORCED re-prints <code>ENFORCED LIGHTWEIGHT</code> ✅; <code>DROP</code>/<code>CHANGEFEED</code>/<code>SCHEMAFULL</code> + lightweight rejected (&quot;cannot be declared …: its edges store no records&quot;) ✅; <code>DEFINE FIELD/INDEX/EVENT</code> on lightweight rejected (carry-variant messages) ✅; <code>PERMISSIONS FULL</code>/<code>SCHEMALESS</code>/caps/ explicit <code>ENFORCED</code> + lightweight accepted ✅; caps print only when written, EDGES before REFERENCES, after COMMENT ✅; cap 256 accepted, 257 rejected (&quot;an INLINE cache cap cannot exceed 256&quot;) ✅; cap <code>0</code> materializes and re-prints ✅; caps accepted on NORMAL/ANY/view/ lightweight tables ✅; turning lightweight off on an empty table accepted ✅; lightweight's <code>INFO FOR TABLE</code> fields are exactly the auto-installed <code>in</code>/<code>out</code> ✅.</p>
+<h2 id="examples-one-per-clause">Examples (one per clause)</h2>
+<p>schemafull + nested field + doc comment (the workhorse form — the Nesting section has the full example):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">/// Application users</span>
+<span class="tok-k">table</span> <span class="tok-k">user</span> <span class="tok-k">schemafull</span> {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> <span class="tok-k">full</span>;
+    <span class="tok-k">create:</span> <span class="tok-k">full</span>;
+    <span class="tok-k">update:</span> <span class="tok-v">$auth</span>.id = id;
+    <span class="tok-k">delete:</span> <span class="tok-k">none</span>;
+  };
+
+  email: <span class="tok-k">string</span> {
+    <span class="tok-k">assert:</span> string::is_email(<span class="tok-v">$value</span>);
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>
+    <span class="tok-k">PERMISSIONS</span> FOR <span class="tok-k">select</span> <span class="tok-k">FULL</span>,
+    FOR <span class="tok-k">create</span> <span class="tok-k">FULL</span>,
+    FOR <span class="tok-k">update</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.id = id,
+    FOR <span class="tok-k">delete</span> <span class="tok-k">NONE</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Application users'</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> <span class="tok-k">ASSERT</span> string::is_email(<span class="tok-v">$value</span>);
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"/// Application users\ntable user schemafull {\n  permissions {\n    select: full;\n    create: full;\n    update: $auth.id = id;\n    delete: none;\n  };\n\n  email: string {\n    assert: string::is_email($value);\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE user TYPE NORMAL SCHEMAFULL
+  PERMISSIONS FOR select FULL, FOR create FULL,
+  FOR update WHERE $auth.id = id, FOR delete NONE
+  COMMENT 'Application users';
+DEFINE FIELD email ON user TYPE string ASSERT string::is::email($value);</code></pre></div>
+<p>drop + changefeed (append-only audit trail):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> audit {
+  <span class="tok-k">drop</span>;
+  <span class="tok-k">schemaless</span>;
+  <span class="tok-k">changefeed</span> {
+    <span class="tok-k">expiry:</span> <span class="tok-n">30d</span>;
+    <span class="tok-k">include</span> <span class="tok-k">original</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> audit <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">DROP</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">CHANGEFEED</span> <span class="tok-n">4w2d</span> <span class="tok-k">INCLUDE</span> <span class="tok-k">ORIGINAL</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table audit {\n  drop;\n  schemaless;\n  changefeed {\n    expiry: 30d;\n    include original;\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE audit TYPE NORMAL DROP SCHEMALESS CHANGEFEED 4w2d INCLUDE ORIGINAL;</code></pre></div>
+<p>(The changefeed emits value-normalized — the embedded duration canon prints <code>30d</code> as <code>4w2d</code>, the same weeks+days fact verified for <code>access</code> durations; durations compare by parsed value, never spelling.)</p>
+<p>relation with pipe endpoints + enforced + its own field, the one-sided forms, and the unconstrained form:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> <span class="tok-k">user</span> | org-&gt;wrote-&gt;post | <span class="tok-k">comment</span> {
+  <span class="tok-k">enforced</span>;
+  at: <span class="tok-k">datetime</span> {
+    <span class="tok-k">default:</span> { time::now() };
+  };
+};
+<span class="tok-k">table</span> follower-&gt;watched-&gt;;                 <span class="tok-c">// IN-only — OUT unconstrained</span>
+<span class="tok-k">table</span>-&gt;tagged-&gt;post;                       <span class="tok-c">// OUT-only — IN unconstrained</span>
+<span class="tok-k">table</span>-&gt;follows-&gt;;                          <span class="tok-c">// both omitted — the relation-word</span>
+                                           <span class="tok-c">//   form's equivalent (below)</span>
+<span class="tok-k">table</span> <span class="tok-k">relation</span> generic_edge;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> wrote <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> `<span class="tok-k">user</span>` | org <span class="tok-k">OUT</span> `post` | `<span class="tok-k">comment</span>` <span class="tok-k">ENFORCED</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> `at` <span class="tok-k">ON</span> wrote <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span> <span class="tok-k">DEFAULT</span> { time::now() };
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> watched <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> follower <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> tagged <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">OUT</span> `post` <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> follows <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> generic_edge <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">SCHEMALESS</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table user | org->wrote->post | comment {\n  enforced;\n  at: datetime {\n    default: { time::now() };\n  };\n};\ntable follower->watched->;                 // IN-only — OUT unconstrained\ntable->tagged->post;                       // OUT-only — IN unconstrained\ntable->follows->;                          // both omitted — the relation-word\n                                           //   form's equivalent (below)\ntable relation generic_edge;"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE wrote TYPE RELATION IN user | org OUT post | comment ENFORCED SCHEMALESS;
+DEFINE FIELD at ON wrote TYPE datetime DEFAULT time::now();
+DEFINE TABLE watched TYPE RELATION IN follower SCHEMALESS;
+DEFINE TABLE tagged TYPE RELATION OUT post SCHEMALESS;
+DEFINE TABLE follows TYPE RELATION SCHEMALESS;
+DEFINE TABLE generic_edge TYPE RELATION SCHEMALESS;</code></pre></div>
+<p>view (read-only aggregation — the block is the query):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">// The view's source must exist first — SurrealDB validates it at</span>
+<span class="tok-c">// define time.</span>
+<span class="tok-k">table</span> post { <span class="tok-k">schemaless</span>; };
+
+<span class="tok-c">/// Posts per author</span>
+<span class="tok-k">table</span> <span class="tok-k">view</span> post_stats {
+  <span class="tok-k">select</span> author, <span class="tok-k">count</span>() <span class="tok-k">as</span> posts <span class="tok-k">from</span> post <span class="tok-k">group</span> by author;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> post_stats <span class="tok-k">TYPE</span> <span class="tok-k">ANY</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">AS</span> <span class="tok-k">SELECT</span>
+    author,
+    <span class="tok-k">count</span>() <span class="tok-k">AS</span> posts
+    <span class="tok-k">FROM</span> post
+    <span class="tok-k">GROUP</span> BY author
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Posts per author'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"// The view's source must exist first — SurrealDB validates it at\n// define time.\ntable post { schemaless; };\n\n/// Posts per author\ntable view post_stats {\n  select author, count() as posts from post group by author;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE post_stats TYPE ANY SCHEMALESS
+  AS SELECT author, count() AS posts FROM post GROUP BY author
+  COMMENT 'Posts per author';</code></pre></div>
+<p>LIGHTWEIGHT relation (3.3 — the record-less edge; the implied <code>enforced</code> prints) and the inline cache caps:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> person-&gt;likes-&gt;post <span class="tok-k">lightweight</span>;
+<span class="tok-k">table</span> person-&gt;watched-&gt;post <span class="tok-k">lightweight</span> {
+  <span class="tok-k">permissions:</span> <span class="tok-k">full</span>;
+  <span class="tok-k">inline</span> <span class="tok-k">edges:</span> <span class="tok-n">8</span>;
+};
+<span class="tok-k">table</span> hot { <span class="tok-k">inline</span> <span class="tok-k">references:</span> <span class="tok-n">16</span>; };</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> likes <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> person <span class="tok-k">OUT</span> `post` <span class="tok-k">ENFORCED</span> <span class="tok-k">LIGHTWEIGHT</span> <span class="tok-k">SCHEMALESS</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> watched <span class="tok-k">TYPE</span> <span class="tok-k">RELATION</span> <span class="tok-k">IN</span> person <span class="tok-k">OUT</span> `post` <span class="tok-k">ENFORCED</span> <span class="tok-k">LIGHTWEIGHT</span> <span class="tok-k">SCHEMALESS</span>
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>
+    <span class="tok-k">INLINE</span> <span class="tok-k">EDGES</span> <span class="tok-n">8</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> hot <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span> <span class="tok-k">INLINE</span> <span class="tok-k">REFERENCES</span> <span class="tok-n">16</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table person->likes->post lightweight;\ntable person->watched->post lightweight {\n  permissions: full;\n  inline edges: 8;\n};\ntable hot { inline references: 16; };"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE likes TYPE RELATION IN person OUT post ENFORCED LIGHTWEIGHT SCHEMALESS;
+DEFINE TABLE watched TYPE RELATION IN person OUT post ENFORCED LIGHTWEIGHT
+  SCHEMALESS INLINE EDGES 8 PERMISSIONS FULL;
+DEFINE TABLE hot TYPE NORMAL SCHEMALESS INLINE REFERENCES 16;</code></pre></div>
+<p>graphql deprecation:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> legacy_reports {
+  <span class="tok-k">graphql</span> {
+    deprecated: <span class="tok-s">'use reports'</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> legacy_reports <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMALESS</span> GRAPHQL_DEPRECATED <span class="tok-s">'use reports'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table legacy_reports {\n  graphql {\n    deprecated: 'use reports';\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE TABLE legacy_reports TYPE NORMAL SCHEMALESS GRAPHQL_DEPRECATED 'use reports';</code></pre></div>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#relation-semantics-verified-v323">Relation semantics (verified, v3.2.3)</a>
+<a class="toc-2" href="#nesting">Nesting</a>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-clause">Examples (one per clause)</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/table.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

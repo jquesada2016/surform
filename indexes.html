@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indexes · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Indexes">
+<link rel="canonical" href="indexes.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html" class="active">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">The language</span><span class="crumb-title">Indexes</span></div>
+  <article>
+<h1 class="page-title">Indexes</h1>
+<p>Indexes make lookups fast and rules enforceable. The index <strong>kind</strong> sits in the header — <code>unique</code>, <code>count</code>, <code>fulltext</code>, <code>hnsw</code>, <code>diskann</code> — and each kind brings its own clauses.</p>
+<h2 id="the-everyday-two">The everyday two</h2>
+<p>A plain index is a lookup; a <code>unique</code> index is a rule:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> message {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> account: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> thread_id: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> sent_at: <span class="tok-k">datetime</span>;
+
+  <span class="tok-c">// Composite lookup for inbox queries.</span>
+  <span class="tok-k">index</span> by_account_thread {
+    <span class="tok-k">fields:</span> account, thread_id;
+  };
+  <span class="tok-k">index</span> by_recency {
+    <span class="tok-k">fields:</span> sent_at;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> message <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> account <span class="tok-k">ON</span> message <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> thread_id <span class="tok-k">ON</span> message <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> sent_at <span class="tok-k">ON</span> message <span class="tok-k">TYPE</span> <span class="tok-k">datetime</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> by_account_thread <span class="tok-k">ON</span> message <span class="tok-k">FIELDS</span> account, thread_id;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> by_recency <span class="tok-k">ON</span> message <span class="tok-k">FIELDS</span> sent_at;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable message {\n  schemafull;\n  field account: string;\n  field thread_id: string;\n  field sent_at: datetime;\n\n  // Composite lookup for inbox queries.\n  index by_account_thread {\n    fields: account, thread_id;\n  };\n  index by_recency {\n    fields: sent_at;\n  };\n};"}</script>
+</figure>
+<p><code>fields:</code> takes an expression list — usually plain field names, comma separated. (SurrealQL's <code>COLUMNS</code> spelling is accepted as an alias.)</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+
+  <span class="tok-k">index</span> <span class="tok-k">unique</span> one_email {
+    <span class="tok-k">fields:</span> email;
+    <span class="tok-k">concurrently</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> one_email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">FIELDS</span> email <span class="tok-k">UNIQUE</span> <span class="tok-k">CONCURRENTLY</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user {\n  schemafull;\n  field email: string;\n\n  index unique one_email {\n    fields: email;\n    concurrently;\n  };\n};"}</script>
+</figure>
+<p><code>concurrently;</code> builds the index in the background — a build-time directive only; the database doesn't remember it.</p>
+<h2 id="standalone-or-nested">Standalone or nested</h2>
+<p>Every index above nests inside its table. The standalone form carries an <code>on:</code> line instead — handy when you generate fields programmatically, and what the database's report reads back as:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span>;
+};
+
+<span class="tok-c">/// No two accounts share an email.</span>
+<span class="tok-k">index</span> <span class="tok-k">unique</span> one_email {
+  <span class="tok-k">on:</span> <span class="tok-k">user</span>;
+  <span class="tok-k">fields:</span> email;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> one_email <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">FIELDS</span> email
+    <span class="tok-k">UNIQUE</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'No two accounts share an email.'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable user {\n  schemafull;\n  field email: string;\n};\n\n/// No two accounts share an email.\nindex unique one_email {\n  on: user;\n  fields: email;\n};"}</script>
+</figure>
+<h2 id="count-fast-totals">Count: fast totals</h2>
+<p>A count index maintains a running count — no <code>fields:</code>, optionally filtered:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> reading {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> device: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> reading: <span class="tok-k">number</span>;
+};
+
+<span class="tok-k">table</span> item {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> status: <span class="tok-k">string</span>;
+
+  <span class="tok-k">index</span> <span class="tok-k">count</span> active_count {
+    <span class="tok-k">where:</span> status = <span class="tok-s">'active'</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> reading <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> device <span class="tok-k">ON</span> reading <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> reading <span class="tok-k">ON</span> reading <span class="tok-k">TYPE</span> <span class="tok-k">number</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> item <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> status <span class="tok-k">ON</span> item <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> active_count <span class="tok-k">ON</span> item <span class="tok-k">COUNT</span> <span class="tok-k">WHERE</span> status = <span class="tok-s">'active'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable reading {\n  schemafull;\n  field device: string;\n  field reading: number;\n};\n\ntable item {\n  schemafull;\n  field status: string;\n\n  index count active_count {\n    where: status = 'active';\n  };\n};"}</script>
+</figure>
+<h2 id="fulltext-search-over-text">Fulltext: search over text</h2>
+<p>A fulltext index covers exactly <strong>one</strong> field, through an analyzer (the default analyzer applies when you omit the rest):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> post {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> title: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> body: <span class="tok-k">string</span>;
+
+  <span class="tok-k">index</span> <span class="tok-k">fulltext</span> body_fts {
+    <span class="tok-k">fields:</span> body;
+  };
+  <span class="tok-k">index</span> <span class="tok-k">fulltext</span> title_fts {
+    <span class="tok-k">fields:</span> title;
+    <span class="tok-k">analyzer:</span> english;
+    <span class="tok-k">bm25:</span> (<span class="tok-n">1.2</span>, <span class="tok-n">0.75</span>);
+    <span class="tok-k">highlights</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> title <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> body <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> body_fts <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> body <span class="tok-k">FULLTEXT</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> title_fts <span class="tok-k">ON</span> `post` <span class="tok-k">FIELDS</span> title
+    <span class="tok-k">FULLTEXT</span> <span class="tok-k">ANALYZER</span> `english` <span class="tok-k">BM25</span>(<span class="tok-n">1.2</span>,<span class="tok-n">0.75</span>) <span class="tok-k">HIGHLIGHTS</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable post {\n  schemafull;\n  field title: string;\n  field body: string;\n\n  index fulltext body_fts {\n    fields: body;\n  };\n  index fulltext title_fts {\n    fields: title;\n    analyzer: english;\n    bm25: (1.2, 0.75);\n    highlights;\n  };\n};"}</script>
+</figure>
+<p>The pieces: <code>analyzer:</code> names an <a href="analyzers.html">analyzer</a>; <code>bm25:</code> is the scoring pair; <code>highlights;</code> enables highlighting in query results. At the defaults the clause disappears — <code>index fulltext body_fts { fields: body; };</code> is the complete minimal form, and the database's verbose default printout folds back to it on <a href="normalize.html">normalize</a>. Authoring order between an analyzer and the index that names it does not matter: <code>surform build</code> orders the emitted DDL itself — the analyzer lands before the fulltext index that names it — so the define-time hazard never arises (a true dependency cycle is an error, not an ordering warning).</p>
+<h2 id="vector-search-hnsw-and-diskann">Vector search: hnsw and diskann</h2>
+<p>Both vector kinds index exactly one field — an array of numbers — and require <code>dimension:</code>:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> embedding {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> vector: <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+
+  <span class="tok-k">index</span> <span class="tok-k">hnsw</span> vec {
+    <span class="tok-k">fields:</span> vector;
+    dimension: <span class="tok-n">768</span>;
+    distance: <span class="tok-k">cosine</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> embedding <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> vector <span class="tok-k">ON</span> embedding <span class="tok-k">TYPE</span> <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> vec <span class="tok-k">ON</span> embedding <span class="tok-k">FIELDS</span> vector <span class="tok-k">HNSW</span> DIMENSION <span class="tok-n">768</span> DISTANCE <span class="tok-k">COSINE</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable embedding {\n  schemafull;\n  field vector: array\u003cfloat>;\n\n  index hnsw vec {\n    fields: vector;\n    dimension: 768;\n    distance: cosine;\n  };\n};"}</script>
+</figure>
+<p>Distance — <code>minkowski</code> takes its order in SDL's paren form, and the two pruning flags ride as plain flags:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> embedding {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> vector: <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+
+  <span class="tok-k">index</span> <span class="tok-k">hnsw</span> vec_tuned {
+    <span class="tok-k">fields:</span> vector;
+    dimension: <span class="tok-n">768</span>;
+    distance: <span class="tok-k">minkowski</span>(<span class="tok-n">3</span>);
+    <span class="tok-k">type:</span> f16;
+    <span class="tok-k">m:</span> <span class="tok-n">16</span>;
+    <span class="tok-k">efc:</span> <span class="tok-n">200</span>;
+    extend_candidates;
+    keep_pruned_connections;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> embedding <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> vector <span class="tok-k">ON</span> embedding <span class="tok-k">TYPE</span> <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> vec_tuned <span class="tok-k">ON</span> embedding <span class="tok-k">FIELDS</span> vector
+    <span class="tok-k">HNSW</span> DIMENSION <span class="tok-n">768</span> DISTANCE <span class="tok-k">MINKOWSKI</span> <span class="tok-n">3</span> <span class="tok-k">TYPE</span> F16 <span class="tok-k">M</span> <span class="tok-n">16</span> <span class="tok-k">EFC</span> <span class="tok-n">200</span> EXTEND_CANDIDATES KEEP_PRUNED_CONNECTIONS;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable embedding {\n  schemafull;\n  field vector: array\u003cfloat>;\n\n  index hnsw vec_tuned {\n    fields: vector;\n    dimension: 768;\n    distance: minkowski(3);\n    type: f16;\n    m: 16;\n    efc: 200;\n    extend_candidates;\n    keep_pruned_connections;\n  };\n};"}</script>
+</figure>
+<p>Omitted HNSW parameters derive from <code>m</code> — and when the database reports the derived values back (<code>m0</code>, <code>lm</code>), normalize folds them away again as long as they match.</p>
+<p><code>diskann</code> is the on-disk cousin — different parameter names, a restricted distance/type menu:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> document {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> embedding: <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+
+  <span class="tok-k">index</span> <span class="tok-k">diskann</span> big_vec {
+    <span class="tok-k">fields:</span> embedding;
+    dimension: <span class="tok-n">1536</span>;
+    distance: cosine_normalized;
+    <span class="tok-k">type:</span> f16;
+    degree: <span class="tok-n">32</span>;
+    l_build: <span class="tok-n">50</span>;
+    alpha: <span class="tok-n">1.3</span>;
+    hashed_vector;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">NAMESPACE</span> <span class="tok-k">OVERWRITE</span> acme;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
+<span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
+<span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
+<span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> document <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> embedding <span class="tok-k">ON</span> document <span class="tok-k">TYPE</span> <span class="tok-k">array</span>&lt;<span class="tok-k">float</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">INDEX</span> <span class="tok-k">OVERWRITE</span> big_vec <span class="tok-k">ON</span> document <span class="tok-k">FIELDS</span> embedding
+    <span class="tok-k">DISKANN</span> DIMENSION <span class="tok-n">1536</span> DISTANCE COSINE_NORMALIZED <span class="tok-k">TYPE</span> F16 DEGREE <span class="tok-n">32</span> L_BUILD <span class="tok-n">50</span> ALPHA <span class="tok-n">1.3</span> HASHED_VECTOR;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\ntable document {\n  schemafull;\n  field embedding: array\u003cfloat>;\n\n  index diskann big_vec {\n    fields: embedding;\n    dimension: 1536;\n    distance: cosine_normalized;\n    type: f16;\n    degree: 32;\n    l_build: 50;\n    alpha: 1.3;\n    hashed_vector;\n  };\n};"}</script>
+</figure>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="analyzers.html">Analyzers</a> — tokenizers and filters for fulltext.</li>
+<li><a href="fields.html">Fields</a> — the fields these indexes cover.</li>
+<li><a href="migrate.html">Schema migration</a> — comparing declared indexes with what <code>INFO FOR TABLE</code> reports.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-everyday-two">The everyday two</a>
+<a class="toc-2" href="#standalone-or-nested">Standalone or nested</a>
+<a class="toc-2" href="#count-fast-totals">Count: fast totals</a>
+<a class="toc-2" href="#fulltext-search-over-text">Fulltext: search over text</a>
+<a class="toc-2" href="#vector-search-hnsw-and-diskann">Vector search: hnsw and diskann</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/indexes.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

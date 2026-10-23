@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE FIELD · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE FIELD">
+<link rel="canonical" href="spec-field.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html" class="active">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE FIELD</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE FIELD</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>parse_define_field</code>, <code>parse_reference</code> in <code>stmt/parts.rs</code>), executor validation (<code>expr/statements/define/field.rs</code> — computed/id restrictions), and emitter (<code>sql/statements/define/field.rs</code>). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor move re-runs the corpus on the 3.3.0 embed (2026-09-25). Spec correction (2026-09-22): the email-assert example spelled the function <code>string::is::email</code> — the 3.2.4 dispatch table registers <code>string::is_email</code> (<code>core/src/fnc/mod.rs</code>; the <code>is::</code> spelling is a legacy display form the parser rejects), and the example now uses it.</p>
+<p><strong>Surface decisions (settled):</strong></p>
+<ul><li>The type sits in the header — <code>name: type</code> — and is <strong>SDL-lexed, not expression-captured</strong> (README rule 4: the SDL type parser consumes the kind grammar, including brace-bearing inline object types that end at their balanced <code>}</code>; the header then ends at <code>=</code>, <code>;</code>, or the clause block <code>{</code>). The type is <strong>required</strong> for regular fields — a licensed deviation from SurrealQL's typeless form (reachable via <code>raw</code>), because <code>name: {</code> would collide with expression capture — and <strong>optional exactly when a computed expression is present</strong> (<code>name = &lt;expr&gt;;</code> typeless computed is SurrealQL-legal, verified).</li>
+<li>The <code>field</code> prefix is optional; it is REQUIRED to escape a field name colliding with an active clause key or block keyword (<code>index</code>, <code>event</code>, <code>permissions</code>, <code>from</code>, <code>as</code>, <code>enforced</code>, <code>drop</code>, …).</li>
+<li><strong>No nested-block sugar for subfields</strong> — a subfield entry and a clause key would be indistinguishable inside one block. Nested fields are separate entries with dotted names (<code>stats.views: int;</code>), matching SurrealQL's flat path model (<code>.</code> nesting, <code>.*</code> array wildcard).</li>
+<li>Standalone fields carry <code>on: &lt;table&gt;;</code>; nested (inside a <code>table</code> block) they omit it.</li>
+</ul>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>struct Field {
+  name: FieldPath,                    // 'stats.views', 'tags.*', …
+  type: Option&lt;Kind&gt;,                 // required unless computed is present
+  on: TableRef,                       // standalone only
+  default: Option&lt;Default&gt;,           // Set(expr) | Always(expr)
+  value: Option&lt;Expr&gt;,
+  assert: Option&lt;Expr&gt;,
+  computed: Option&lt;Expr&gt;,             // derived, read-only
+  readonly: bool,
+  flexible: bool,                     // type must contain an object
+  inline: bool,                       // embeds the value into a relation
+                                      //   host's edge-adjacency payloads
+                                      //   (3.3); codegen glues INLINE
+                                      //   after READONLY
+  reference: Option&lt;Reference&gt;,       // { on_delete }, default Ignore
+  permissions: Permission,            // select/create/update; single-value
+                                      //   none|full shorthand also valid
+  graphql: Option&lt;Graphql&gt;,           // alias?, deprecated?
+  comment: Option&lt;DocComment&gt;,        // from ///
+}</code></pre></div>
+<p><strong>Computed validation (executor-enforced, verified from source):</strong> <code>computed</code> is mutually exclusive with <code>default:</code>, <code>default always:</code>, <code>value:</code>, <code>assert:</code>, <code>reference</code>, and <code>readonly;</code>; computed fields must be <strong>top-level</strong> (no dotted names); no subfields may nest under a computed parent.</p>
+<p><strong>The <code>id</code> field (executor-enforced):</strong> <code>type:</code>, <code>assert:</code>, and plain <code>default:</code> are allowed; <code>value:</code>, <code>default always:</code>, <code>computed:</code>, <code>readonly</code>, <code>flexible</code>, and <code>reference</code> are forbidden, and the type must be a record-id-key-compatible kind.</p>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>/// &lt;doc comment&gt;                        // optional — emitted as COMMENT
+[field] &lt;name&gt;: &lt;type&gt; [= &lt;expr&gt;] {
+  // required when standalone (omit inside a table block):
+  on: &lt;table&gt;;
+
+  // optional:
+  default: &lt;expr&gt;;                       // applied when no value is supplied
+  default always: &lt;expr&gt;;                // applied even when one is
+  value: &lt;expr&gt;;                         // overrides any supplied value
+  assert: &lt;expr&gt;;                        // validation predicate; THROW
+                                          //   customizes the error
+  computed: &lt;expr&gt;;                      // block form of the header
+                                          //   assignment — use when other
+                                          //   clauses are present
+  readonly;                              // flag
+  flexible;                              // flag — type must contain an
+                                          //   object; codegen glues FLEXIBLE
+                                          //   after TYPE
+  inline;                                // flag — 3.3; the INLINE
+                                          //   contract below
+  reference;                             // flag — ON DELETE IGNORE (default)
+  reference {
+    on delete: reject | cascade | ignore | unset | &lt;expr&gt;;
+  };                                     // non-enum value → ON DELETE THEN
+  permissions: none | full;              // all-ops shorthand, or:
+  permissions {                          // per-op; NO delete — SurrealQL
+    select: none | full | &lt;expr&gt;;        //   rejects it; unlisted ops are
+    create, update: none | full | &lt;expr&gt;; //  FULL for fields (verified —
+  };                                     //   the opposite of tables)
+  graphql {
+    alias: &lt;string&gt;;                     // GRAPHQL_ALIAS
+    deprecated: &lt;string&gt;;                // GRAPHQL_DEPRECATED
+  };
+};</code></pre></div>
+<p><strong>Type syntax passes through verbatim</strong> (illustrative, not exhaustive — <code>sql/kind.rs</code> is the authority): <code>string</code>, <code>int</code>, <code>number</code>, <code>datetime</code>, <code>bool</code>, <code>uuid</code>, <code>float</code>, <code>duration</code>, <code>option&lt;T&gt;</code>, <code>array&lt;T&gt;</code> and fixed-size <code>array&lt;T, N&gt;</code>, <code>set&lt;T&gt;</code>, <code>record&lt;T, …&gt;</code>, <code>geometry&lt;T&gt;</code>, unions (<code>int | string</code>), literals (<code>'small' | 'large' | int</code>), inline object schemas (<code>{ a: string, b: number }</code>), and the remaining SurrealQL kinds (<code>any</code>, <code>null</code>, <code>bytes</code>, <code>decimal</code>, <code>range</code>, <code>regex</code>, <code>function</code>, <code>table&lt;T&gt;</code>, <code>file&lt;T&gt;</code>, literal kinds). Kind equality and round-trip folding follow the README rule-4 normalization (<code>option&lt;T&gt;</code> ≡ <code>none | T</code>).</p>
+<p><strong>Computed forms:</strong> header assignment (preferred) — <code>shout: string = string::uppercase(name);</code> — or typeless <code>shout = string::uppercase(name);</code>. As with <code>param</code>, a trailing block after <code>=</code> is rejected (expression capture ambiguity), so a computed field needing other clauses uses the block form with <code>computed:</code>.</p>
+<p><strong>References and <code>&lt;~</code> back-traversal:</strong> reference DDL is a clause group (not a header operator) — it is behavior config, unlike the table <code>-&gt;</code> which encodes shape. The <strong><code>&lt;~</code> idiom</strong> (documented since v2.2.0, verified live on 3.2.3) traverses <em>incoming</em> references: in queries (<code>select &lt;~person as owners from comic_book;</code>) and inside expressions — SDL supports it verbatim for free, including as a computed field's header assignment (<code>owners = &lt;~person;</code>, example below). The field-narrowing form <code>&lt;~(person FIELD comics …)</code> appears in current docs but does not parse on 3.2.x (docs-ahead; re-verify on upgrade). <code>~&gt;</code> exists only in the GQL query layer (directed edge patterns), not SurrealQL. Reference constraints: top-level record/array-of-record fields only — <code>reference</code> on a nested path is rejected at define time (verified: <code>Specify a referencing field at the root level instead</code>); <code>on delete:</code> expressions see <code>$this</code> and <code>$reference</code> (documented).</p>
+<p>Emit (canonical order; <code>OVERWRITE</code> implied): <code>DEFINE FIELD &lt;name&gt; ON &lt;table&gt; [TYPE &lt;type&gt; [FLEXIBLE]] [READONLY] [INLINE] [VALUE …] [ASSERT …] [DEFAULT [ALWAYS] …] [COMPUTED …] [REFERENCE [ON DELETE …]] [PERMISSIONS …] [GRAPHQL_ALIAS …] [GRAPHQL_DEPRECATED …] [COMMENT …];</code></p>
+<p><strong>The INLINE contract (3.3):</strong> <code>inline;</code> embeds the field's value into the host table's edge-adjacency payloads, so filtered traversals (<code>-&gt;likes WHERE score &gt; 5</code>) evaluate against the payloads without fetching edge records. SDL spells it as a block flag next to <code>readonly;</code> (the engine's clause-loop flag with no kind affinity — the <code>flexible</code> precedent: codegen glues INLINE after READONLY, upstream's fixed relative order). The engine's define-time validations, mirrored where SDL sees them (rule 10):</p>
+<ul><li>The host must be an <strong>existing <code>TYPE RELATION</code> table</strong> — SCHEMALESS and SCHEMAFULL both fine, LIGHTWEIGHT unreachable (its tables carry no fields at all, spec/table.md). A nested field's host kind is known at the table fold → <code>SDL-E1044</code>; a standalone field's host is cross-statement → the linter's <code>SDL-L0019</code> (order-blind — it reads the whole file). The <em>order</em> half of &quot;existing&quot; is apply-time: the engine demands the table already exist as a relation when the field defines, so a standalone field authored before its table statement fails there — the accepted exec class (the index-before-field precedent; <code>SDL-L0007</code> nudges nesting, which orders correctly). Normalize's twin fold orders the folded twin (nested defines after the table); a divergent standalone keeps its authored position and is the differ's drift to report.</li>
+<li>The names <code>id</code>, <code>in</code>, <code>out</code> cannot be INLINE (the adjacency keys themselves) → <code>SDL-E1058</code>; <code>id</code> rides the id-field grammar's forbidden list (<code>SDL-E1052</code>).</li>
+<li>Only <strong>top-level</strong> fields — dotted and <code>.*</code> paths cannot embed → <code>SDL-E1058</code>.</li>
+<li><strong>Computed fields cannot be INLINE</strong> (&quot;its value is derived at read time, so there is nothing stored to embed&quot;) — the computed exclusivity set → <code>SDL-E1049</code>.</li>
+<li>A table carries <strong>at most 255</strong> INLINE fields (the payload's value count is a single byte) → the linter's <code>SDL-L0020</code> (a table aggregate no single statement sees).</li>
+<li><strong>No kind constraint</strong> — every kind embeds (probe-pinned 2026-09-25: <code>number</code>, <code>option&lt;string&gt;</code>, <code>array&lt;int&gt;</code>, <code>record&lt;&gt;</code>, <code>object</code>, <code>geometry&lt;&gt;</code>, inline-object schemas, unions, even <code>any</code> and <code>null</code>); <code>flexible</code> + <code>inline</code> coexist on a SCHEMAFULL host. Typeless + INLINE is legal upstream but unreachable in SDL (the type requirement plus the computed exclusivity).</li>
+</ul>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p>Verified materializations and their canonical handling:</p>
+<ul><li><code>PERMISSIONS</code> renders <strong>unconditionally</strong> (default FULL). Elide when all operations are FULL; INFO groups equal-valued ops (<code>FOR select, create FULL</code>) — split the groups on re-parse.</li>
+<li><code>REFERENCE</code> always renders <code>ON DELETE IGNORE</code> (never bare) — map to the <code>reference;</code> flag.</li>
+<li><code>INLINE</code> prints between <code>READONLY</code> and <code>VALUE</code> (the printer's fixed relative order) — map to the <code>inline;</code> flag. Hand-fed shapes the engine's define-time checks never store (computed + INLINE, the <code>id</code>/<code>in</code>/<code>out</code> names + INLINE, a dotted path + INLINE) trip the shape validation loud; the host-relation half stays define-order (the engine's to say).</li>
+<li>Computed fields round-trip typeless when SDL was typeless (<code>type</code> is <code>Option</code> in the SDL AST — both forms stable).</li>
+<li><strong>Types normalize</strong> per README rule 4: INFO returns desugared kinds (<code>none | T</code> for <code>option&lt;T&gt;</code>, flattened/deduped unions); compare by parsed kind AST and fold <code>none | T</code> back to <code>option&lt;T&gt;</code> in canonical SDL.</li>
+<li><strong>Server-synthesized subfields:</strong> for every field whose type has an inner kind (<code>array&lt;T&gt;</code>, <code>set&lt;T&gt;</code>, unions containing them — not bare <code>array</code>/<code>set</code>), the server materializes a stored <code>name.*</code> subfield with the inner kind (and inherited <code>flexible;</code>), recursing until the next inner kind would be exactly <code>any</code> — <code>matrix: array&lt;array&lt;int&gt;&gt;</code> synthesizes both <code>matrix.*: array&lt;int&gt;</code> and <code>matrix.*.*: int</code>; a union's inner kind is the union of its arms' inner kinds, dropping arms without one. The reverse parser reads them as the ordinary fields they print as; the <strong>normalizer</strong> folds them back deepest-first per README item 4: union normalization applies to both sides of the comparison, and inherited <code>flexible</code> never blocks folding. Keep user-meaningful <code>.*</code> entries — a bare <code>tags: array;</code> plus an authored <code>tags.*: int;</code> is the legitimate explicit pattern, since bare <code>array</code>'s inner kind is <code>any</code> and nothing is synthesized.</li>
+<li>The reference-type predicate is looser than &quot;record or array-of-record&quot; — unions whose <strong>every</strong> arm is record-or-<code>none</code> (incl. what <code>option&lt;T&gt;</code> desugars to), <code>set&lt;T&gt;</code>, and literal arrays also pass (server-enforced at define time; <code>record&lt;user&gt; | string</code> is rejected).</li>
+<li>A field with no TYPE and no COMPUTED (<code>DEFINE FIELD x ON t;</code> — legal hand-run SurrealQL the printer reprints typeless) is outside SDL's grammar (which demands a type on every non-computed field) and routes the statement to verbatim <code>raw</code>.</li>
+<li>On relation tables, defining a field literally named <code>in</code>/<code>out</code> with a record type <strong>rewrites the table's relation endpoints</strong> — a later table-level diff reflects it; the linter warns on such fields (SDL-L0010).</li>
+<li>Doc comments map back to <code>///</code>; kind prefixes strip; canonical placement nests fields into their table block (<code>INFO FOR TABLE</code>).</li>
+<li>The emitted clause order above is SDL's canonical choice; the server's ToSql order differs slightly (COMMENT/GRAPHQL near the end) — both parse; the differ compares resolved state (kinds under the algebra, expressions over canonical text).</li>
+</ul>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): dotted and wildcard paths ✅; <code>FLEXIBLE</code> after <code>TYPE</code> with <code>FLEXI</code> alias ✅; flexible on non-object → parse error ✅; flexible before <code>TYPE</code> → parse error ✅; inline object / union / literal types ✅; <code>COMPUTED</code> referencing a sibling field ✅; typeless computed ✅; <code>DEFAULT ALWAYS</code> ✅; <code>REFERENCE</code> bare / <code>ON DELETE CASCADE</code> / <code>ON DELETE THEN (expr)</code> ✅; <code>GRAPHQL_ALIAS</code> / <code>GRAPHQL_DEPRECATED</code> ✅; per-op permissions ✅ and <code>FOR delete</code> → <code>Can't define permission DELETE for fields</code> ✅; single-value <code>PERMISSIONS FULL</code> on fields ✅; <code>id</code> rejects <code>VALUE</code> at define time ✅; <code>owners = &lt;~person;</code> computed + query traversal ✅; INLINE (3.3, 2026-09-25): every kind embeds incl. <code>any</code>/<code>null</code>/<code>geometry&lt;&gt;</code> ✅, <code>FLEXIBLE</code>+<code>INLINE</code> on a SCHEMAFULL relation ✅, SCHEMALESS relation host ✅, non-relation host rejected at define ✅, <code>in</code>/<code>out</code>/<code>id</code> + INLINE rejected ✅, dotted/<code>.*</code> paths rejected (&quot;only a top-level field can be INLINE&quot;) ✅, computed + INLINE rejected ✅, the 255-field cap (256th define rejected) ✅, INFO prints the flag between READONLY and VALUE ✅.</p>
+<h2 id="examples-one-per-clause">Examples (one per clause)</h2>
+<p>type + default + assert + doc comment (standalone form):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">/// Contact address for the account owner</span>
+<span class="tok-k">field</span> email: <span class="tok-k">string</span> {
+  <span class="tok-k">on:</span> account;
+  <span class="tok-k">assert:</span> string::is_email(<span class="tok-v">$value</span>);
+  <span class="tok-k">default:</span> <span class="tok-s">'unknown@example.com'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> email <span class="tok-k">ON</span> account <span class="tok-k">TYPE</span> <span class="tok-k">string</span>
+    <span class="tok-k">ASSERT</span> string::is_email(<span class="tok-v">$value</span>)
+    <span class="tok-k">DEFAULT</span> <span class="tok-s">'unknown@example.com'</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Contact address for the account owner'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"/// Contact address for the account owner\nfield email: string {\n  on: account;\n  assert: string::is_email($value);\n  default: 'unknown@example.com';\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE FIELD email ON account TYPE string
+  ASSERT string::is_email($value) DEFAULT 'unknown@example.com'
+  COMMENT 'Contact address for the account owner';</code></pre></div>
+<p>value + readonly:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>locked: <span class="tok-k">bool</span> {
+  <span class="tok-k">readonly</span>;
+  <span class="tok-k">value:</span> <span class="tok-k">true</span>;
+};</code></pre></div>
+</div>
+</figure>
+<p>computed — header assignment (typed and typeless), and block form with clauses:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>shout: <span class="tok-k">string</span> = string::uppercase(name);
+derived = string::uppercase(name);
+secret_shout: <span class="tok-k">string</span> {
+  <span class="tok-k">computed:</span> string::uppercase(name);
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> <span class="tok-k">none</span>;
+  };
+};</code></pre></div>
+</div>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE FIELD shout ON &lt;table&gt; TYPE string COMPUTED string::uppercase(name);
+DEFINE FIELD derived ON &lt;table&gt; COMPUTED string::uppercase(name);
+DEFINE FIELD secret_shout ON &lt;table&gt; TYPE string
+  COMPUTED string::uppercase(name) PERMISSIONS FOR select NONE;</code></pre></div>
+<p>back-reference computed field via <code>&lt;~</code> (lives on the <em>referenced</em> table):</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">// on person:</span>
+comics: <span class="tok-k">option</span>&lt;<span class="tok-k">array</span>&lt;<span class="tok-k">record</span>&lt;comic_book&gt;&gt;&gt; {
+  <span class="tok-k">reference</span>;
+};
+<span class="tok-c">// on comic_book:</span>
+owners = &lt;~person;</code></pre></div>
+</div>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE FIELD comics ON person TYPE option&lt;array&lt;record&lt;comic_book&gt;&gt;&gt; REFERENCE;
+DEFINE FIELD owners ON comic_book COMPUTED &lt;~person;</code></pre></div>
+<p>default always:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>tags: <span class="tok-k">array</span>&lt;<span class="tok-k">string</span>&gt; {
+  <span class="tok-k">default</span> always: [];
+};</code></pre></div>
+</div>
+</figure>
+<p>flexible:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>meta: <span class="tok-k">object</span> {
+  <span class="tok-k">flexible</span>;
+};
+meta.user_id: <span class="tok-k">int</span>;</code></pre></div>
+</div>
+</figure>
+<p>reference — flag, strategy, and custom expression:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>author: <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; {
+  <span class="tok-k">reference</span> {
+    <span class="tok-k">on</span> <span class="tok-k">delete:</span> cascade;
+  };
+};
+<span class="tok-k">owner:</span> <span class="tok-k">record</span>&lt;<span class="tok-k">user</span>&gt; {
+  <span class="tok-k">reference</span>;                          <span class="tok-c">// ON DELETE IGNORE (the default)</span>
+};
+parent: <span class="tok-k">record</span>&lt;page&gt; {
+  <span class="tok-k">reference</span> {
+    <span class="tok-k">on</span> <span class="tok-k">delete:</span> { <span class="tok-k">create</span> cleanup_log <span class="tok-k">set</span> at = time::now() };
+  };
+};</code></pre></div>
+</div>
+</figure>
+<p>permissions (single-value shorthand and per-op block — no delete):</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>secret: <span class="tok-k">string</span> {
+  <span class="tok-k">permissions:</span> <span class="tok-k">none</span>;
+};
+audited: <span class="tok-k">string</span> {
+  <span class="tok-k">permissions</span> {
+    <span class="tok-k">select:</span> <span class="tok-k">none</span>;
+    <span class="tok-k">create</span>, <span class="tok-k">update:</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+  };
+};</code></pre></div>
+</div>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE FIELD secret ON &lt;table&gt; TYPE string PERMISSIONS NONE;
+DEFINE FIELD audited ON &lt;table&gt; TYPE string
+  PERMISSIONS FOR select NONE, FOR create, update WHERE $auth.admin = true;</code></pre></div>
+<p>graphql (alias + deprecation note):</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>display: <span class="tok-k">string</span> {
+  <span class="tok-k">graphql</span> {
+    alias: <span class="tok-s">'displayName'</span>;
+  };
+};
+legacy: <span class="tok-k">string</span> {
+  <span class="tok-k">graphql</span> {
+    deprecated: <span class="tok-s">'use display'</span>;
+  };
+};</code></pre></div>
+</div>
+</figure>
+<p>nested and wildcard paths:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>stats: <span class="tok-k">object</span>;
+stats.views: <span class="tok-k">int</span> {
+  <span class="tok-k">default:</span> <span class="tok-n">0</span>;
+};
+tags: <span class="tok-k">array</span>&lt;<span class="tok-k">string</span>&gt;;
+tags.*: <span class="tok-k">string</span>;</code></pre></div>
+</div>
+</figure>
+<p>union, literal, and inline-object types:</p>
+<figure class="example"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean inside a table block (SurrealDB 3.3 parses the DDL)</span><div class="ex-block"><div class="ex-label">a clause-level fragment — lives inside a table block</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>mixed: <span class="tok-k">int</span> | <span class="tok-k">string</span>;
+size: <span class="tok-s">'small'</span> | <span class="tok-s">'large'</span> | <span class="tok-k">int</span>;
+inline_obj: { a: <span class="tok-k">string</span>, b: <span class="tok-k">number</span> };</code></pre></div>
+</div>
+</figure>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-clause">Examples (one per clause)</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/field.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

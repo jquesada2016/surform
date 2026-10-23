@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE CONFIG · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE CONFIG">
+<link rel="canonical" href="spec-config.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html" class="active">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE CONFIG</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE CONFIG</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>parse_define_config</code>, <code>parse_default_config</code>, <code>parse_graphql_config</code>, <code>parse_api_config</code>) and the catalog emitters (<code>catalog/schema/config.rs</code> — INFO output shape). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor-move corpus re-runs on the 3.3.0 embed (2026-09-25).</p>
+<p>Three facts you must know:</p>
+<ul><li><strong>No <code>COMMENT</code> clause exists on DEFINE CONFIG</strong> (parser-verified) — <code>///</code> doc comments are rejected on all three variants.</li>
+<li><strong>Configs are per-variant singletons</strong> (verified: re-defining without <code>OVERWRITE</code> errors with <code>The config for &lt;variant&gt; already exists</code>, and the <code>default</code> slot is pre-seeded) — codegen always emits <code>DEFINE CONFIG OVERWRITE …</code>.</li>
+<li><strong>Unspecified GraphQL families default to NONE — expose nothing</strong> (parser <code>unwrap_or_default()</code> → <code>TablesConfig::None</code>; verified from source). Only <code>introspection</code> defaults to auto. A bare <code>auto;</code> sets BOTH families to auto; a bare <code>none;</code> sets both to none.</li>
+</ul>
+<p><code>config</code> has no user-chosen name — the <strong>variant is the header</strong> (exactly one is accepted, so it is flattened into the header rather than nested as a sub-block). Scope: <code>config default</code> executes at ROOT level; <code>config api</code> / <code>config graphql</code> at database level (namespace level rejected); codegen places them accordingly relative to the emitted <code>USE</code> statements.</p>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>enum Config {
+  Api     { middleware?, permissions? },
+  Graphql { tables: TablesCfg,         // auto | none | include(…) | exclude(…)
+            functions: FnsCfg,         // resolved at parse: bare auto;/none;
+            depth?, complexity?,       //   flags fold into both families
+            introspection: auto|none },//   (last-one-wins per family)
+  Default { namespace?, database? },   // ≥ one required; the unset side
+}                                      //   emits NONE (SQL-AST display)</code></pre></div>
+<h2 id="variant-config-api-global-api-endpoint-defaults">Variant <code>config api { … }</code> — global api-endpoint defaults</h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>config api {
+  middleware: &lt;call&gt;, …;              // global &lt;fn-path&gt; + (args); the list
+                                       //   splits on depth-0 commas; args are
+                                       //   SurrealQL expressions evaluated
+                                       //   once at define time (INFO returns
+                                       //   them as computed values)
+  permissions: none | full | &lt;expr&gt;;  // single-value; default full
+};</code></pre></div>
+<h2 id="variant-config-graphql">Variant <code>config graphql { … }</code></h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>config graphql {
+  auto;                               // flag: tables AND functions → auto
+  none;                               // flag: tables AND functions → none
+  tables: auto | none;                // bare enums stay inline…
+  tables { include: &lt;table&gt;, …; };    // …structured variant is a sub-block
+  tables { exclude: &lt;table&gt;, …; };    //   holding exactly ONE of
+  functions: auto | none;             //   include:/exclude: (both present in
+  functions { include: &lt;fn-path&gt;, …; };//  one sub-block = parse error);
+  functions { exclude: &lt;fn-path&gt;, …; };//  all lists non-empty (≥ 1); fn
+                                       //  entries require the fn:: prefix
+  depth: &lt;number&gt;;                    // u32
+  complexity: &lt;number&gt;;               // u32
+  introspection: auto | none;         // default auto
+};</code></pre></div>
+<p>A bare <code>auto;</code>/<code>none;</code> flag and subsequent <code>tables:</code>/<code>functions:</code> clauses fold last-one-wins per family (rule 7).</p>
+<h2 id="variant-config-default">Variant <code>config default { … }</code></h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>config default {
+  namespace: &lt;expr&gt;;                  // ≥ one of the two required; the
+  database: &lt;expr&gt;;                   //   unset side emits NONE
+};</code></pre></div>
+<p>Emit: <code>DEFINE CONFIG OVERWRITE (API &lt;cfg&gt; | GRAPHQL &lt;cfg&gt; | DEFAULT NAMESPACE &lt;expr&gt; DATABASE &lt;expr&gt;);</code> — GraphQL kind params emit in SurrealQL keyword form; <code>introspection: auto</code> emits nothing (default).</p>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p><strong>INFO renders configs as header-less fragments</strong>, not full DDL: the catalog emits only <code>GRAPHQL TABLES … FUNCTIONS …</code>, <code>API MIDDLEWARE … PERMISSIONS …</code>, or <code>DEFAULT NAMESPACE &lt;ident&gt;</code> — the reverse parser prepends <code>DEFINE CONFIG OVERWRITE</code> before handing it to the embedded parser (README item 4). Further verified shape facts:</p>
+<ul><li>The <code>default</code> config's fragment emits <strong>only the set side</strong>, as a bare identifier (<code>DEFAULT NAMESPACE acme</code> — no quotes, no <code>DATABASE NONE</code>); map absent sides to unset.</li>
+<li><code>API</code> fragments always carry <code>PERMISSIONS …</code> (default <code>FULL</code> — elide at default); middleware args arrive as computed values.</li>
+<li>GraphQL: <code>AUTO</code> materializes as <code>TABLES AUTO FUNCTIONS AUTO</code> → maps to <code>tables: auto;</code> + <code>functions: auto;</code> (the canonical writer emits the resolved per-family spellings — the bare <code>auto;</code> flag is an input-only fold, indistinguishable in the AST from the two-clause spelling); absent <code>INTROSPECTION</code> = auto (elide); absent families = none.</li>
+<li>The <code>default</code> config is ROOT-level and is exposed by <code>INFO FOR ROOT</code> under <code>defaults</code> as a <strong>structured value</strong> (not DDL): <code>{}</code> when unset, else <code>{ namespace?: string, database?: string }</code> with absent keys meaning unset — use that path to discover it; the <code>API</code> and <code>GRAPHQL</code> fragments above are what <code>INFO FOR DB … configs</code> yields (the <code>default</code> fragment form is unreachable through INFO in 3.2.4).</li>
+</ul>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): <code>API MIDDLEWARE … PERMISSIONS NONE</code> ✅; full <code>GRAPHQL TABLES INCLUDE user, post FUNCTIONS NONE DEPTH 4 COMPLEXITY 100 INTROSPECTION NONE</code> ✅; bare <code>GRAPHQL AUTO</code> ✅; <code>DEFAULT NAMESPACE 'acme' DATABASE 'blog'</code> ✅ (with OVERWRITE); singleton + seeding behavior ✅.</p>
+<h2 id="examples-one-per-clause">Examples (one per clause)</h2>
+<p>api variant — global endpoint middleware + permissions:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">api</span> {
+  <span class="tok-k">middleware:</span> api::timeout(<span class="tok-n">5s</span>), api::log();
+  <span class="tok-k">permissions:</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">API</span>
+    <span class="tok-k">MIDDLEWARE</span> api::timeout(<span class="tok-n">5s</span>), api::log()
+    <span class="tok-k">PERMISSIONS</span> <span class="tok-k">WHERE</span> <span class="tok-v">$auth</span>.admin = <span class="tok-k">true</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config api {\n  middleware: api::timeout(5s), api::log();\n  permissions: $auth.admin = true;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE API
+  MIDDLEWARE api::timeout(5s), api::log() PERMISSIONS WHERE $auth.admin = true;</code></pre></div>
+<p>graphql auto flag:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">graphql</span> {
+  auto;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">GRAPHQL</span> AUTO;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config graphql {\n  auto;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE GRAPHQL AUTO;</code></pre></div>
+<p>graphql tables/functions include-exclude:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">graphql</span> {
+  <span class="tok-k">tables</span> { <span class="tok-k">include:</span> <span class="tok-k">user</span>, post; };
+  <span class="tok-k">functions</span> { exclude: fn::legacy_report; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">GRAPHQL</span> <span class="tok-k">TABLES</span> <span class="tok-k">INCLUDE</span> `<span class="tok-k">user</span>`, `post` <span class="tok-k">FUNCTIONS</span> EXCLUDE fn::legacy_report;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config graphql {\n  tables { include: user, post; };\n  functions { exclude: fn::legacy_report; };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE GRAPHQL TABLES INCLUDE user, post
+  FUNCTIONS EXCLUDE fn::legacy_report;</code></pre></div>
+<p>graphql depth + complexity + introspection:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">graphql</span> {
+  <span class="tok-k">depth:</span> <span class="tok-n">4</span>;
+  <span class="tok-k">complexity:</span> <span class="tok-n">100</span>;
+  <span class="tok-k">introspection:</span> <span class="tok-k">none</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">GRAPHQL</span> <span class="tok-k">DEPTH</span> <span class="tok-n">4</span> <span class="tok-k">COMPLEXITY</span> <span class="tok-n">100</span> <span class="tok-k">INTROSPECTION</span> <span class="tok-k">NONE</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config graphql {\n  depth: 4;\n  complexity: 100;\n  introspection: none;\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE GRAPHQL DEPTH 4 COMPLEXITY 100 INTROSPECTION NONE;</code></pre></div>
+<p>default both, and namespace-only (the clause-less side emits <code>DATABASE NONE</code>; one <code>config default</code> per document — rule 7's duplicates rule — so the two shapes are separate statements):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">default</span> {
+  <span class="tok-k">namespace:</span> <span class="tok-s">'acme'</span>;
+  <span class="tok-k">database:</span> <span class="tok-s">'blog'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">DEFAULT</span> <span class="tok-k">NAMESPACE</span> <span class="tok-s">'acme'</span> <span class="tok-k">DATABASE</span> <span class="tok-s">'blog'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config default {\n  namespace: 'acme';\n  database: 'blog';\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE DEFAULT NAMESPACE 'acme' DATABASE 'blog';</code></pre></div>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">config</span> <span class="tok-k">default</span> {
+  <span class="tok-k">namespace:</span> <span class="tok-s">'acme'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">CONFIG</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">DEFAULT</span> <span class="tok-k">NAMESPACE</span> <span class="tok-s">'acme'</span> <span class="tok-k">DATABASE</span> <span class="tok-k">NONE</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"config default {\n  namespace: 'acme';\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE CONFIG OVERWRITE DEFAULT NAMESPACE 'acme' DATABASE NONE;</code></pre></div>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#variant-config-api-global-api-endpoint-defaults">Variant `config api { … }` — global api-endpoint defaults</a>
+<a class="toc-2" href="#variant-config-graphql">Variant `config graphql { … }`</a>
+<a class="toc-2" href="#variant-config-default">Variant `config default { … }`</a>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-clause">Examples (one per clause)</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/config.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

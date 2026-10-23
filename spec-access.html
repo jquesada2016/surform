@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: DEFINE ACCESS · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: DEFINE ACCESS">
+<link rel="canonical" href="spec-access.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html" class="active">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: DEFINE ACCESS</span></div>
+  <article>
+<h1 class="page-title">Spec: DEFINE ACCESS</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p>Ground truth: the 3.3.0 parser (the <code>=3.3.0</code> embed — the 2026-09-25 floor move; originally pinned against v3.2.4) — parser (<code>surrealdb/core/src/syn/parser/stmt/define.rs</code>: <code>parse_define_access</code>, <code>parse_jwt</code>) and emitters (<code>sql/access_type.rs</code>, which define what <code>INFO</code> renders). Cross-checked against a local in-memory 3.2.3 server (2026-09-18); the floor-move corpus re-runs on the 3.3.0 embed (2026-09-25). SDL blocks are free-ordered; codegen emits SurrealQL's canonical order (below). SurrealQL's parser accepts the shared clauses (<code>comment</code>/<code>type</code>/<code>authenticate</code>/<code>duration</code>) in any order; the positional requirements are only within the type clause (SIGNUP/SIGNIN precede the <code>WITH</code> loop; the verification source precedes <code>WITH ISSUER</code>) — codegen's canonical order satisfies all of them.</p>
+<p><code>type:</code> is the discriminant; the SDL AST models ACCESS as:</p>
+<div class="codebox"><span class="lang-chip">rust</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>enum Access {
+  Jwt    { on, source+audience?, issuer?, duration?, authenticate?, context?, comment? },
+  Record { on, signup?, signin?, jwt?, refresh?, duration?, authenticate?, context?, comment? },
+  Bearer { on, for, jwt?, duration?, authenticate?, context?, comment? },
+}
+// `field?` = Option&lt;…&gt;; unmarked = required.
+// comment? is populated exclusively by the /// doc comment above the
+// definition — there is no `comment:` clause.</code></pre></div>
+<h2 id="variant-type-jwt">Variant <code>type: jwt;</code></h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>/// &lt;doc comment&gt;                        // optional — emitted as COMMENT
+access &lt;name&gt; {
+  // required:
+  on: root | kv | namespace | ns | database | db;
+  type: jwt;
+  // verification source — required; `url:` XOR the pair
+  // `algorithm:` + `key:`:
+  url: &lt;expr&gt;;                            // JWKS endpoint
+  algorithm: &lt;algorithm&gt;;                 // local key — &lt;algorithm&gt; is a
+  key: &lt;expr&gt;;                            //   dedicated token: eddsa,
+                                          //   es256, es384, es512,
+                                          //   hs256, hs384, hs512,
+                                          //   ps256, ps384, ps512,
+                                          //   rs256, rs384, rs512
+  // optional:
+  issuer {                                // WITH ISSUER — issuing configuration.
+    algorithm?: &lt;algorithm&gt;;              //   Compatibility: must equal the
+    key: &lt;expr&gt;;                          //   verification algorithm when
+  };                                      //   verifying by local key (and is
+                                          //   then elided from canonical SDL,
+                                          //   being forced-equal); URL-verified
+                                          //   accesses accept any algorithm —
+                                          //   a DECLARED algorithm must always
+                                          //   be emitted, or SurrealDB
+                                          //   silently materializes hs512.
+                                          //   key: is REQUIRED unless
+                                          //   auto-derived (symmetric verify
+                                          //   mirrors its key); a key-less
+                                          //   issuer materializes a RANDOM key
+                                          //   — SDL validates, the linter
+                                          //   rejects it.
+  duration { grant?: &lt;expr&gt;; token?: &lt;expr&gt;; session?: &lt;expr&gt;; };
+  authenticate: &lt;expr&gt;;                   // post-auth check; THROW rejects
+};</code></pre></div>
+<p>Captured clause bodies render per the global expression-rendering rule: bare statements print wrapped in <code>( … )</code>, braced blocks print as blocks — both authoring forms are valid. One INFO edge: a verify-only access (no issuer — explicit or symmetric-mirrored; URL-verified <em>or</em> asymmetric-key-verified) cannot issue tokens, so INFO omits <code>FOR TOKEN</code> entirely — a declared <code>duration { token: …; }</code> on such an access disappears from round-trips (the differ tolerates it; the linter flags it SDL-L0011). Grant-capable means: bearer accesses always; record accesses with <code>refresh;</code>; jwt accesses never — <code>FOR GRANT</code> appears in INFO only for those, and grant/token durations on non-capable accesses are accepted by SurrealQL and silently dropped. The 30d default renders as <code>4w2d</code> in INFO — durations compare by parsed value (<code>30d</code> ≡ <code>4w2d</code>), never by spelling. The same value-normalization is what the embedded printer applies to every duration canon: SDL's <code>30d</code> emits <code>4w2d</code>, and <code>365d</code> emits <code>1y</code> (the server's own greedy decomposition; both re-parse to the identical value).</p>
+<h3 id="secret-key-slots-are-shape-only-the-exposure-guard-sdl-e1056">Secret key slots are shape-only (the exposure guard, SDL-E1056)</h3>
+<p>A symmetric (hs*) verify <code>key:</code> and every issuer <code>key:</code> are SECRET MATERIAL — the engine redacts them in INFO and they must be provisioned outside SDL (this access class is run manually, so its secrets are never committed). SDL accepts exactly one spelling there: the literal <code>'[REDACTED]'</code> (either quote style — canonical SDL spells single quotes). Authoring any other expression — a real key, a parameter, a computed value — fails with SDL-E1056. Asymmetric verify keys render verbatim in INFO (they are public keys) and stay freely authorable, as does <code>url:</code>. The engine additionally requires a symmetric issuer key to EQUAL its verify key (upstream rejects otherwise at define); the sentinel rule satisfies that by construction. Consequence for the differ: never auto-emit <code>DEFINE</code> for a secret-bearing access whose key slots hold the sentinel — applying <code>KEY '[REDACTED]'</code> would define a garbage key (issue #6).</p>
+<h2 id="the-33-clauses-audience-and-context">The 3.3 clauses: <code>audience:</code> and <code>context:</code></h2>
+<p>Both landed with SurrealDB 3.3 (probe-pinned live, 2026-09-25).</p>
+<ul><li><strong><code>audience: '&lt;value&gt;', …;</code></strong> — a non-empty comma list of string literals on the JWT source: the jwt variant's direct clauses and record/bearer's <code>jwt { … }</code> sub-blocks (membership: the variant owners diagnose a misplaced spelling). When present, verification requires the token's <code>aud</code> claim and an intersection with the list. The engine evaluates each value at define, string-checks it (<code>AUDIENCE 'a', 1 + 1</code> → &quot;Expected <code>string</code> but found <code>2</code>&quot;), and stores strings — SDL authors literals only, the one shape that round-trips (the expression-comma-list grammar is upstream's; the literal-only restriction is SDL's licensed deviation). DDL print position: after the verification source, before <code>WITH ISSUER</code> (comma-space separated); the INFO print adopts decoded.</li>
+<li><strong><code>context: &lt;expr&gt;;</code></strong> — the authorization payload evaluated at authentication and exposed as <code>$session.data</code>; stored unevaluated (INFO re-prints the expression). The engine's define-time shape demand is mirrored at the fold: the clause requires an access method that authenticates a record — a record access, or a bearer for records, at the database level (a jwt spelling dies in the membership pass — the owners message; anything else carries the engine's &quot;authenticates a record&quot; message). The read-only half of the engine's check (&quot;it must be read-only&quot;) is semantic — the engine's to say, per the standing division of labor.</li>
+</ul>
+<p>Emit (canonical order, <code>OVERWRITE</code> implied per the codegen model): <code>DEFINE ACCESS &lt;name&gt; ON &lt;LEVEL&gt; TYPE &lt;TYPE&gt; [SIGNUP (…)] [SIGNIN (…)] [WITH REFRESH] [WITH JWT … [AUDIENCE …] [WITH ISSUER …]] [AUTHENTICATE …] [CONTEXT …] [DURATION …] [COMMENT …];</code> — clause bodies are re-printed from the embedded parser's AST, statement-like values wrapped in <code>( … )</code>.</p>
+<h2 id="variant-type-record-database-level-only-parser-enforced">Variant <code>type: record;</code> — database level only (parser-enforced)</h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>access &lt;name&gt; {
+  // required:
+  on: database | db;
+  type: record;
+  // optional — grammar-optional; typically signin is present, and signup
+  // is omitted when accounts are created by db users rather than
+  // self-registered:
+  signup: &lt;expr&gt;;
+  signin: &lt;expr&gt;;
+  jwt { &lt;source + optional issuer { … } — same shape and source
+         requirement as the jwt variant&gt; };
+                                          // issues its own tokens (WITH JWT)
+  refresh;                                // WITH REFRESH — refresh-token grants
+  duration { grant?: &lt;expr&gt;; token?: &lt;expr&gt;; session?: &lt;expr&gt;; };
+  authenticate: &lt;expr&gt;;
+};</code></pre></div>
+<h2 id="variant-type-bearer">Variant <code>type: bearer;</code></h2>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>access &lt;name&gt; {
+  // required:
+  on: root | kv | namespace | ns | database | db;
+  type: bearer;
+  for: user | record;                     // required; record subject is
+                                          //   database-level only (parser-enforced)
+  // optional:
+  jwt { &lt;source + optional issuer { … } — same shape and source
+         requirement as the jwt variant&gt; };
+                                          // bearer-issued JWTs (WITH JWT)
+  duration { grant?: &lt;expr&gt;; token?: &lt;expr&gt;; session?: &lt;expr&gt;; };
+  authenticate: &lt;expr&gt;;
+};</code></pre></div>
+<p>Empirically verified on the 3.3.0 embed (2026-09-25 floor move; first verified in-memory 3.2.3, 2026-09-18): record SIGNIN-only ✅, SIGNUP-only ✅, neither ✅; jwt without a source ❌ (<code>expected ALGORITHM, or URL</code>); bearer without FOR ❌ (<code>expected FOR</code>); missing ON ❌ (<code>expected ON</code>); <code>ON NS</code>/<code>ON KV</code> alias forms parse ✅; AUDIENCE (2026-09-25): one and two values ✅, the multi-value print <code>AUDIENCE 'aud1', 'aud2'</code> ✅, record/bearer <code>jwt { … }</code> sub-blocks ✅, a non-string value define-rejected ✅; CONTEXT: record + bearer-for-record ✅, jwt and bearer-for-user and root-level rejected (the &quot;authenticates a record&quot; message) ✅, a non-read-only expression rejected (&quot;it must be read-only&quot;) ✅, INFO prints the payload after AUTHENTICATE, before DURATION ✅.</p>
+<h2 id="reverse-parser-info-sdl">Reverse parser (INFO → SDL)</h2>
+<p>Verified against the v3.2.4 emitters — three ACCESS-specific hazards:</p>
+<ul><li><strong>INFO data loss (preserve in SDL):</strong> a bearer access's <code>jwt { … }</code> clause is stored but never rendered, and an issuer's <code>algorithm:</code> is never rendered (only <code>WITH ISSUER KEY</code>). Both join the normalizer's preserve list.</li>
+<li><strong><code>DURATION</code> always materializes:</strong> <code>FOR SESSION</code> is always printed (<code>NONE</code> when unset), <code>FOR TOKEN</code> only when the access can issue tokens, <code>FOR GRANT</code> only for grant-capable accesses. The SurrealQL-side defaults that materialize are <strong>grant 30d, token 1h, session none</strong> (verified in <code>sql/access.rs</code>) — canonical SDL elides any duration clause whose value equals these defaults, so an access with no <code>duration</code> block round-trips to no <code>duration</code> block. (The READ side carries the materialized sides faithfully — the elision is the normalizer's.)</li>
+<li>Record accesses with no <code>jwt { … }</code> round-trip printing the auto-issued <code>WITH JWT ALGORITHM HS512 KEY '[REDACTED]' WITH ISSUER KEY '[REDACTED]'</code>. The reader adopts it through the ordinary <code>WITH JWT</code> arm and the mirror fold — the read shape is the authored sentinel block with the key-less mirrored issuer, which re-emits byte-identically. (Pre-redesign the random keys were SDL-managed-only; the sentinel rule made the printed signature adoptable.) Conversely, when SDL declares an hs* verify key with no <code>issuer { … }</code>, SurrealQL's implied issuer mirrors that key — the printed mirror reads back to the key-less issuer (<code>issuer.key: None</code>). An explicit <code>issuer { key: '[REDACTED]'; }</code> on a symmetric key is textually identical to that mirror and reads as it — indistinguishable by design (issue #6).</li>
+<li>The issuer's <code>algorithm:</code> never renders on either path (live-probed even with an authored one on the URL path): the read carries absence, and SDL's URL-path emission of a declared algorithm is the one emit-more divergence — preserve.</li>
+<li>Root-level accesses are listed by <code>INFO FOR ROOT</code> (its <code>accesses</code> entry).</li>
+<li>SurrealQL permits a TYPE-less definition (implicitly RECORD) — the reverse parser accepts it and maps to <code>type: record;</code>.</li>
+<li>Note: <strong>INFO redacts ACCESS key secrets</strong> (corrected 2026-09-21 against the v3.2.4 catalog emitter and the embedded engine — an earlier revision of this file claimed otherwise). The catalog's only ToSql path builds a redacted copy of the access type (<code>catalog/schema/access.rs</code>, <code>to_sql_definition</code> → <code>AccessType::redacted</code>): symmetric (hs<em>) verify keys and every issuer key render <code>[REDACTED]</code>, while asymmetric verify keys render verbatim (they are public keys). SDL's own shape-only rule makes <code>'[REDACTED]'</code> the only authorable spelling in exactly those slots, the sentinel round-trips by construction: the read adopts it as the canonical literal and marks the entry <code>Markers::redacted</code> (the <code>PASSHASH '[REDACTED]'</code> precedent). A real hs</em> key remains reachable only through raw SurrealQL (the exec smoke pins the engine-side redaction through that spelling).</li>
+</ul>
+<h2 id="examples-one-per-clause">Examples (one per clause)</h2>
+<p>jwt + url + doc comment:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">/// Tokens issued by Acme SSO</span>
+<span class="tok-k">access</span> corp_sso {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">url:</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span>;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> corp_sso <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">URL</span> <span class="tok-s">'https://sso.acme.com/.well-known/jwks.json'</span>
+    <span class="tok-k">COMMENT</span> <span class="tok-s">'Tokens issued by Acme SSO'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"/// Tokens issued by Acme SSO\naccess corp_sso {\n  on: database;\n  type: jwt;\n  url: 'https://sso.acme.com/.well-known/jwks.json';\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ACCESS corp_sso ON DATABASE TYPE JWT
+  URL 'https://sso.acme.com/.well-known/jwks.json'
+  COMMENT 'Tokens issued by Acme SSO';</code></pre></div>
+<p>jwt + algorithm/key + duration (on root):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> ops {
+  <span class="tok-k">on:</span> root;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">algorithm:</span> <span class="tok-k">es256</span>;
+  key: <span class="tok-s">'ops_public_key_pem'</span>;
+  <span class="tok-k">duration</span> { <span class="tok-k">session:</span> <span class="tok-n">8h</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> ops <span class="tok-k">ON</span> ROOT
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">ES256</span> KEY <span class="tok-s">'ops_public_key_pem'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">SESSION</span> <span class="tok-n">8h</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access ops {\n  on: root;\n  type: jwt;\n  algorithm: es256;\n  key: 'ops_public_key_pem';\n  duration { session: 8h; };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ACCESS ops ON ROOT TYPE JWT ALGORITHM ES256 KEY 'ops_public_key_pem'
+  DURATION FOR SESSION 8h;</code></pre></div>
+<p>record + signup/signin (no trailing <code>;</code> inside the captures — the value must be returned):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> account {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  <span class="tok-k">signup:</span> {
+    <span class="tok-k">create</span> <span class="tok-k">user</span> <span class="tok-k">set</span>
+      email = <span class="tok-v">$email</span>,
+      <span class="tok-k">password</span> = crypto::argon2::generate(<span class="tok-v">$password</span>)
+  };
+  <span class="tok-k">signin:</span> {
+    <span class="tok-k">select</span> * <span class="tok-k">from</span> <span class="tok-k">user</span>
+      <span class="tok-k">where</span> email = <span class="tok-v">$email</span>
+      and crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>)
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> account <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNUP</span> { <span class="tok-k">CREATE</span> <span class="tok-k">user</span> <span class="tok-k">SET</span> email = <span class="tok-v">$email</span>, <span class="tok-k">password</span> = crypto::argon2::generate(<span class="tok-v">$password</span>) }
+    <span class="tok-k">SIGNIN</span> {
+        <span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span> AND crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>)
+    };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access account {\n  on: database;\n  type: record;\n  signup: {\n    create user set\n      email = $email,\n      password = crypto::argon2::generate($password)\n  };\n  signin: {\n    select * from user\n      where email = $email\n      and crypto::argon2::compare(password, $password)\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ACCESS account ON DATABASE TYPE RECORD
+  SIGNUP { CREATE user SET email = $email, password = crypto::argon2::generate($password) }
+  SIGNIN { SELECT * FROM user WHERE email = $email AND crypto::argon2::compare(password, $password) };</code></pre></div>
+<p>(braced captures print as blocks — the rendering rule above; an earlier revision of this example showed parenthesized output, which is the braceless-authoring form's shape.)</p>
+<p>inline braceless expression clause:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> gated {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  <span class="tok-k">signin:</span> <span class="tok-k">select</span> * <span class="tok-k">from</span> <span class="tok-k">user</span> <span class="tok-k">where</span> email = <span class="tok-v">$email</span>;
+  <span class="tok-k">authenticate:</span> {
+    <span class="tok-k">if</span> <span class="tok-v">$auth</span>.blocked { throw <span class="tok-s">'account suspended'</span>; }
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> gated <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNIN</span> (<span class="tok-k">SELECT</span> * <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span>)
+    <span class="tok-k">AUTHENTICATE</span> { <span class="tok-k">IF</span> <span class="tok-v">$auth</span>.blocked { THROW <span class="tok-s">'account suspended'</span> } };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access gated {\n  on: database;\n  type: record;\n  signin: select * from user where email = $email;\n  authenticate: {\n    if $auth.blocked { throw 'account suspended'; }\n  };\n};"}</script>
+</figure>
+<p>record + refresh + jwt issuance (canonical emit order — SIGNIN before the WITH clauses):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> member {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">record</span>;
+  refresh;
+  <span class="tok-k">signin:</span> { <span class="tok-k">select</span> id <span class="tok-k">from</span> <span class="tok-k">user</span> <span class="tok-k">where</span> email = <span class="tok-v">$email</span> and crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>) };
+  <span class="tok-k">jwt</span> {
+    <span class="tok-k">algorithm:</span> eddsa;
+    key: <span class="tok-s">'member_signing_key'</span>;
+    <span class="tok-k">issuer</span> {
+      key: <span class="tok-s">'[REDACTED]'</span>;
+    };
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> member <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">RECORD</span>
+    <span class="tok-k">SIGNIN</span> {
+        <span class="tok-k">SELECT</span> id <span class="tok-k">FROM</span> <span class="tok-k">user</span> <span class="tok-k">WHERE</span> email = <span class="tok-v">$email</span> AND crypto::argon2::compare(<span class="tok-k">password</span>, <span class="tok-v">$password</span>)
+    }
+    WITH REFRESH
+    WITH <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> EDDSA KEY <span class="tok-s">'member_signing_key'</span> WITH <span class="tok-k">ISSUER</span> KEY <span class="tok-s">'[REDACTED]'</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access member {\n  on: database;\n  type: record;\n  refresh;\n  signin: { select id from user where email = $email and crypto::argon2::compare(password, $password) };\n  jwt {\n    algorithm: eddsa;\n    key: 'member_signing_key';\n    issuer {\n      key: '[REDACTED]';\n    };\n  };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ACCESS member ON DATABASE TYPE RECORD
+  SIGNIN ( SELECT id FROM user WHERE email = $email AND crypto::argon2::compare(password, $password) )
+  WITH REFRESH
+  WITH JWT ALGORITHM EDDSA KEY 'member_signing_key'
+  WITH ISSUER KEY '[REDACTED]';</code></pre></div>
+<p>jwt + issuer (asymmetric: verify public — freely authorable — issue private, shape-only):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> partner_api {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">jwt</span>;
+  <span class="tok-k">algorithm:</span> <span class="tok-k">es256</span>;
+  key: <span class="tok-s">'partners_public_key'</span>;
+  <span class="tok-k">issuer</span> {
+    key: <span class="tok-s">'[REDACTED]'</span>;
+  };
+  <span class="tok-k">duration</span> { <span class="tok-k">token:</span> <span class="tok-n">1h</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> partner_api <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">ES256</span> KEY <span class="tok-s">'partners_public_key'</span> WITH <span class="tok-k">ISSUER</span> KEY <span class="tok-s">'[REDACTED]'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1h</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access partner_api {\n  on: database;\n  type: jwt;\n  algorithm: es256;\n  key: 'partners_public_key';\n  issuer {\n    key: '[REDACTED]';\n  };\n  duration { token: 1h; };\n};"}</script>
+</figure>
+<p>bearer for user + grant duration:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> ci_tokens {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">bearer</span>;
+  for: <span class="tok-k">user</span>;
+  <span class="tok-k">duration</span> {
+    <span class="tok-k">grant:</span> <span class="tok-n">30d</span>;
+    <span class="tok-k">token:</span> <span class="tok-n">1d</span>;
+  };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> ci_tokens <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">BEARER</span> FOR <span class="tok-k">USER</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">GRANT</span> <span class="tok-n">4w2d</span>, FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1d</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access ci_tokens {\n  on: database;\n  type: bearer;\n  for: user;\n  duration {\n    grant: 30d;\n    token: 1d;\n  };\n};"}</script>
+</figure>
+<p>bearer for record (database level only) + bearer-issued JWTs — note the emission: <code>TYPE BEARER FOR … WITH JWT …</code> must carry the <code>WITH JWT</code> clause even though INFO never renders it (verified):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">access</span> device_keys {
+  <span class="tok-k">on:</span> <span class="tok-k">database</span>;
+  <span class="tok-k">type:</span> <span class="tok-k">bearer</span>;
+  for: <span class="tok-k">record</span>;
+  <span class="tok-k">jwt</span> {
+    <span class="tok-k">algorithm:</span> <span class="tok-k">hs256</span>;
+    key: <span class="tok-s">'[REDACTED]'</span>;
+  };
+  <span class="tok-k">duration</span> { <span class="tok-k">token:</span> <span class="tok-n">365d</span>; };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">ACCESS</span> <span class="tok-k">OVERWRITE</span> device_keys <span class="tok-k">ON</span> <span class="tok-k">DATABASE</span>
+    <span class="tok-k">TYPE</span> <span class="tok-k">BEARER</span> FOR <span class="tok-k">RECORD</span> WITH <span class="tok-k">JWT</span> <span class="tok-k">ALGORITHM</span> <span class="tok-k">HS256</span> KEY <span class="tok-s">'[REDACTED]'</span>
+    <span class="tok-k">DURATION</span> FOR <span class="tok-k">TOKEN</span> <span class="tok-n">1y</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"access device_keys {\n  on: database;\n  type: bearer;\n  for: record;\n  jwt {\n    algorithm: hs256;\n    key: '[REDACTED]';\n  };\n  duration { token: 365d; };\n};"}</script>
+</figure>
+<div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>DEFINE ACCESS device_keys ON DATABASE TYPE BEARER FOR RECORD
+  WITH JWT ALGORITHM HS256 KEY '[REDACTED]'
+  DURATION FOR TOKEN 1y;</code></pre></div>
+<p>(<code>365d</code> canonizes to <code>1y</code> — the duration value-normalization above.)</p>
+<h2 id="open-items">Open items</h2>
+<p><code>OPENID_CONNECT</code>/<code>SAML</code> are described as &quot;since v3.3.0&quot; in the docs but have no parser evidence yet (absent from v3.2.4, and not among the engine-verified 3.3.0 additions); they remain unauthorable in SDL. The rest of the shipped 3.3 access surface IS authorable: <code>CONTEXT</code> and jwt <code>AUDIENCE</code> landed alongside the user surface's <code>PASSSCRAM</code> (2026-09-25; engine-verified).</p>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#variant-type-jwt">Variant `type: jwt;`</a>
+<a class="toc-3" href="#secret-key-slots-are-shape-only-the-exposure-guard-sdl-e1056">Secret key slots are shape-only (the exposure guard, SDL-E1056)</a>
+<a class="toc-2" href="#the-33-clauses-audience-and-context">The 3.3 clauses: `audience:` and `context:`</a>
+<a class="toc-2" href="#variant-type-record-database-level-only-parser-enforced">Variant `type: record;` — database level only (parser-enforced)</a>
+<a class="toc-2" href="#variant-type-bearer">Variant `type: bearer;`</a>
+<a class="toc-2" href="#reverse-parser-info-sdl">Reverse parser (INFO → SDL)</a>
+<a class="toc-2" href="#examples-one-per-clause">Examples (one per clause)</a>
+<a class="toc-2" href="#open-items">Open items</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/access.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formatting · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Formatting">
+<link rel="canonical" href="fmt.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html" class="active">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">Formatting</span></div>
+  <article>
+<h1 class="page-title">Formatting</h1>
+<p><code>surform fmt</code> prints a schema file in the <strong>canonical style</strong> — one clause order, one spelling per construct, one layout. Pass <code>--in-place</code> to rewrite instead of printing — and on a <a href="includes.html">composition root</a>, <code>--in-place</code> rewrites the whole tree: every participating file formats and writes back, so a hand-edit in any included file is tidied by formatting the root.</p>
+<p>Canonical output is a <em>fixed point</em>: format a formatted file and nothing changes. That turns style debates into a one-line CI check — <code>surform fmt --check schema.surdl</code> exits 0, silent, when the file is already canonical and exits 1 with a diff of what would change when it is not (or the older dance: <code>--in-place</code>, then <code>git diff --exit-code</code>).</p>
+<p>One input is refused in every mode, <code>--check</code> included: a generated migration script — a file whose first line is the <code>-- surform migration</code> draft header <a href="migrate.html">migrate</a> writes. <code>--</code> is comment syntax in the database's own grammar, not SDL's, so the script is not SDL to reflow; the schema to format is the draft header's <code>-- source:</code> file.</p>
+<h2 id="what-canonical-means">What canonical means</h2>
+<p>Two files can say the same thing many ways — aliases (<code>ns</code> vs <code>namespace</code>), header vs block spellings, clause order, indentation. <code>fmt</code> picks one and only one. For example: backticks that aren't needed disappear, keywords settle at their canonical word, clauses print in the spec's order, and empty blocks collapse:</p>
+<figure class="example" data-interactive="fmt"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>canonical form verified (re-parses, stable)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">as you wrote it</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme; <span class="tok-k">database</span> shop;
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` { <span class="tok-k">schemafull</span>; <span class="tok-k">field</span> name:string; <span class="tok-k">field</span> email: <span class="tok-k">string</span> { <span class="tok-k">readonly</span>; }; }</code></pre></div>
+</div>
+<div class="ex-block" data-pane="fmt"><div class="ex-label">surform fmt</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">table</span> `<span class="tok-k">user</span>` {
+  <span class="tok-k">schemafull</span>;
+  <span class="tok-k">field</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">field</span> email: <span class="tok-k">string</span> {
+    <span class="tok-k">readonly</span>;
+  };
+};
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"fmt","body":"namespace acme; database shop;\ntable `user` { schemafull; field name:string; field email: string { readonly; }; }"}</script>
+</figure>
+<p>Notice: <code>name:string</code> grew its space, and the one-line squeeze unfolded into the standard layout. And <code></code> <code>user</code> <code></code> <strong>keeps its backticks</strong> — <code>user</code> is a SurrealQL keyword, so canonical form quotes it even though SDL also accepts it bare.</p>
+<p>Assignment short forms survive when they're the whole story — <code>param $limit = 50;</code> stays short; add any other clause and the block form takes over:</p>
+<figure class="example" data-interactive="fmt"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>canonical form verified (re-parses, stable)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">as you wrote it</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">sequence</span> invoice_number = <span class="tok-n">1000</span>;
+<span class="tok-k">param</span> <span class="tok-v">$default_limit</span> = <span class="tok-n">50</span>;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="fmt"><div class="ex-label">surform fmt</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
+
+<span class="tok-k">database</span> shop;
+
+<span class="tok-k">sequence</span> invoice_number = <span class="tok-n">1000</span>;
+
+<span class="tok-k">param</span> <span class="tok-v">$default_limit</span> = <span class="tok-n">50</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"fmt","body":"namespace acme;\ndatabase shop;\n\nsequence invoice_number = 1000;\nparam $default_limit = 50;"}</script>
+</figure>
+<h2 id="whats-kept-and-whats-dropped">What's kept and what's dropped</h2>
+<ul><li><code>///</code> <strong>doc comments are kept</strong> — they are part of the schema (they become <code>COMMENT</code>s).</li>
+<li><code>//</code> <strong>plain comments are kept</strong>, and the anchor is the clause, not just the statement. A comment prints above whatever it preceded: the statement, a nested child, or any clause at any depth (sub-block clauses, per-operation permission groups, api method groups included). It rides that clause through the canonical clause reordering instead of drifting to the block's end. A comment on the same line as a terminator, as in <code>then: select …; // why</code>, stays on that clause's line — same-line notes are how a complex SurrealQL expression clause carries its explanation. Lines inside a block that anchored to no child print just before that block's close; lines after the last definition print at end of file. Comments are layout, not meaning: they never change what a file compiles to, and <a href="migrate.html">migrate</a> treats a commented and an uncommented file as the same schema. One boundary: comments inside captured values — fn bodies, <code>then:</code> blocks, view queries, expression values, fn parameter lists — are not SDL structure and drop. (A comment in a field's kind capture re-anchors to the field.)</li>
+<li><strong>One blank line between top-level definitions</strong> — <code>table</code>, <code>fn</code>, <code>access</code>, <code>sequence</code>, and every other statement separates from its neighbors so a file reads in paragraphs. The one exception: a run of <code>include</code> statements packs tight as one import group (the group still separates from the definitions around it). The separation is part of the canonical form: comments stay glued to the statement they annotate (a <code>///</code> doc block never floats off its definition), and the block interiors — fn bodies, a table's fields — stay packed, where structure comes from indentation instead.</li>
+<li>A table body prints in the <strong>member layout</strong>: the table's clauses, then fields, then the spread entries (in their authored order — which spread wins a collision is order), then indexes, then events — fields first keeps a spread-carried index from ever defining above the explicit field it names. A <code>mixin</code> body prints its members in the same layout minus spreads.</li>
+<li>Long lines wrap: a statement that would run past the width budget (100 columns by default, <code>--max-width</code> to change it) breaks at its natural seams — one IF/ELSE branch per line, boolean chains at their operators (an <code>OR</code> group per line, its <code>AND</code> comparisons breaking within the group only when the group itself is too long), string concatenations at <code>+</code>, one call argument per line, a long field type one union arm per line, and a statement whose clauses overflow the line one clause per line (a view's SELECT lays out the same way: projections indented under <code>SELECT</code>, then <code>FROM</code>, <code>WHERE</code>, <code>GROUP BY</code> on their own lines) — and a definition's closing <code>};</code> lands at the opener's column. One exception: an expression value under 40 characters never breaks — a short call broken across three lines reads worse than the long line it sits on, so a narrow <code>--max-width</code> cannot shatter small expressions (a field type's union still breaks by line budget alone). Two touches are fmt's own and both reparse-verified against the original: a wrapped mixed <code>AND</code>/<code>OR</code> chain prints explicit parentheses around each <code>AND</code> group, so the wrapped form shows the precedence instead of asking you to remember it; and a relation header's arrows print compact (<code>table user-&gt;member_of-&gt;organization</code> — the spaced spelling means the same thing). <a href="normalize.html">normalize</a> takes the same <code>--max-width</code>: it writes canonical files under the same budget.</li>
+<li>Values normalize to the engine's spelling: <code>expiry: 30d;</code> prints as the equivalent <code>4w2d</code> — same value, canonical spelling.</li>
+</ul>
+<h2 id="fmt-in-the-loop">fmt in the loop</h2>
+<p>The usual rhythm:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>surform fmt --in-place schema.surdl  <span class="tok-c"> # tidy</span>
+surform check schema.surdl           <span class="tok-c"> # validate</span>
+surform build schema.surdl           <span class="tok-c"> # emit</span></code></pre></div>
+<p>Since <a href="normalize.html">normalize</a> writes canonical form too, running <code>fmt --in-place</code> on its output produces no diff.</p>
+<p>On a <a href="includes.html">composition root</a>, the two modes split:</p>
+<ul><li><strong>Print mode</strong> formats the file as authored — the <code>include</code> statements survive untouched, and nothing is resolved, flattened, or read from the tree. Spreads parse as opaque names, so ANY single file formats by its own path, its spreads' mixins wherever they live.</li>
+<li><strong><code>--in-place</code></strong> formats the whole tree and writes every participant back, each file from its own loader parse — the same validation the loader applies (the load includes the composition's spread resolution), while each file's text stays authored. The load runs first: a dirty tree (a broken file, a spread nothing defines) is never rewritten, in any file. A file without includes is the one-file tree — same behavior as ever.</li>
+</ul>
+<p>Print mode is per-file and tolerant: a spread that names nothing still round-trips (resolution is check-class — <code>check</code> is where the typo reports). <code>--in-place</code> is load-gated, so the same typo fails the write.</p>
+<h2 id="in-your-editor">In your editor</h2>
+<p>The <a href="vscode.html">VS Code extension</a> formats <code>.surdl</code> files with this same writer: <strong>Format Document</strong> pipes the buffer through <code>surform fmt</code> (stdin in, canonical SDL out), so what lands in your file is exactly what the CLI would write — modulo the buffer's own line-ending convention. The binary is looked up on <code>PATH</code> — or pointed at with the <code>surform.path</code> setting. A file with diagnostics is left untouched; the compiler's errors surface instead. The extension page also covers the grammar's syntax highlighting and the diagnostics channel.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="normalize.html">Adopting a database</a> — merge database state into your file.</li>
+<li><a href="cli.html">The CLI</a> — flags and exits.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#what-canonical-means">What canonical means</a>
+<a class="toc-2" href="#whats-kept-and-whats-dropped">What's kept and what's dropped</a>
+<a class="toc-2" href="#fmt-in-the-loop">fmt in the loop</a>
+<a class="toc-2" href="#in-your-editor">In your editor</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/fmt.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

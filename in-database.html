@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surform inside SurrealDB · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Surform inside SurrealDB">
+<link rel="canonical" href="in-database.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html" class="active">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Tools</span><span class="crumb-title">Surform inside SurrealDB</span></div>
+  <article>
+<h1 class="page-title">Surform inside SurrealDB</h1>
+<p>Surform is also a <a href="https://surrealdb.com/docs">Surrealism</a> module: the same compiler, packaged for in-database dispatch. Instead of piping DDL through a CLI, a database that has the module registered runs the pipeline on itself — <code>RETURN fn::surform::migrate($schema);</code> migrates the database from inside SurrealQL.</p>
+<p>This page is the working-today flow: get the module, register it, install the migration snippet, and migrate from any SurrealQL session. Surrealism is experimental in SurrealDB 3.3 — the server needs <code>--allow-experimental=surrealism</code> (and <code>files</code> for the bucket below) <a href="https://surrealdb.com/docs/surrealql/statements/define/module">per the platform docs</a>.</p>
+<h2 id="the-two-artifacts">The two artifacts</h2>
+<p>One source, two <code>.surli</code> archives — the <a href="https://github.com/jquesada2016/surform/blob/main/surform-surrealism/README.md">crate README</a> carries the full contract:</p>
+<div class="tablewrap"><table><thead><tr><th>artifact</th><th>capabilities</th><th>exports</th></tr></thead><tbody><tr><td><code>surform.surli</code></td><td>zero</td><td><code>compile</code>, <code>converge</code>, <code>status</code></td></tr><tr><td><code>surform-apply.surli</code></td><td>the grant surface (below)</td><td>all of those, plus <code>apply</code></td></tr></tbody></table></div>
+<p>The default artifact is pure: it makes no host calls and every output is reproducible from its inputs alone. The apply variant is what lets a database migrate itself — read <a href="#the-security-posture">the security section</a> before registering it.</p>
+<h2 id="getting-the-artifacts">Getting the artifacts</h2>
+<p>Both <code>.surli</code> files are release assets — attached to each <a href="https://github.com/jquesada2016/surform/releases">GitHub release</a> with their SHA-256 checksums in the notes. They are byte-deterministic: rebuilding from the same source produces the same bytes, so the checksum doubles as the verification — build and compare before registering:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c"># from a checkout of the release tag; ~1.4 MB each</span>
+surreal module build --out target/surform.surli surform-surrealism
+surreal module build --out target/surform-apply.surli surform-surrealism-apply</code></pre></div>
+<p>(The builds need <code>rustup target add wasm32-wasip2</code> and the <code>surreal</code> CLI 3.3.0; the repo carries no CI — releases are cut locally with exactly these commands.)</p>
+<h2 id="registering-the-module">Registering the module</h2>
+<p>The <code>.surli</code> rides a file bucket: create the bucket, write the archive directly into the backend directory (the <code>modules:</code> in the load path below is the bucket's name, not a folder — a <code>modules/</code> subdirectory inside the backend is not found; megabyte bodies are refused on the <code>/sql</code> route), then <code>DEFINE MODULE</code>:</p>
+<div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">BUCKET</span> modules BACKEND <span class="tok-s">'file:&lt;dir-under-your-files-allowlist&gt;'</span> <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">MODULE</span> mod::surform <span class="tok-k">FROM</span> <span class="tok-s">f&quot;modules:/surform.surli&quot;</span> <span class="tok-k">UNSIGNED</span> <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>;
+<span class="tok-c">-- the apply variant, in the database that opts into it:</span>
+<span class="tok-k">DEFINE</span> <span class="tok-k">MODULE</span> mod::surform_apply <span class="tok-k">FROM</span> <span class="tok-s">f&quot;modules:/surform-apply.surli&quot;</span> <span class="tok-k">UNSIGNED</span> <span class="tok-k">PERMISSIONS</span> <span class="tok-k">FULL</span>;</code></pre></div>
+<p><code>UNSIGNED</code> is mandatory for bucket loads; <code>PERMISSIONS FULL</code> on the <code>DEFINE MODULE</code> gates who may CALL the module. The names (<code>mod::surform</code>, <code>mod::surform_apply</code>) are the definer's choice — the two packages' internal identities (<code>surform/surform</code> vs <code>surform/surform-apply</code>) are distinct on purpose, so the artifacts can never alias. The snippet below spells the names as registered here.</p>
+<p>What each artifact may DO is its own manifest, enforced by the host — the apply artifact's grant surface is the narrowest the flow runs under: <code>allow_arbitrary_queries</code> (the host <code>sql</code> import), plus <code>allow_functions = [&quot;session::ns&quot;, &quot;session::db&quot;, &quot;time::now&quot;]</code> for the scope pre-flight and the ledger's <code>applied_at</code>. Nothing wildcarded, no scripting, no network. Verify an archive before registering:</p>
+<div class="codebox"><span class="lang-chip">sh</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>tar --zstd -xOf target/surform-apply.surli surrealism/surrealism.toml | sed -n '/\[capabilities\]/,/\[attach\]/p'</code></pre></div>
+<h2 id="the-migration-snippet">The migration snippet</h2>
+<p>The snippet is a first-class artifact of this repo — a small SDL file you append to your schema. Its functions are ordinary schema (they migrate like everything else) and they wrap the module's exports into the functions you call. It comes in the two artifact twins — pick by the module you registered:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean (engine-gated shape; SurrealDB 3.3.0 parses the DDL)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">// The Surform migration snippet — the zero-capability artifact's</span>
+<span class="tok-c">// wrappers (&quot;Surform inside SurrealDB&quot; in the docs). Append to your</span>
+<span class="tok-c">// schema file: the functions are ordinary schema and migrate like</span>
+<span class="tok-c">// everything else. This variant calls `mod::surform` (surform.surli)</span>
+<span class="tok-c">// and `migrate` returns the convergence script for you to run; the</span>
+<span class="tok-c">// apply artifact's twin (surform-migrate-apply.surdl) applies instead.</span>
+
+fn surform::compile(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform::compile(<span class="tok-v">$sdl</span>)
+};
+
+<span class="tok-c">// The module's live-info carrier: the rendered INFO of the session's</span>
+<span class="tok-c">// database, minus the flow's own scaffolding — the registration (the</span>
+<span class="tok-c">// readers refuse its org::name keys), the bucket (the compare</span>
+<span class="tok-c">// would draft its removal), and the pipeline's ledger table (its</span>
+<span class="tok-c">// self-record creates it; the module drops the default name itself,</span>
+<span class="tok-c">// the wrapper's pruning is what makes the same capture file safe to</span>
+<span class="tok-c">// feed the CLI's `--info`, which does not) — with each table's</span>
+<span class="tok-c">// rendered INFO FOR TABLE under the reserved `@tables` key</span>
+<span class="tok-c">// (full-fidelity: field-level drift is visible).</span>
+fn surform::capture() -&gt; <span class="tok-k">string</span> {
+  let <span class="tok-v">$info</span> = object::remove((INFO FOR <span class="tok-k">DB</span>), [<span class="tok-s">'modules'</span>, <span class="tok-s">'buckets'</span>]);
+  let <span class="tok-v">$tables</span> = object::remove(<span class="tok-v">$info</span>.<span class="tok-k">tables</span>, [<span class="tok-s">'_surform_migrations'</span>]);
+  let <span class="tok-v">$children</span> = object::from_entries(array::map(object::keys(<span class="tok-v">$tables</span>), |<span class="tok-v">$name</span>| [<span class="tok-v">$name</span>, (INFO FOR <span class="tok-k">TABLE</span> <span class="tok-v">$name</span>)]));
+  &lt;<span class="tok-k">string</span>&gt;(object::extend(object::extend(<span class="tok-v">$info</span>, { <span class="tok-k">tables:</span> <span class="tok-v">$tables</span> }), object::from_entries([[<span class="tok-s">'@tables'</span>, <span class="tok-v">$children</span>]])))
+};
+
+<span class="tok-c">// The convergence script for this database (empty string: converged).</span>
+fn surform::converge(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform::converge(<span class="tok-v">$sdl</span>, fn::surform::capture())
+};
+
+<span class="tok-c">// The /sql response body of the ledger SELECT, bridged in-database —</span>
+<span class="tok-c">// the module's `status` carrier. A database with no ledger yet (the</span>
+<span class="tok-c">// fresh case) bridges as the documented empty-ledger envelope.</span>
+fn surform::ledger_rows() -&gt; <span class="tok-k">string</span> {
+  let <span class="tok-v">$names</span> = object::keys((INFO FOR <span class="tok-k">DB</span>).<span class="tok-k">tables</span>);
+  <span class="tok-k">if</span> <span class="tok-s">'_surform_migrations'</span> <span class="tok-k">in</span> <span class="tok-v">$names</span> {
+    let <span class="tok-v">$rows</span> = (<span class="tok-k">select</span> <span class="tok-k">value</span> <span class="tok-s">'{&quot;number&quot;:'</span> + &lt;<span class="tok-k">string</span>&gt;(<span class="tok-k">number</span>) + <span class="tok-s">',&quot;name&quot;:&quot;'</span> + string::replace(string::replace(name, <span class="tok-s">'\\'</span>, <span class="tok-s">'\\\\'</span>), <span class="tok-s">'&quot;'</span>, <span class="tok-s">'\\&quot;'</span>) + <span class="tok-s">'&quot;,&quot;hash&quot;:&quot;'</span> + hash + <span class="tok-s">'&quot;}'</span> <span class="tok-k">from</span> _surform_migrations order by <span class="tok-k">number</span>);
+    <span class="tok-s">'[{&quot;result&quot;:['</span> + array::join(<span class="tok-v">$rows</span>, <span class="tok-s">','</span>) + <span class="tok-s">'],&quot;status&quot;:&quot;OK&quot;}]'</span>
+  } else {
+    <span class="tok-s">'[{&quot;status&quot;:&quot;ERR&quot;,&quot;kind&quot;:&quot;NotFound&quot;,&quot;details&quot;:{&quot;kind&quot;:&quot;Table&quot;}}]'</span>
+  }
+};
+
+<span class="tok-c">// The migration classification (pass the migrations directory as the</span>
+<span class="tok-c">// serialized files carrier — see the docs page for its JSON shape).</span>
+fn surform::status(<span class="tok-v">$files</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform::status(<span class="tok-v">$files</span>, fn::surform::ledger_rows())
+};
+
+<span class="tok-c">// The two-artifact contract, pure side: this artifact makes no host</span>
+<span class="tok-c">// calls, so migrate IS converge — the script comes back for you to</span>
+<span class="tok-c">// run yourself (empty string: already converged).</span>
+fn surform::migrate(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  fn::surform::converge(<span class="tok-v">$sdl</span>)
+};
+</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::compile(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> { mod::surform::compile(<span class="tok-v">$sdl</span>) };
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::capture() -&gt; <span class="tok-k">string</span> {
+    LET <span class="tok-v">$info</span> = object::remove((INFO FOR <span class="tok-k">DATABASE</span>), [<span class="tok-s">'modules'</span>, <span class="tok-s">'buckets'</span>]);
+    LET <span class="tok-v">$tables</span> = object::remove(<span class="tok-v">$info</span>.<span class="tok-k">tables</span>, [<span class="tok-s">'_surform_migrations'</span>]);
+    LET <span class="tok-v">$children</span> = object::from_entries(
+        array::map(object::keys(<span class="tok-v">$tables</span>), |<span class="tok-v">$name</span>: <span class="tok-k">any</span>| [<span class="tok-v">$name</span>, (INFO FOR <span class="tok-k">TABLE</span> <span class="tok-v">$name</span>)])
+    );
+    &lt;<span class="tok-k">string</span>&gt; object::extend(object::extend(<span class="tok-v">$info</span>, { <span class="tok-k">tables:</span> <span class="tok-v">$tables</span> }), object::from_entries([[<span class="tok-s">'@tables'</span>, <span class="tok-v">$children</span>]]));
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::converge(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+    mod::surform::converge(<span class="tok-v">$sdl</span>, fn::surform::capture())
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::ledger_rows() -&gt; <span class="tok-k">string</span> {
+    LET <span class="tok-v">$names</span> = object::keys((INFO FOR <span class="tok-k">DATABASE</span>).<span class="tok-k">tables</span>);
+    <span class="tok-k">IF</span> <span class="tok-s">'_surform_migrations'</span> INSIDE <span class="tok-v">$names</span> {
+        LET <span class="tok-v">$rows</span> = (
+            <span class="tok-k">SELECT</span> <span class="tok-k">VALUE</span> <span class="tok-s">'{&quot;number&quot;:'</span> + &lt;<span class="tok-k">string</span>&gt; <span class="tok-k">number</span> + <span class="tok-s">',&quot;name&quot;:&quot;'</span> + string::replace(string::replace(name, <span class="tok-s">'\\'</span>, <span class="tok-s">'\\\\'</span>), <span class="tok-s">'&quot;'</span>, <span class="tok-s">'\\&quot;'</span>) + <span class="tok-s">'&quot;,&quot;hash&quot;:&quot;'</span> + hash + <span class="tok-s">'&quot;}'</span> <span class="tok-k">FROM</span> _surform_migrations ORDER BY <span class="tok-k">number</span>
+        );
+        <span class="tok-s">'[{&quot;result&quot;:['</span> + array::join(<span class="tok-v">$rows</span>, <span class="tok-s">','</span>) + <span class="tok-s">'],&quot;status&quot;:&quot;OK&quot;}]'</span>;
+    }
+    ELSE {
+        <span class="tok-s">'[{&quot;status&quot;:&quot;ERR&quot;,&quot;kind&quot;:&quot;NotFound&quot;,&quot;details&quot;:{&quot;kind&quot;:&quot;Table&quot;}}]'</span>
+    };
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::status(<span class="tok-v">$files</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+    mod::surform::status(<span class="tok-v">$files</span>, fn::surform::ledger_rows())
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::migrate(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> { fn::surform::converge(<span class="tok-v">$sdl</span>) };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"// The Surform migration snippet — the zero-capability artifact's\n// wrappers (\"Surform inside SurrealDB\" in the docs). Append to your\n// schema file: the functions are ordinary schema and migrate like\n// everything else. This variant calls `mod::surform` (surform.surli)\n// and `migrate` returns the convergence script for you to run; the\n// apply artifact's twin (surform-migrate-apply.surdl) applies instead.\n\nfn surform::compile($sdl: string) -> string {\n  mod::surform::compile($sdl)\n};\n\n// The module's live-info carrier: the rendered INFO of the session's\n// database, minus the flow's own scaffolding — the registration (the\n// readers refuse its org::name keys), the bucket (the compare\n// would draft its removal), and the pipeline's ledger table (its\n// self-record creates it; the module drops the default name itself,\n// the wrapper's pruning is what makes the same capture file safe to\n// feed the CLI's `--info`, which does not) — with each table's\n// rendered INFO FOR TABLE under the reserved `@tables` key\n// (full-fidelity: field-level drift is visible).\nfn surform::capture() -> string {\n  let $info = object::remove((INFO FOR DB), ['modules', 'buckets']);\n  let $tables = object::remove($info.tables, ['_surform_migrations']);\n  let $children = object::from_entries(array::map(object::keys($tables), |$name| [$name, (INFO FOR TABLE $name)]));\n  \u003cstring>(object::extend(object::extend($info, { tables: $tables }), object::from_entries([['@tables', $children]])))\n};\n\n// The convergence script for this database (empty string: converged).\nfn surform::converge($sdl: string) -> string {\n  mod::surform::converge($sdl, fn::surform::capture())\n};\n\n// The /sql response body of the ledger SELECT, bridged in-database —\n// the module's `status` carrier. A database with no ledger yet (the\n// fresh case) bridges as the documented empty-ledger envelope.\nfn surform::ledger_rows() -> string {\n  let $names = object::keys((INFO FOR DB).tables);\n  if '_surform_migrations' in $names {\n    let $rows = (select value '{\"number\":' + \u003cstring>(number) + ',\"name\":\"' + string::replace(string::replace(name, '\\\\', '\\\\\\\\'), '\"', '\\\\\"') + '\",\"hash\":\"' + hash + '\"}' from _surform_migrations order by number);\n    '[{\"result\":[' + array::join($rows, ',') + '],\"status\":\"OK\"}]'\n  } else {\n    '[{\"status\":\"ERR\",\"kind\":\"NotFound\",\"details\":{\"kind\":\"Table\"}}]'\n  }\n};\n\n// The migration classification (pass the migrations directory as the\n// serialized files carrier — see the docs page for its JSON shape).\nfn surform::status($files: string) -> string {\n  mod::surform::status($files, fn::surform::ledger_rows())\n};\n\n// The two-artifact contract, pure side: this artifact makes no host\n// calls, so migrate IS converge — the script comes back for you to\n// run yourself (empty string: already converged).\nfn surform::migrate($sdl: string) -> string {\n  fn::surform::converge($sdl)\n};\n"}</script>
+</figure>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>compiles clean (engine-gated shape; SurrealDB 3.3.0 parses the DDL)</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-c">// The Surform migration snippet — the APPLY artifact's wrappers</span>
+<span class="tok-c">// (&quot;Surform inside SurrealDB&quot; in the docs). Append to your schema</span>
+<span class="tok-c">// file: the functions are ordinary schema and migrate like everything</span>
+<span class="tok-c">// else. This variant calls `mod::surform_apply` (surform-apply.surli,</span>
+<span class="tok-c">// the capability-granting artifact — read the security section before</span>
+<span class="tok-c">// registering it) and `migrate` converges AND executes in one call,</span>
+<span class="tok-c">// at the calling session's permissions; the zero-capability twin</span>
+<span class="tok-c">// (surform-migrate.surdl) returns the script instead.</span>
+
+fn surform::compile(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform_apply::compile(<span class="tok-v">$sdl</span>)
+};
+
+<span class="tok-c">// The module's live-info carrier: the rendered INFO of the session's</span>
+<span class="tok-c">// database, minus the flow's own scaffolding — the registration (the</span>
+<span class="tok-c">// readers refuse its org::name keys), the bucket (the compare</span>
+<span class="tok-c">// would draft its removal), and the pipeline's ledger table (its</span>
+<span class="tok-c">// self-record creates it; the module drops the default name itself,</span>
+<span class="tok-c">// the wrapper's pruning is what makes the same capture file safe to</span>
+<span class="tok-c">// feed the CLI's `--info`, which does not) — with each table's</span>
+<span class="tok-c">// rendered INFO FOR TABLE under the reserved `@tables` key</span>
+<span class="tok-c">// (full-fidelity: field-level drift is visible). `apply` captures</span>
+<span class="tok-c">// the same shape itself (host-side); this wrapper serves `converge`</span>
+<span class="tok-c">// — the dry run.</span>
+fn surform::capture() -&gt; <span class="tok-k">string</span> {
+  let <span class="tok-v">$info</span> = object::remove((INFO FOR <span class="tok-k">DB</span>), [<span class="tok-s">'modules'</span>, <span class="tok-s">'buckets'</span>]);
+  let <span class="tok-v">$tables</span> = object::remove(<span class="tok-v">$info</span>.<span class="tok-k">tables</span>, [<span class="tok-s">'_surform_migrations'</span>]);
+  let <span class="tok-v">$children</span> = object::from_entries(array::map(object::keys(<span class="tok-v">$tables</span>), |<span class="tok-v">$name</span>| [<span class="tok-v">$name</span>, (INFO FOR <span class="tok-k">TABLE</span> <span class="tok-v">$name</span>)]));
+  &lt;<span class="tok-k">string</span>&gt;(object::extend(object::extend(<span class="tok-v">$info</span>, { <span class="tok-k">tables:</span> <span class="tok-v">$tables</span> }), object::from_entries([[<span class="tok-s">'@tables'</span>, <span class="tok-v">$children</span>]])))
+};
+
+<span class="tok-c">// The dry run: the script `migrate` would apply (empty: converged).</span>
+fn surform::converge(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform_apply::converge(<span class="tok-v">$sdl</span>, fn::surform::capture())
+};
+
+<span class="tok-c">// The /sql response body of the ledger SELECT, bridged in-database —</span>
+<span class="tok-c">// the module's `status` carrier. A database with no ledger yet (the</span>
+<span class="tok-c">// fresh case) bridges as the documented empty-ledger envelope.</span>
+fn surform::ledger_rows() -&gt; <span class="tok-k">string</span> {
+  let <span class="tok-v">$names</span> = object::keys((INFO FOR <span class="tok-k">DB</span>).<span class="tok-k">tables</span>);
+  <span class="tok-k">if</span> <span class="tok-s">'_surform_migrations'</span> <span class="tok-k">in</span> <span class="tok-v">$names</span> {
+    let <span class="tok-v">$rows</span> = (<span class="tok-k">select</span> <span class="tok-k">value</span> <span class="tok-s">'{&quot;number&quot;:'</span> + &lt;<span class="tok-k">string</span>&gt;(<span class="tok-k">number</span>) + <span class="tok-s">',&quot;name&quot;:&quot;'</span> + string::replace(string::replace(name, <span class="tok-s">'\\'</span>, <span class="tok-s">'\\\\'</span>), <span class="tok-s">'&quot;'</span>, <span class="tok-s">'\\&quot;'</span>) + <span class="tok-s">'&quot;,&quot;hash&quot;:&quot;'</span> + hash + <span class="tok-s">'&quot;}'</span> <span class="tok-k">from</span> _surform_migrations order by <span class="tok-k">number</span>);
+    <span class="tok-s">'[{&quot;result&quot;:['</span> + array::join(<span class="tok-v">$rows</span>, <span class="tok-s">','</span>) + <span class="tok-s">'],&quot;status&quot;:&quot;OK&quot;}]'</span>
+  } else {
+    <span class="tok-s">'[{&quot;status&quot;:&quot;ERR&quot;,&quot;kind&quot;:&quot;NotFound&quot;,&quot;details&quot;:{&quot;kind&quot;:&quot;Table&quot;}}]'</span>
+  }
+};
+
+<span class="tok-c">// The migration classification (pass the migrations directory as the</span>
+<span class="tok-c">// serialized files carrier — see the docs page for its JSON shape).</span>
+fn surform::status(<span class="tok-v">$files</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform_apply::status(<span class="tok-v">$files</span>, fn::surform::ledger_rows())
+};
+
+<span class="tok-c">// The two-artifact contract, apply side: converge AND execute, one</span>
+<span class="tok-c">// transaction — the outcome string comes back (`applied N</span>
+<span class="tok-c">// statement(s); recorded NNNN_apply in the ledger`, the converged</span>
+<span class="tok-c">// note, or a refusal naming itself). The destructive class never</span>
+<span class="tok-c">// auto-applies: scripts carrying removals or SURFORM markers refuse.</span>
+fn surform::migrate(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+  mod::surform_apply::apply(<span class="tok-v">$sdl</span>)
+};
+</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::compile(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> { mod::surform_apply::compile(<span class="tok-v">$sdl</span>) };
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::capture() -&gt; <span class="tok-k">string</span> {
+    LET <span class="tok-v">$info</span> = object::remove((INFO FOR <span class="tok-k">DATABASE</span>), [<span class="tok-s">'modules'</span>, <span class="tok-s">'buckets'</span>]);
+    LET <span class="tok-v">$tables</span> = object::remove(<span class="tok-v">$info</span>.<span class="tok-k">tables</span>, [<span class="tok-s">'_surform_migrations'</span>]);
+    LET <span class="tok-v">$children</span> = object::from_entries(
+        array::map(object::keys(<span class="tok-v">$tables</span>), |<span class="tok-v">$name</span>: <span class="tok-k">any</span>| [<span class="tok-v">$name</span>, (INFO FOR <span class="tok-k">TABLE</span> <span class="tok-v">$name</span>)])
+    );
+    &lt;<span class="tok-k">string</span>&gt; object::extend(object::extend(<span class="tok-v">$info</span>, { <span class="tok-k">tables:</span> <span class="tok-v">$tables</span> }), object::from_entries([[<span class="tok-s">'@tables'</span>, <span class="tok-v">$children</span>]]));
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::converge(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+    mod::surform_apply::converge(<span class="tok-v">$sdl</span>, fn::surform::capture())
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::ledger_rows() -&gt; <span class="tok-k">string</span> {
+    LET <span class="tok-v">$names</span> = object::keys((INFO FOR <span class="tok-k">DATABASE</span>).<span class="tok-k">tables</span>);
+    <span class="tok-k">IF</span> <span class="tok-s">'_surform_migrations'</span> INSIDE <span class="tok-v">$names</span> {
+        LET <span class="tok-v">$rows</span> = (
+            <span class="tok-k">SELECT</span> <span class="tok-k">VALUE</span> <span class="tok-s">'{&quot;number&quot;:'</span> + &lt;<span class="tok-k">string</span>&gt; <span class="tok-k">number</span> + <span class="tok-s">',&quot;name&quot;:&quot;'</span> + string::replace(string::replace(name, <span class="tok-s">'\\'</span>, <span class="tok-s">'\\\\'</span>), <span class="tok-s">'&quot;'</span>, <span class="tok-s">'\\&quot;'</span>) + <span class="tok-s">'&quot;,&quot;hash&quot;:&quot;'</span> + hash + <span class="tok-s">'&quot;}'</span> <span class="tok-k">FROM</span> _surform_migrations ORDER BY <span class="tok-k">number</span>
+        );
+        <span class="tok-s">'[{&quot;result&quot;:['</span> + array::join(<span class="tok-v">$rows</span>, <span class="tok-s">','</span>) + <span class="tok-s">'],&quot;status&quot;:&quot;OK&quot;}]'</span>;
+    }
+    ELSE {
+        <span class="tok-s">'[{&quot;status&quot;:&quot;ERR&quot;,&quot;kind&quot;:&quot;NotFound&quot;,&quot;details&quot;:{&quot;kind&quot;:&quot;Table&quot;}}]'</span>
+    };
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::status(<span class="tok-v">$files</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> {
+    mod::surform_apply::status(<span class="tok-v">$files</span>, fn::surform::ledger_rows())
+};
+<span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::surform::migrate(<span class="tok-v">$sdl</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">string</span> { mod::surform_apply::apply(<span class="tok-v">$sdl</span>) };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"// The Surform migration snippet — the APPLY artifact's wrappers\n// (\"Surform inside SurrealDB\" in the docs). Append to your schema\n// file: the functions are ordinary schema and migrate like everything\n// else. This variant calls `mod::surform_apply` (surform-apply.surli,\n// the capability-granting artifact — read the security section before\n// registering it) and `migrate` converges AND executes in one call,\n// at the calling session's permissions; the zero-capability twin\n// (surform-migrate.surdl) returns the script instead.\n\nfn surform::compile($sdl: string) -> string {\n  mod::surform_apply::compile($sdl)\n};\n\n// The module's live-info carrier: the rendered INFO of the session's\n// database, minus the flow's own scaffolding — the registration (the\n// readers refuse its org::name keys), the bucket (the compare\n// would draft its removal), and the pipeline's ledger table (its\n// self-record creates it; the module drops the default name itself,\n// the wrapper's pruning is what makes the same capture file safe to\n// feed the CLI's `--info`, which does not) — with each table's\n// rendered INFO FOR TABLE under the reserved `@tables` key\n// (full-fidelity: field-level drift is visible). `apply` captures\n// the same shape itself (host-side); this wrapper serves `converge`\n// — the dry run.\nfn surform::capture() -> string {\n  let $info = object::remove((INFO FOR DB), ['modules', 'buckets']);\n  let $tables = object::remove($info.tables, ['_surform_migrations']);\n  let $children = object::from_entries(array::map(object::keys($tables), |$name| [$name, (INFO FOR TABLE $name)]));\n  \u003cstring>(object::extend(object::extend($info, { tables: $tables }), object::from_entries([['@tables', $children]])))\n};\n\n// The dry run: the script `migrate` would apply (empty: converged).\nfn surform::converge($sdl: string) -> string {\n  mod::surform_apply::converge($sdl, fn::surform::capture())\n};\n\n// The /sql response body of the ledger SELECT, bridged in-database —\n// the module's `status` carrier. A database with no ledger yet (the\n// fresh case) bridges as the documented empty-ledger envelope.\nfn surform::ledger_rows() -> string {\n  let $names = object::keys((INFO FOR DB).tables);\n  if '_surform_migrations' in $names {\n    let $rows = (select value '{\"number\":' + \u003cstring>(number) + ',\"name\":\"' + string::replace(string::replace(name, '\\\\', '\\\\\\\\'), '\"', '\\\\\"') + '\",\"hash\":\"' + hash + '\"}' from _surform_migrations order by number);\n    '[{\"result\":[' + array::join($rows, ',') + '],\"status\":\"OK\"}]'\n  } else {\n    '[{\"status\":\"ERR\",\"kind\":\"NotFound\",\"details\":{\"kind\":\"Table\"}}]'\n  }\n};\n\n// The migration classification (pass the migrations directory as the\n// serialized files carrier — see the docs page for its JSON shape).\nfn surform::status($files: string) -> string {\n  mod::surform_apply::status($files, fn::surform::ledger_rows())\n};\n\n// The two-artifact contract, apply side: converge AND execute, one\n// transaction — the outcome string comes back (`applied N\n// statement(s); recorded NNNN_apply in the ledger`, the converged\n// note, or a refusal naming itself). The destructive class never\n// auto-applies: scripts carrying removals or SURFORM markers refuse.\nfn surform::migrate($sdl: string) -> string {\n  mod::surform_apply::apply($sdl)\n};\n"}</script>
+</figure>
+<p>Append the variant's text to your <code>schema.surdl</code> (after your <code>namespace</code>/<code>database</code> lines) — the file itself is header-less, so it cannot be migrated as a document of its own. What the wrappers do:</p>
+<ul><li><code>fn::surform::compile($sdl)</code> — SDL text → DDL, byte-identical to <code>surform build</code>.</li>
+<li><code>fn::surform::capture()</code> — the rendered INFO of the session's database assembled into the module's live-info carrier: the registration and bucket sections dropped, the pipeline's ledger table dropped, each table's <code>INFO FOR TABLE</code> nested under the reserved <code>@tables</code> key (full fidelity — field-level drift visible).</li>
+<li><code>fn::surform::converge($sdl)</code> — the convergence script for this database (the CLI's <code>migrate generate --info</code>, in-database); empty string means converged.</li>
+<li><code>fn::surform::ledger_rows()</code> — the ledger SELECT's response body, bridged in-database for <code>status</code> (a database with no ledger yet bridges as the empty ledger).</li>
+<li><code>fn::surform::status($files)</code> — the <code>migrate status</code> report; the <code>$files</code> carrier is the migrations directory serialized as a JSON array of <code>{&quot;number&quot;, &quot;name&quot;, &quot;committed&quot;, &quot;hash&quot;}</code> entries (hash present iff committed) — the caller's duty, since neither the module nor the database can see your filesystem.</li>
+<li><code>fn::surform::migrate($sdl)</code> — the two-artifact contract in one name. Against the zero-capability artifact it returns the convergence script for you to run (empty string: converged). Against the apply artifact it converges AND executes in one call.</li>
+</ul>
+<h2 id="migrating-from-within-surrealql">Migrating from within SurrealQL</h2>
+<p>Hand the wrapper your schema's text — inline, or bound however your SQL client binds strings. The module reads no files: the text must be composed, self-contained SDL. An <code>include</code>-bearing document refuses (SDL-E0008 — the Surrealism runtime grants the guest no filesystem, so an include read never resolves); a multi-file root travels as the one file you would get by pasting the tree together (<a href="includes.html">multi-file schemas</a>), and the <a href="migrate.html">CLI pipeline</a>, which follows includes, stays the multi-file road.</p>
+<div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">RETURN</span> fn::surform::migrate(<span class="tok-s">&quot;namespace acme; database shop; table user { schemafull; field email: string; };&quot;</span>);</code></pre></div>
+<p>Against the apply artifact the outcome string comes back: <code>applied 2 statement(s); recorded 0001_apply in the ledger</code> (the ledger row — <code>NNNN_apply</code>, the previous highest plus one, the SDL it converged to in its <code>sdl</code> column — records itself, so <a href="migrate.html#reverting-a-migration">migrate revert</a> stays meaningful for apply rows). A database already at the SDL's shape answers <code>(converged) — nothing to apply, the ledger untouched</code>. Re-runs are safe: convergence is idempotent, and the whole call is one transaction — a failed apply rolls back everything it did, ledger row included.</p>
+<p>Against the zero-capability artifact the script comes back instead — run it yourself (any SurrealQL tool), or let <a href="migrate.html">the CLI's pipeline</a> carry it as a committed migration.</p>
+<p>Dry runs and audits ride the same wrappers on either artifact: <code>fn::surform::converge($sdl)</code> is the script <code>migrate</code> would apply, <code>fn::surform::status($files)</code> the drift report between your migrations directory and the ledger.</p>
+<h2 id="the-security-posture">The security posture</h2>
+<blockquote><p><strong>Treat every module as privileged code that can affect data your database can access.</strong> Sandboxing limits host access, but a module can still implement logic that leaks or corrupts data if you expose it to the wrong scopes. — <a href="https://surrealdb.com/docs/learn/extensions/guides/module-architecture">SurrealDB's module-architecture documentation</a>, verbatim.</p></blockquote>
+<p>The zero-capability artifact cannot act on that warning — it makes no host calls. The apply artifact is exactly that class of module, and three properties bound it (none optional; the <a href="https://github.com/jquesada2016/surform/blob/main/surform-surrealism/README.md#security">crate README</a> documents them with the probes that pinned each):</p>
+<ul><li><strong>No escalation, ever.</strong> Every statement executes at the invoking session's auth — a caller who may not <code>DEFINE TABLE</code> gets an apply that cannot either. Whoever can call the module can already do everything it does.</li>
+<li><strong>The caller's session IS the scope.</strong> The SDL must declare the one database the session is scoped to, or apply refuses before anything is captured or run.</li>
+<li><strong>Apply is additive-only, literally.</strong> It defines and never removes: any <code>REMOVE</code> statement in a convergence refuses (by name), and so does any script carrying the <code>SURFORM WARNING</code>/<code>REQUIRED</code> markers — the fill-in flow needs a human the module cannot pause for. The destructive class stays <a href="migrate.html#the-data-migration-slots">the CLI's flow</a>; the escape for a refused removal is your own session: remove it yourself, then re-apply.</li>
+</ul>
+<h2 id="working-with-the-cli">Working with the CLI</h2>
+<p>The module and the CLI share one ledger and one capture format, with two seams:</p>
+<p><strong>Migration numbers are unique per database.</strong> An apply row named <code>0001_apply</code> means the next CLI migration in a fresh migrations directory — which cannot see the ledger when it drafts — must be numbered past it, or the database refuses it at <code>push</code>. The refusal, executed against this exact setup, reads: <code>the ledger already records number 0001 with hash sha256:a6f3…, but migrations/0001_live-v3.surql hashes sha256:6ecc… — another migration owns this number on this database (one migrations directory per database); status can compare them</code>. Nothing has happened to the database at that point — push refuses before it sends anything — and <code>migrate status</code> shows the collision as a DRIFTED pairing (the file and the ledger row, both hashes, matched by number).</p>
+<p>The refused file cannot be repaired in place: the file name is only push's identity, while the ledger INSERT baked at commit keeps the number from the draft's header — and commit refuses a re-commit — so renaming the file just makes it run while <code>INSERT IGNORE</code> silently skips its ledger row (the migration stays unrecorded and re-runs on every future push). The recovery is a fresh draft at a number past the ledger, executed against the setup above: archive the refused file outside the migrations directory — it never ran, so there is nothing to undo on the database — regenerate the draft (the emptied directory draws 0001 again), and <code>surform migrate renumber &lt;file&gt; &lt;n&gt;</code> it before committing (a draft carries its number in two places, the file name and the opening <code>-- surform migration 0001</code> line, and renumber moves both together — commit bakes the header's into the ledger INSERT). The renumbered draft (<code>0002_add-name</code>) pushed, applied, and the ledger recorded it exactly once; a re-push skipped it as already applied. The reverse order — CLI-pushed migrations first, applies after — needs no coordination: apply rows number one past whatever the ledger holds.</p>
+<p><strong>The capture excludes the flow's own machinery.</strong> <code>fn::surform::capture()</code> drops three things from the rendered INFO before assembling the interchange: the module registration (the flow's own machinery is never migration material — a capture that carried it would draft the registration's removal, and removing the module the flow runs from breaks the flow; the CLI's reader pairs the registration's storage key — <code>mod::&lt;name&gt;</code>, issue #61 — so declaring the module in your SDL makes the pair converge if you ever capture without the wrapper), the database's buckets (the compare would draft their removal — the module's own bytes live there), and the default ledger table <code>_surform_migrations</code> (the pipeline's machinery is never migration material). The module's converge and apply drop the same sections themselves; the wrapper's pruning is what makes the SAME capture file safe to feed the CLI (<code>migrate generate schema.surdl --info db=ns/db=capture.txt</code>) — the CLI's own <code>--info</code> flow performs no exclusions. One residual: a ledger kept under <code>commit --ledger-table &lt;name&gt;</code> rides a name neither the wrapper nor the module knows — it is drafted for removal (marked, never silent), so exclude it from the capture yourself.</p>
+<h2 id="where-next">Where next</h2>
+<ul><li><a href="migrate.html">Schema migration</a> — the CLI pipeline the module's machinery mirrors.</li>
+<li><a href="modules.html">Modules (Surrealism)</a> — authoring <code>DEFINE MODULE</code> registrations in SDL.</li>
+<li>The <a href="https://github.com/jquesada2016/surform/blob/main/surform-surrealism/README.md">crate README</a> — the module's full contract: every export, every refusal surface (verbatim), the zero-grant re-proofs, the build recipe.</li>
+</ul>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.99d26567.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#the-two-artifacts">The two artifacts</a>
+<a class="toc-2" href="#getting-the-artifacts">Getting the artifacts</a>
+<a class="toc-2" href="#registering-the-module">Registering the module</a>
+<a class="toc-2" href="#the-migration-snippet">The migration snippet</a>
+<a class="toc-2" href="#migrating-from-within-surrealql">Migrating from within SurrealQL</a>
+<a class="toc-2" href="#the-security-posture">The security posture</a>
+<a class="toc-2" href="#working-with-the-cli">Working with the CLI</a>
+<a class="toc-2" href="#where-next">Where next</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit 744e0c6 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/in-database.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>
