@@ -1,4 +1,4 @@
-> **Like what you see here?** Please consider [donating or hiring me](https://josequesada.dev).
+> **Like what you see here?** Please consider [hiring me](https://josequesada.dev).
 
 Surform is a schema language for SurrealDB — a small, readable way to
 describe the tables, fields, indexes, events, and access rules your
