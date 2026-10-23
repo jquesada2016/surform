@@ -3,15 +3,20 @@
 Thank you for looking at Surform. The repo documents itself — start
 here before changing anything:
 
-- [spec/README.md](spec/README.md) — the language specification:
+- [spec/README.md](https://github.com/jquesada2016/surform/blob/main/spec/README.md) — the language specification:
   design rules, grammar notation, permission forms, the codegen and
   normalization model. A behavior change starts as a spec change; the
   spec is the source of truth. One file per `DEFINE` statement sits
   beside it, plus the SDL-only `mixin` and `include`.
-- [docs/](docs/) — the user-facing documentation site
-  ([docs/README.md](docs/README.md) has the build recipe);
-  [editor/](editor/) is the wasm bindings crate behind the playground;
-  [editors/vscode/](editors/vscode/README.md) is the VS Code extension.
+- [docs/](https://github.com/jquesada2016/surform/tree/main/docs) — the
+  user-facing documentation site
+  ([surform.josequesada.dev](https://surform.josequesada.dev));
+  [docs/README.md](https://github.com/jquesada2016/surform/blob/main/docs/README.md)
+  has the build recipe;
+  [editor/](https://github.com/jquesada2016/surform/tree/main/editor) is
+  the wasm bindings crate behind the playground;
+  [editors/vscode/](https://github.com/jquesada2016/surform/blob/main/editors/vscode/README.md)
+  is the VS Code extension.
 - [GitHub issues](https://github.com/jquesada2016/surform/issues) —
   known open issues (`fix-me`) and accepted corners (`accepted-corner`).
   Check them before filing a bug.

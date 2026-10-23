@@ -133,7 +133,11 @@ docs/deploy.sh            # or: docs/deploy.sh --release
 ```
 
 One-time GitHub setup: **Settings → Pages → Source: Deploy from a
-branch → `gh-pages` → / (root)**. If the repository has no `origin`
+branch → `gh-pages` → / (root)**, and **Custom domain:
+`surform.josequesada.dev`** — the DNS side is one record at the
+josequesada.dev zone (`CNAME surform → jquesada2016.github.io`,
+DNS-only), and every deploy stamps a `CNAME` file into the branch
+root. If the repository has no `origin`
 remote yet, add one first (`git remote add origin
 git@github.com:jquesada2016/surform.git`) — deploy pushes there, and
 the site's "Edit this page" links derive from it.

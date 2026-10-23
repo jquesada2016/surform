@@ -6,7 +6,10 @@
 # push replaces whatever was there).
 #
 # One-time setup on GitHub: Settings → Pages → Source: "Deploy from a
-# branch" → branch `gh-pages`, folder `/ (root)`.
+# branch" → branch `gh-pages`, folder `/ (root)`; Custom domain:
+# `surform.josequesada.dev` — whose DNS side is one record at the
+# josequesada.dev zone (`CNAME surform → jquesada2016.github.io`,
+# DNS-only, not proxied).
 #
 # Usage: docs/deploy.sh [--release]
 
@@ -39,6 +42,11 @@ echo "==> carrying the third-party notices into the site"
 # BSL 1.1: "You must conspicuously display this License on each
 # original or modified copy of the Licensed Work."
 cp THIRD-PARTY-NOTICES.md docs/_site/
+
+echo "==> stamping the custom domain into the site"
+# The Pages custom domain reads this file off the branch root; regenerating
+# it every deploy keeps the domain set across a wiped docs/_site.
+printf 'surform.josequesada.dev\n' > docs/_site/CNAME
 
 echo "==> publishing docs/_site to the gh-pages branch"
 cd docs/_site
