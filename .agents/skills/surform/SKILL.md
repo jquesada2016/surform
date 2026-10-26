@@ -398,6 +398,7 @@ table countries { permissions: full; };   // public reference data, by design
 | SDL-L0023 | a `surform-lint-allow:` comment's own problem (unknown code, malformed marker, no statement to attach to) |
 | SDL-L0024 | a referenced table/analyzer/`fn::` path (or a `fn::`-body param) that nothing in the linted files defines — advisory and scope-keyed; `mod::` is covered by its module, `silo::`/`ml::` by their version tails, builtin paths resolve bare, a `param` definition satisfies a body read, and non-fn-body params are muted (client-bindable) |
 | SDL-L0026 | an `include` naming a file already spliced — first inclusion wins, this declaration is a no-op |
+| SDL-L0027 | a type alias nothing references — it expands nothing, emits nothing |
 
 Diagnostics are `SDL-Exxxx`: E0xxx lexing/capture/file entry, E1xxx
 statement grammar and fold-time validations, E3xxx the INFO

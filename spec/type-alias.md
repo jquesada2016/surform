@@ -125,9 +125,16 @@ truth applies to the statement itself (the surface is SDL's own, the
   `type:` clause line never inks as a statement).
 - **Reverse path**: INFO stores only concrete kinds, so the reader
   never sees an alias name and the strict kind grammar the readers
-  use is unchanged. The merge's alias handling (authored spellings
-  surviving when the read state algebra-equals the expansion) lands
-  with the reverse-path unit (2026-10-25, follow-up to this one).
+  use is unchanged. The merge carries the authored spellings: a kind
+  whose references resolve algebra-equal to the read state keeps its
+  spelling — a field's type, a function's argument and return kinds,
+  and a spread member alike (the member compares in its EXPANDED
+  form, the differ's own posture, so a read child holding the
+  expansion is covered by the spread). A divergence adopts the read
+  state's canonical spelling, and a reference resolving to nothing
+  fails the comparison the same way (the order pass owns that
+  finding). The loop is idempotent. The linter's SDL-L0027 advises on
+  a declaration no kind references.
 
 ```
 // top level only; no /// on the statement; the name is [A-Z][A-Za-z0-9_]*

@@ -148,6 +148,7 @@ a target that nothing in the document defines.
 | `SDL-L0024` | a referenced table, analyzer, or `fn::` path (or a `fn::`-body param) that nothing in the linted files defines |
 | `SDL-L0025` | RETIRED (2026-10-06) — the compiler owns emission order (see [the basics](basics.html#who-owns-the-order)); the number keeps its gap |
 | `SDL-L0026` | a diamond include — a file the composition already spliced, declared again (first inclusion wins) |
+| `SDL-L0027` | a type alias nothing references — it expands nothing and the statement emits nothing |
 
 ## Suppressing a warning at its site
 

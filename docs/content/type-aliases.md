@@ -79,6 +79,13 @@ and it participates in the [declarative namespace](basics.html)'s
 duplicates rule. Aliases work in [mixin](mixins.html) members and are
 never expanded inside [raw](raw.html) bodies.
 
+[normalize](normalize.html) keeps the spellings too: a kind whose
+alias spelling expands to what the database holds stays authored
+(`contact: Emails` survives a converged database), and a kind the
+database has changed adopts the database's spelling. The
+[linter](lint.html) advises (`SDL-L0027`) on an alias nothing
+references.
+
 ## Errors
 
 | code | meaning |

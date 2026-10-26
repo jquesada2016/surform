@@ -37,7 +37,7 @@
 //! to) are SDL-L0023 findings — immune to suppression, so a broken
 //! allow cannot silence its own diagnosis.
 //!
-//! Code registry: `SDL-L0001`–`SDL-L0026`, one code per finding
+//! Code registry: `SDL-L0001`–`SDL-L0027`, one code per finding
 //! kind (`SDL-L0025` is retired — the compiler orders emission
 //! itself, so an apply-order advisory has nothing left to say).
 //! Every kind's `url()` deep-links into the spec file that
@@ -72,6 +72,7 @@ use crate::ast::{
     JwtVerify, MemberKey, OpPermissions, Pass, Permission, PermissionOp, Role, SdlFile, Spread,
     Stmt, Table, TableKind, Tokenizer,
 };
+use crate::expand::collect_refs;
 use crate::info::normalize::{Family, ScopeKey, ScopeWalk, classify};
 use crate::kind::{KindAst, normalize_kind, parse_kind_ast};
 use crate::lexer::{Scanner, Span};
@@ -187,6 +188,7 @@ pub fn lint_composed(
     resolved_pass(resolved, &anchors, &mut findings);
     authored_pass(sdl, &anchored, &mut findings);
     reference_pass(sdl, resolved, &anchored, &mut findings);
+    alias_pass(sdl, &anchored, &mut findings);
     // The diamond advisories ride discovery, not the walks: each
     // anchors at its no-op declaration's span, in that file.
     for diamond in diamonds {
@@ -585,6 +587,7 @@ const LINT_CODES: &[&str] = &[
     "SDL-L0023",
     "SDL-L0024",
     "SDL-L0026",
+    "SDL-L0027",
 ];
 
 /// Whether `code` names a registered lint finding — public for
@@ -1726,6 +1729,91 @@ fn kind_word(kind: RefKind) -> &'static str {
     }
 }
 
+/// SDL-L0027: a declared alias no kind references (spec/type-alias.md).
+/// The declaration is dead weight — expansion never rewrites anything
+/// and the statement emits nothing — so it advises like the unspread
+/// mixin does. The reference set spans the WHOLE composition (`sdl` is
+/// the flattened document): fields (nested and spread-landed members),
+/// fn argument and return kinds, and other aliases' right-hand sides —
+/// a chain's head stays used while any link names it, so pruning runs
+/// one finding at a time. A use inside a `raw` body is SurrealQL text
+/// (rule 8) and never counts.
+fn alias_pass(sdl: &SdlFile, anchored: &[(Span, usize)], out: &mut Vec<Finding>) {
+    if !sdl
+        .items
+        .iter()
+        .any(|stmt| matches!(stmt, Stmt::TypeAlias(_)))
+    {
+        return;
+    }
+    let mut used: BTreeSet<String> = BTreeSet::new();
+    for stmt in &sdl.items {
+        collect_alias_refs(stmt, &mut used);
+    }
+    // Duplicates are SDL-E1062 on a cleared file — first wins.
+    let mut declared: BTreeSet<&str> = BTreeSet::new();
+    let mut walk = ScopeWalk::new();
+    for (stmt, anchor) in sdl.items.iter().zip(anchored) {
+        let (span, home) = *anchor;
+        let scope = walk.lookup_scope(stmt);
+        walk.advance(stmt);
+        if let Stmt::TypeAlias(alias) = stmt
+            && declared.insert(alias.name.raw.as_str())
+            && !used.contains(&alias.name.raw)
+        {
+            out.push(finding(
+                FindingKind::UnusedAlias,
+                &scope,
+                Family::TypeAlias,
+                alias.name.raw.clone(),
+                (Some(span), home),
+            ));
+        }
+    }
+}
+
+/// The alias names one statement's kinds reference — the positions the
+/// forward rewrite expands, plus the mixin members (spread-landing
+/// makes members fields) and the alias declarations' own right-hand
+/// sides (a reference there uses another alias, never the declarer).
+fn collect_alias_refs(stmt: &Stmt, used: &mut BTreeSet<String>) {
+    match stmt {
+        Stmt::Field(field) => {
+            if let Some(kind) = &field.kind {
+                collect_kind_refs(&kind.text, used);
+            }
+        }
+        Stmt::Function(function) => {
+            for (_, kind) in &function.args {
+                collect_kind_refs(&kind.text, used);
+            }
+            if let Some(returns) = &function.returns {
+                collect_kind_refs(&returns.text, used);
+            }
+        }
+        Stmt::Table(table) => {
+            for nested in &table.nested {
+                collect_alias_refs(nested, used);
+            }
+        }
+        Stmt::Mixin(mixin) => {
+            for member in &mixin.members {
+                collect_alias_refs(member, used);
+            }
+        }
+        Stmt::TypeAlias(alias) => collect_kind_refs(&alias.kind.text, used),
+        _ => {}
+    }
+}
+
+fn collect_kind_refs(text: &str, used: &mut BTreeSet<String>) {
+    if let Some(ast) = parse_kind_ast(text) {
+        let mut refs = Vec::new();
+        collect_refs(&ast, &mut refs);
+        used.extend(refs);
+    }
+}
+
 // ---------------------------------------------------------------------
 // Small formatting helpers
 // ---------------------------------------------------------------------
@@ -1985,6 +2073,16 @@ pub enum FindingKind {
     /// it advises rather than errors (the same file declared twice by
     /// ONE file is the SDL-E0014 error class instead).
     DiamondInclude { declarer: String },
+    /// A declared alias no kind references (SDL-L0027,
+    /// spec/type-alias.md) — expansion never rewrites anything and the
+    /// statement emits nothing, the [`FindingKind::UnusedMixin`] class
+    /// in the alias namespace. References count from every legal
+    /// position across the whole composition (fields, fn args/returns,
+    /// another alias's right-hand side), so a chain's head is used
+    /// while any link names it — pruning cascades one finding at a
+    /// time. Advisory: the alias namespace collides with nothing (the
+    /// mixin rule), so the dead name is harmless.
+    UnusedAlias,
 }
 
 impl FindingKind {
@@ -2017,6 +2115,7 @@ impl FindingKind {
             FindingKind::LintAllowProblem { .. } => "SDL-L0023",
             FindingKind::UndefinedReference { .. } => "SDL-L0024",
             FindingKind::DiamondInclude { .. } => "SDL-L0026",
+            FindingKind::UnusedAlias => "SDL-L0027",
         }
     }
 
@@ -2045,6 +2144,7 @@ impl FindingKind {
             FindingKind::LintAllowProblem { .. } => "spec/README.md#the-linter",
             FindingKind::UndefinedReference { .. } => "spec/README.md#the-linter",
             FindingKind::DiamondInclude { .. } => "spec/include.md",
+            FindingKind::UnusedAlias => "spec/type-alias.md",
             FindingKind::AccessDurationDropped { .. } => "spec/access.md",
             FindingKind::SentinelApply {
                 what: "user passhash",
@@ -2216,6 +2316,10 @@ impl FindingKind {
                  `// surform-lint-allow: SDL-L0026` above the include"
                     .to_string()
             }
+            FindingKind::UnusedAlias => "reference it at a kind position (a field type, a fn \
+                 argument or return, another alias's right-hand side) or \
+                 delete it — an unreferenced alias rewrites nothing"
+                .to_string(),
         }
     }
 
@@ -2267,6 +2371,7 @@ impl FindingKind {
             FindingKind::DiamondInclude { .. } => {
                 "already included — first inclusion wins".to_string()
             }
+            FindingKind::UnusedAlias => "this alias is never referenced".to_string(),
         }
     }
 }
@@ -2481,6 +2586,12 @@ impl fmt::Display for Finding {
                  wins, so this declaration splices nothing",
                 key = self.key
             ),
+            FindingKind::UnusedAlias => write!(
+                f,
+                "type alias `{key}` in {where_} is never referenced — it \
+                 expands nothing and the statement emits nothing",
+                key = self.key
+            ),
         }
     }
 }
@@ -2593,6 +2704,7 @@ mod tests {
             FindingKind::DiamondInclude {
                 declarer: "root.surdl".to_string(),
             },
+            FindingKind::UnusedAlias,
         ]
     }
 
@@ -2629,7 +2741,8 @@ mod tests {
             | FindingKind::SpreadMemberShadow { .. }
             | FindingKind::LintAllowProblem { .. }
             | FindingKind::UndefinedReference { .. }
-            | FindingKind::DiamondInclude { .. } => {}
+            | FindingKind::DiamondInclude { .. }
+            | FindingKind::UnusedAlias => {}
         }
     }
 

@@ -190,6 +190,35 @@ fn an_allow_problem_on_an_include_still_reports() {
     );
 }
 
+/// The alias namespace is composition-global for the linter too: an
+/// alias a CHILD declares and the ROOT uses is used (no finding), and
+/// a child's dead alias anchors its SDL-L0027 in the child's own home
+/// — the same finding the flattened twin produces.
+#[test]
+fn an_alias_s_use_and_death_are_composition_wide() {
+    let dir = tempdir();
+    write(
+        &dir.join("types.surdl"),
+        "type Email = string;\ntype Dead = int;\n",
+    );
+    write(
+        &dir.join("root.surdl"),
+        "include 'types.surdl';\ntable t { a: Email; };\n",
+    );
+    let loaded = load_ok(&dir.join("root.surdl"), "root.surdl");
+    let resolved = surform::expand::expand(&loaded.file);
+    let parts = loaded.lint_parts();
+    let findings = lint::lint_composed(&loaded.file, &resolved, &parts, &loaded.diamonds);
+    let unused: Vec<_> = findings
+        .iter()
+        .filter(|f| f.kind.code_str() == "SDL-L0027")
+        .collect();
+    assert_eq!(unused.len(), 1, "{findings:?}");
+    assert_eq!(unused[0].key, "Dead");
+    // The finding renders against the DECLARING file (the child).
+    assert_eq!(unused[0].home, 1);
+}
+
 /// A cycle is LEGAL (the declarative namespace): the include graph
 /// declares participation, not an elaboration order, and splice-once
 /// makes every cycle terminate. A includes B includes A — both bodies

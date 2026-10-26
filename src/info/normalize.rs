@@ -31,12 +31,14 @@ use super::diff::state_equal;
 use super::place::{Section, place_sections, raw_match_key};
 use crate::ast::{
     Access, AccessDuration, AccessKind, Authored, Carried, Config, Database, Event, Field,
-    FieldPath, Filter, Ident, IndexKind, JwtSource, JwtVerify, Level, Namespace, OpPermissions,
-    Permission, PermissionGroup, PermissionOp, Role, SdlFile, Sequence, Stmt, Table, TableKind,
-    User,
+    FieldPath, Filter, Function, Ident, IndexKind, JwtSource, JwtVerify, Level, Namespace,
+    OpPermissions, Permission, PermissionGroup, PermissionOp, Role, SdlFile, Sequence, Stmt, Table,
+    TableKind, TypeAlias, User,
 };
 use crate::diag::Diag;
-use crate::expand::{expand, landing_members};
+use crate::expand::{
+    AliasResolutions, expand, landing_members, resolve_kind_text, rewrite_stmt_kinds,
+};
 use crate::info::read::{
     InfoObject, InfoValue, Markers, ReadEntry, read_accesses, read_analyzers, read_apis,
     read_buckets, read_configs, read_databases, read_default_config, read_functions, read_modules,
@@ -820,6 +822,20 @@ pub fn merge_with_provenance(sdl: &SdlFile, read: &ReadModel) -> (SdlFile, Vec<O
             _ => None,
         })
         .collect();
+    // The document's alias set — the same global shape the forward
+    // expansion resolves against (first-wins on a duplicate,
+    // unobservable on a cleared file, the registry's finding). The
+    // preserve verb resolves the authored kinds against it; the
+    // faults are the order pass's diagnostics.
+    let aliases: Vec<(&str, &TypeAlias)> = sdl
+        .items
+        .iter()
+        .filter_map(|stmt| match stmt {
+            Stmt::TypeAlias(alias) => Some((alias.name.raw.as_str(), alias)),
+            _ => None,
+        })
+        .collect();
+    let (resolutions, _) = AliasResolutions::build(&aliases);
     for (input, stmt) in sdl.items.iter().enumerate() {
         let entry = take_for_scope(&mut read, &walk.lookup_scope(stmt), stmt);
         let merged_stmt = match entry {
@@ -828,7 +844,7 @@ pub fn merge_with_provenance(sdl: &SdlFile, read: &ReadModel) -> (SdlFile, Vec<O
             // clause-addressable, so a match only CONSUMES — the
             // authored body stays verbatim.
             Some(_) if matches!(stmt, Stmt::Raw(_)) => stmt.clone(),
-            Some(entry) => merge_stmt(stmt, &entry, &mixins),
+            Some(entry) => merge_stmt(stmt, &entry, &mixins, &resolutions),
             None => stmt.clone(),
         };
         // Sections open forward-only: a `database` statement opens its
@@ -1196,12 +1212,17 @@ fn take_for_scope(read: &mut ReadModel, scope: &ScopeKey, stmt: &Stmt) -> Option
 /// PRESERVE + spelling-carry from the SDL side. A matched table's
 /// spreads reconstruct last ([`restore_spreads`]) — the authored
 /// structure the read state cannot carry.
-fn merge_stmt(sdl: &Stmt, entry: &ReadEntry, mixins: &Mixins<'_>) -> Stmt {
+fn merge_stmt(
+    sdl: &Stmt,
+    entry: &ReadEntry,
+    mixins: &Mixins<'_>,
+    resolutions: &AliasResolutions,
+) -> Stmt {
     let mut merged = elide_and_fold(entry.stmt.clone());
     merged.carry_comment_fields_from(sdl);
-    preserve_and_carry(sdl, &mut merged);
+    preserve_and_carry(sdl, &mut merged, resolutions);
     if let (Stmt::Table(sdl_table), Stmt::Table(merged_table)) = (sdl, &mut merged) {
-        restore_spreads(sdl_table, merged_table, mixins);
+        restore_spreads(sdl_table, merged_table, mixins, resolutions);
     }
     merged
 }
@@ -1214,7 +1235,10 @@ fn merge_stmt(sdl: &Stmt, entry: &ReadEntry, mixins: &Mixins<'_>) -> Stmt {
 /// ([`state_equal`], one notion on both sides of the pipeline):
 ///
 /// - **state-equal** — the read child DROPS: the spread entry covers
-///   it (the merged file still declares it, through the spread).
+///   it (the merged file still declares it, through the spread). A
+///   member's kinds resolve their alias references first (the
+///   EXPANDED form, the differ's own posture), so a child holding the
+///   expansion is covered by the spread that names the alias.
 /// - **diverged** — the read child STAYS as an explicit member: the
 ///   materialization, the overshadow rule performing the adoption
 ///   (the spread survives with its member overshadowed
@@ -1233,7 +1257,12 @@ fn merge_stmt(sdl: &Stmt, entry: &ReadEntry, mixins: &Mixins<'_>) -> Stmt {
 /// and preserved). A table the read side lacks never passes through
 /// here at all — no read entry matched, the authored statement rides
 /// the merge untouched.
-fn restore_spreads(sdl_table: &Table, merged: &mut Table, mixins: &Mixins<'_>) {
+fn restore_spreads(
+    sdl_table: &Table,
+    merged: &mut Table,
+    mixins: &Mixins<'_>,
+    resolutions: &AliasResolutions,
+) {
     if !sdl_table
         .nested
         .iter()
@@ -1242,6 +1271,11 @@ fn restore_spreads(sdl_table: &Table, merged: &mut Table, mixins: &Mixins<'_>) {
         return;
     }
     for member in landing_members(sdl_table, mixins).concat() {
+        // The member compares in its EXPANDED form (the differ's own
+        // posture — its kinds' alias references resolve first), so a
+        // read child holding the expansion is covered by the spread.
+        let mut member = member;
+        rewrite_stmt_kinds(&mut member, resolutions);
         let key = classify(&member);
         if let Some(at) = merged
             .nested
@@ -1328,7 +1362,7 @@ fn elide_full_permission(permissions: &mut Option<Permission>) {
 
 /// The matched path's SDL-side verbs: PRESERVE what INFO drops but SDL
 /// means, and carry authored spellings whose values are unchanged.
-fn preserve_and_carry(sdl: &Stmt, merged: &mut Stmt) {
+fn preserve_and_carry(sdl: &Stmt, merged: &mut Stmt, resolutions: &AliasResolutions) {
     match (sdl, merged) {
         (Stmt::Namespace(sdl_ns), Stmt::Namespace(ns)) => {
             // The `ns` keyword alias is pure provenance — carried.
@@ -1362,7 +1396,10 @@ fn preserve_and_carry(sdl: &Stmt, merged: &mut Stmt) {
             index.fields_key = sdl_index.fields_key.clone();
         }
         (Stmt::Field(sdl_field), Stmt::Field(field)) => {
-            carry_field_kind(sdl_field, field);
+            carry_field_kind(sdl_field, field, resolutions);
+        }
+        (Stmt::Function(sdl_fn), Stmt::Function(function)) => {
+            carry_function_kinds(sdl_fn, function, resolutions);
         }
         (Stmt::Table(sdl_table), Stmt::Table(table)) => {
             preserve_table_permissions(sdl_table, table);
@@ -1374,7 +1411,7 @@ fn preserve_and_carry(sdl: &Stmt, merged: &mut Stmt) {
                 let key = classify(nested);
                 if let Some(sdl_nested) = sdl_table.nested.iter().find(|s| classify(s) == key) {
                     nested.carry_comment_fields_from(sdl_nested);
-                    preserve_and_carry(sdl_nested, nested);
+                    preserve_and_carry(sdl_nested, nested, resolutions);
                 }
             }
         }
@@ -1382,14 +1419,42 @@ fn preserve_and_carry(sdl: &Stmt, merged: &mut Stmt) {
     }
 }
 
+/// Rule 4's kind comparison, alias-aware: the authored text resolves
+/// against the alias table first, so an alias-bearing kind carries
+/// exactly when its EXPANSION equals the read state. A reference
+/// resolving to nothing rides through and the comparison fails — the
+/// read state's canonical spelling wins (the dirty-document posture;
+/// the order pass owns that finding).
+fn kinds_converge(authored: &str, read: &str, resolutions: &AliasResolutions) -> bool {
+    kind_text_equal(&resolve_kind_text(authored, resolutions), read)
+}
+
 /// The authored kind spelling rides when the kinds are algebra-equal
-/// (rule 4 — value equality, spelling kept; the read text is the
-/// canonical spelling otherwise).
-fn carry_field_kind(sdl_field: &Field, field: &mut Field) {
+/// through the alias table (rule 4 — value equality, spelling kept;
+/// the read text is the canonical spelling otherwise).
+fn carry_field_kind(sdl_field: &Field, field: &mut Field, resolutions: &AliasResolutions) {
     if let (Some(sdl_kind), Some(kind)) = (&sdl_field.kind, &field.kind)
-        && kind_text_equal(&sdl_kind.text, &kind.text)
+        && kinds_converge(&sdl_kind.text, &kind.text, resolutions)
     {
         field.kind = Some(sdl_kind.clone());
+    }
+}
+
+/// The same spelling carry over a function's argument and return
+/// kinds (rule 4; the positions the forward rewrite
+/// [`rewrite_stmt_kinds`] covers). Argument pairs ride positionally —
+/// a converged pair carries its authored spelling, a divergent one
+/// keeps the read state, and a count mismatch simply stops the zip.
+fn carry_function_kinds(sdl: &Function, function: &mut Function, resolutions: &AliasResolutions) {
+    for ((_, sdl_kind), (_, kind)) in sdl.args.iter().zip(function.args.iter_mut()) {
+        if kinds_converge(&sdl_kind.text, &kind.text, resolutions) {
+            *kind = sdl_kind.clone();
+        }
+    }
+    if let (Some(sdl_returns), Some(returns)) = (&sdl.returns, &mut function.returns)
+        && kinds_converge(&sdl_returns.text, &returns.text, resolutions)
+    {
+        *returns = sdl_returns.clone();
     }
 }
 
@@ -2025,6 +2090,106 @@ mod tests {
             ),
             "mixin stamp {\n  field created_at: datetime;\n  field updated_at: datetime;\n};\n\
              \ntable entry {\n  schemafull;\n  field title: string;\n  ...stamp;\n};\n"
+        );
+    }
+
+    /// The reverse path's alias carry (spec/type-alias.md): authored
+    /// alias spellings ride when the read state algebra-equals the
+    /// expansion — a field's kind and a function's argument/return
+    /// kinds alike; divergence adopts the read state; and the loop is
+    /// idempotent (merging the merged output against the same read
+    /// state reproduces it byte-for-byte).
+    #[test]
+    fn the_merge_carries_alias_spellings() {
+        let model_from = |read_sdl: &str| {
+            let (read, diags) = crate::parser::parse_file(read_sdl);
+            assert!(diags.is_empty(), "{diags:?}");
+            let mut model = ReadModel::default();
+            model.mark_ingested(ScopeKey::Root);
+            for stmt in read.items {
+                let (_, key) = classify(&stmt);
+                model.root.push(ReadEntry {
+                    name: key,
+                    stmt,
+                    markers: crate::info::read::Markers::default(),
+                });
+            }
+            model
+        };
+        let authored = "type Email = string;\n\
+                        table user schemafull {\n  contact: Email;\n};\n\
+                        fn f($e: Email) -> Email { return $e; };\n";
+        let (sdl, diags) = crate::parser::parse_file(authored);
+        assert!(diags.is_empty(), "{diags:?}");
+        let model = model_from(
+            "table user {\n  schemafull;\n  field contact: string;\n};\n\
+             fn f($e: string) -> string { return $e; };",
+        );
+        let once = crate::info::write::write_canonical(&merge(&sdl, &model));
+        // The authored references ride at every kind position, and the
+        // type statement rides untouched (no read counterpart).
+        assert!(once.contains("type Email = string;"), "{once}");
+        assert!(once.contains("field contact: Email;"), "{once}");
+        assert!(once.contains("fn f($e: Email) -> Email"), "{once}");
+        // Idempotence: the merged output re-merges to itself.
+        let (reparsed, diags) = crate::parser::parse_file(&once);
+        assert!(diags.is_empty(), "{once}");
+        assert_eq!(
+            crate::info::write::write_canonical(&merge(&reparsed, &model)),
+            once
+        );
+        // Divergence adopts the read state: the expansion no longer
+        // equals it, the canonical spelling wins.
+        let diverged_model = model_from(
+            "table user {\n  schemafull;\n  field contact: int;\n};\n\
+             fn f($e: int) -> int { return $e; };",
+        );
+        let diverged = crate::info::write::write_canonical(&merge(&sdl, &diverged_model));
+        assert!(diverged.contains("field contact: int;"), "{diverged}");
+        assert!(diverged.contains("fn f($e: int) -> int"), "{diverged}");
+    }
+
+    /// The spread-member convergence rides the expansion too: a member
+    /// whose kind references an alias compares against the read child
+    /// in its EXPANDED form, so the covered child drops; a divergent
+    /// child materializes as the explicit override. The authored
+    /// spelling lives only in the mixin (the spread re-attaches as an
+    /// authored clone).
+    #[test]
+    fn a_spread_member_compares_in_its_expanded_form() {
+        let authored = "type Stamp = datetime;\n\
+                        mixin stamp {\n  created_at: Stamp;\n};\n\
+                        table entry schemafull {\n  ...stamp;\n};\n";
+        let (sdl, diags) = crate::parser::parse_file(authored);
+        assert!(diags.is_empty(), "{diags:?}");
+        let merge_once = |read_sdl: &str| {
+            let (read, read_diags) = crate::parser::parse_file(read_sdl);
+            assert!(read_diags.is_empty(), "{read_diags:?}");
+            let entry = ReadEntry {
+                name: "entry".to_string(),
+                stmt: read.items.into_iter().next().expect("one statement"),
+                markers: crate::info::read::Markers::default(),
+            };
+            let mut model = ReadModel::default();
+            model.mark_ingested(ScopeKey::Root);
+            model.root.push(entry);
+            crate::info::write::write_canonical(&merge(&sdl, &model))
+        };
+        // Converged: the expanded member state-equals the read child —
+        // the spread covers it.
+        assert_eq!(
+            merge_once("table entry {\n  schemafull;\n  field created_at: datetime;\n};"),
+            "type Stamp = datetime;\n\
+             \nmixin stamp {\n  field created_at: Stamp;\n};\n\
+             \ntable entry {\n  schemafull;\n  ...stamp;\n};\n"
+        );
+        // Diverged: the read child materializes as the override, the
+        // spread survives.
+        assert_eq!(
+            merge_once("table entry {\n  schemafull;\n  field created_at: int;\n};"),
+            "type Stamp = datetime;\n\
+             \nmixin stamp {\n  field created_at: Stamp;\n};\n\
+             \ntable entry {\n  schemafull;\n  field created_at: int;\n  ...stamp;\n};\n"
         );
     }
 

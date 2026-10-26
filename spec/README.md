@@ -1188,6 +1188,7 @@ findings).
 | SDL-L0024 | a referenced table/analyzer/`fn::` path (or a `fn::`-body param) nothing defines | authored |
 | SDL-L0025 | RETIRED (2026-10-06) — the compiler owns emission order (rule 7); a late definition reorders, a cycle is SDL-E0015 | — |
 | SDL-L0026 | a diamond include — a file the composition already spliced, declared again (first inclusion wins) | authored |
+| SDL-L0027 | type alias defined but never referenced (expands nothing, emits nothing) | authored |
 
 **The reference lints** consume the reference extractor's
 report over the authored stream. Their contract is the extractor's,
@@ -1231,6 +1232,15 @@ flat, so an undefined target is legal SDL.
   span, whose scan entry survives outside every splice block). The
   same file included twice by ONE file is the SDL-E0014 error
   instead — the dedupe would silently hide the duplicate.
+- **SDL-L0027** (the alias namespace) anchors on a declaration no
+  kind references: expansion never rewrites anything and the
+  statement emits nothing — the unspread-mixin class in the alias
+  namespace. The reference set spans the whole composition (fields,
+  fn args/returns, another alias's right-hand side), so a chain's
+  head stays used while any link names it — pruning cascades one
+  finding at a time — and a use inside a `raw` body is SurrealQL text
+  (rule 8) and never counts. It advises: the alias namespace collides
+  with nothing (the mixin rule), so the dead name is harmless.
 
 ## Statement files
 

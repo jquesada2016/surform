@@ -382,9 +382,12 @@ Gotchas: `record<Email>` / `table<Email>` / `file<Email>` interiors
 are table NAMES at every case, never references (the example above
 names the table `email`); `raw` bodies are verbatim — never expanded;
 fmt round-trips the statement verbatim (the kind in its authored
-spelling); the reverse path lands with the merge unit — INFO stores
-only concrete kinds, so reads emit expanded text and the reverse
-reader's strict grammar accepts no references.
+spelling); the merge keeps those spellings too — a kind whose alias
+expands to what the database holds stays authored, a kind the database
+has changed adopts the database's spelling, and an alias nothing
+references is SDL-L0027 (advisory); INFO stores only concrete kinds,
+so reads emit expanded text and the reverse reader's strict grammar
+accepts no references.
 
 ## include
 

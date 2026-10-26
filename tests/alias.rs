@@ -398,3 +398,56 @@ fn aliases_drop_from_the_lowered_file() {
     assert_eq!(lowered.items.len(), 1);
     assert!(matches!(&lowered.items[0], surform::ast::Stmt::Table(_)));
 }
+
+/// SDL-L0027: the alias nothing references. Every legal use position
+/// counts — a field, a fn argument or return, another alias's
+/// right-hand side (a chain's head stays used while any link names
+/// it, so pruning cascades one finding at a time) — and a use inside a
+/// `raw` body is SurrealQL text (rule 8) and does not. The allow
+/// directive excuses the declaration.
+#[test]
+fn unused_alias_lints() {
+    let findings = |src: &str| {
+        let file = parsed(src);
+        let resolved = surform::expand::expand(&file);
+        surform::lint::lint(&file, &resolved, src)
+    };
+    // Used: clean.
+    assert!(findings("type Email = string;\ntable t { a: Email; };").is_empty());
+    // Unused: one finding, naming the dead alias.
+    let unused = findings("type Email = string;\ntable t { a: string; };");
+    assert_eq!(unused.len(), 1, "{unused:?}");
+    assert_eq!(unused[0].kind.code_str(), "SDL-L0027");
+    assert!(unused[0].to_string().contains("`Email`"), "{}", unused[0]);
+    // Used only through another alias's right-hand side: the link is
+    // used, the dead head is the finding.
+    let link_used =
+        findings("type Email = string;\ntype Emails = array<Email>;\ntable t { a: string; };");
+    assert_eq!(link_used.len(), 1, "{link_used:?}");
+    assert!(
+        link_used[0].to_string().contains("`Emails`"),
+        "{}",
+        link_used[0]
+    );
+    // fn positions and mixin members count as uses.
+    assert!(
+        findings("type Email = string;\nfn f($e: Email) { return $e; };").is_empty(),
+        "a fn argument is a use"
+    );
+    assert!(
+        findings(
+            "type Stamp = datetime;\nmixin m { at: Stamp; };\n\
+             table t schemafull { ...m; };",
+        )
+        .is_empty(),
+        "a mixin member is a use"
+    );
+    // A use inside a `raw` body is SurrealQL text — it does not count.
+    let raw = findings("type Email = string;\nraw {\n  DEFINE TABLE Email;\n};");
+    assert_eq!(raw.len(), 1, "{raw:?}");
+    assert_eq!(raw[0].kind.code_str(), "SDL-L0027");
+    // The allow directive excuses the declaration.
+    let excused = "// surform-lint-allow: SDL-L0027\n\
+                   type Email = string;\ntable t { a: string; };";
+    assert!(findings(excused).is_empty(), "the allow must suppress");
+}

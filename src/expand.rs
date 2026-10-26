@@ -143,7 +143,7 @@ pub fn expand(file: &SdlFile) -> SdlFile {
 /// (fields' header kinds, functions' argument and return kinds). The
 /// resolutions are shared across the whole document — one alias's
 /// expansion is computed once.
-fn rewrite_stmt_kinds(stmt: &mut Stmt, resolutions: &AliasResolutions) {
+pub(crate) fn rewrite_stmt_kinds(stmt: &mut Stmt, resolutions: &AliasResolutions) {
     match stmt {
         Stmt::Field(field) => {
             if let Some(kind) = &mut field.kind {
@@ -401,7 +401,7 @@ impl AliasResolutions {
 
 /// The alias references one kind AST carries, in appearance order,
 /// deduplicated.
-fn collect_refs(ast: &KindAst, out: &mut Vec<String>) {
+pub(crate) fn collect_refs(ast: &KindAst, out: &mut Vec<String>) {
     match ast {
         KindAst::Alias(name) => {
             if !out.contains(name) {
