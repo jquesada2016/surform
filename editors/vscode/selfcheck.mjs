@@ -118,6 +118,17 @@ check("include: the statement head matches at column 0", includeStmt.test(`inclu
 check("include: case-folded head matches", includeStmt.test("INCLUDE 'a.surdl';"));
 check("include: indented `include original;` is NOT the head (the changefeed flag)", !includeStmt.test("  include original;"));
 
+const typeAlias = toJs(rule("type-alias-statement").match, "m");
+check("type alias: the statement head matches", typeAlias.test("type Email = string;"));
+check("type alias: indented head matches", typeAlias.test("  type Emails = array<Email>;"));
+check("type alias: a lowercase name is NOT the head (the alias/kind split)", !typeAlias.test("type email = string;"));
+check("type alias: an indented `type:` clause line is NOT the head (the access/index clause key)", !typeAlias.test("  type: jwt;"));
+check("type alias: case-folded head matches", typeAlias.test("TYPE Email = string;"));
+
+const aliasUse = toJs(rule("alias-use").match);
+check("alias use: a Capitalized kind word inks", aliasUse.test("Email"));
+check("alias use: a lowercase kind word is not the use rule", !aliasUse.test("string"));
+
 const spread = toJs(rule("spread-entry").match, "m");
 check("spread: `...name;` entry matches", spread.test("  ...stamp;"));
 check("spread: quoted name matches", spread.test("...`my mix`;"));

@@ -607,7 +607,10 @@ impl Anchors {
         for (stmt, anchor) in sdl.items.iter().zip(anchored) {
             let scope = walk.lookup_scope(stmt);
             walk.advance(stmt);
-            if matches!(stmt, Stmt::Raw(_) | Stmt::Mixin(_) | Stmt::Include(_)) {
+            if matches!(
+                stmt,
+                Stmt::Raw(_) | Stmt::Mixin(_) | Stmt::TypeAlias(_) | Stmt::Include(_)
+            ) {
                 continue;
             }
             let (family, key) = classify(stmt);

@@ -4128,10 +4128,12 @@ fn validate_field_shape(field: &Field) -> Result<(), Diag> {
         ));
     }
     if field.flexible
-        && !field
-            .kind
-            .as_ref()
-            .is_some_and(|kind| crate::kind::kind_contains_object(&kind.text))
+        && !field.kind.as_ref().is_some_and(|kind| {
+            matches!(
+                crate::kind::kind_contains_object(&kind.text),
+                crate::kind::ObjectPresence::Yes
+            )
+        })
     {
         return Err(tripwire(
             "FLEXIBLE takes only a kind containing an object".to_string(),

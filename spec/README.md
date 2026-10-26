@@ -2,7 +2,8 @@
 
 Status: **all 16 DEFINE statements consolidated; `mixin` (SDL-only,
 no DEFINE counterpart) added 2026-09-29; `include` (SDL-only file
-composition) added 2026-10-04**.
+composition) added 2026-10-04; `type` aliases (SDL-only named type
+expansion) added 2026-10-25**.
 
 Target: SurrealDB **v3.3** — the sole supported floor (the 2026-09-25
 floor move; the embed pins `=3.3.0`, the shipped binary is 3.3.0). The
@@ -151,7 +152,16 @@ shapes (probe-pinned 2026-09-25).
    `none | T` for SDL's `option<T>`. Types compare by parsed kind AST
    under that normalization (`option<T>` ≡ `none | T`, `int | int` ≡
    `int`); the canonical SDL spelling folds a union that is exactly
-   `none | T` back to `option<T>`.
+   `none | T` back to `option<T>`. **Type aliases**
+   ([type-alias.md](type-alias.md), 2026-10-25) ride this grammar:
+   a bare Capitalized word at a kind position is an alias REFERENCE
+   (the Capitalized/lowercase split is the whole disambiguation —
+   SurrealQL's kind heads are lowercase), resolved against the
+   document's alias set by the check-class pass and rewritten to the
+   expansion's text before emission; the kind text an authored file
+   carries still rides verbatim (the writer never resolves a
+   reference), and the strict grammar the reverse readers use accepts
+   no reference (INFO stores only concrete kinds).
 5. **Comments.** `//` is a plain human-readable comment. It is not a
    definition: comparisons (the differ, `same_definition`, the fmt
    fixed point) strip it, and codegen emits none. But it IS layout —
@@ -195,11 +205,13 @@ shapes (probe-pinned 2026-09-25).
    and `config` lack one, and `///` is rejected there.
 6. **No sugar.** `unique` is a variant slot, not a flag; defaults are
    expressed by omission. The only implicit behavior is the
-   doc-comment → `COMMENT` mapping — with **one licensed deviation:
-   `mixin` expansion** ([mixin.md](mixin.md), 2026-09-29). A
-   spread is compile-time textual expansion into member definitions
-   and nothing more: no inheritance, no merge, no runtime counterpart —
-   the database only ever sees the expanded member `DEFINE`s.
+   doc-comment → `COMMENT` mapping — with **one licensed deviation
+   class, compile-time textual expansion**: `mixin` spreads
+   ([mixin.md](mixin.md), 2026-09-29) and `type` aliases
+   ([type-alias.md](type-alias.md), 2026-10-25). A spread expands
+   into member definitions and an alias into kind text, and nothing
+   more: no inheritance, no merge, no runtime counterpart — the
+   database only ever sees the expanded `DEFINE`s and kinds.
 7. Statements are `;`-terminated. Indentation is cosmetic. **SDL is
    order-DEPENDENT in clauses, order-INDEPENDENT in definitions** (the
    declarative namespace, 2026-10-05/06). Within a statement, repeated
@@ -552,6 +564,12 @@ shapes (probe-pinned 2026-09-25).
    position — explicitly overshadowed members and members a later
    spread's same-keyed member beats are skipped (last-occurrence-wins);
    a `mixin` statement emits nothing.
+   **Alias expansion precedes emission**
+   ([type-alias.md](type-alias.md)): every kind referencing an alias
+   is rewritten to the expansion's text (chained aliases resolve
+   recursively) and a `type` statement emits nothing — the emitted
+   DDL can never carry an alias name, which is what makes the
+   feature's meaning independent of the server version consuming it.
    **Composition precedes expansion** ([include.md](include.md)): the
    loader flattens the include tree (parse each file separately,
    concatenate the statement lists — file-local spans preserved) into
@@ -1235,4 +1253,5 @@ flat, so an undefined target is legal SDL.
 | [param.md](param.md) | DEFINE PARAM | ✅ consolidated (2026-09-18) |
 | [sequence.md](sequence.md) | DEFINE SEQUENCE | ✅ consolidated (2026-09-18) |
 | [table.md](table.md) | DEFINE TABLE | ✅ consolidated (2026-09-18) |
+| [type-alias.md](type-alias.md) | TYPE — SDL-only type aliases | ✅ consolidated (2026-10-25) |
 | [user.md](user.md) | DEFINE USER | ✅ consolidated (2026-09-18) |

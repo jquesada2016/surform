@@ -534,6 +534,50 @@ pub enum Diag {
     /// included parse entry — the loader's entry for non-root files —
     /// against the included file's own text.
     IncludeScopeBanned { span: Span, statement: &'static str },
+    /// A Capitalized word at a kind position resolves to no type
+    /// alias of the document (spec/type-alias.md — the declarative
+    /// namespace: the order pass checks every reference against the
+    /// whole composed document's alias set, any file, any position).
+    /// A typo'd alias is an error, never a silent kind.
+    UnknownAlias {
+        span: Span,
+        name: String,
+        suggestion: Option<String>,
+    },
+    /// A type-alias declaration's name is not usable (spec/
+    /// type-alias.md): not Capitalized (the rule that keeps alias
+    /// uses grammatically distinct from the lowercase kind heads), or
+    /// reserved — a SurrealQL kind head would win at every use site
+    /// (head matching is ASCII-case-insensitive) and leave the alias
+    /// unreachable. `reason` spells which.
+    InvalidAliasName {
+        span: Span,
+        name: String,
+        reason: String,
+    },
+    /// A kind's expansion nests beyond the kind nesting ceiling
+    /// (spec/type-alias.md): a chain composes nesting one link at a
+    /// time, and every walk the expanded kind feeds recurses over it
+    /// — the ceiling keeps that recursion bounded where real schemas
+    /// never approach it. `owner` names where the kind arises ("type
+    /// alias `A`", "field `a`", …); `depth` is the
+    /// expansion's measured height against the 256 ceiling.
+    AliasExpansionDepth {
+        span: Span,
+        owner: String,
+        depth: usize,
+    },
+    /// A kind's expansion is not a kind the strict grammar accepts
+    /// (spec/type-alias.md): each part is legal on its own, but the
+    /// composition crosses the grammar — a chain of option wrappers
+    /// composes `option<option<…>>`, which no parser (SDL's or the
+    /// engine's) accepts. `owner` names where the kind arises;
+    /// `text` is the expansion.
+    AliasExpansionInvalid {
+        span: Span,
+        owner: String,
+        text: String,
+    },
     // ---- SDL-E3xxx: the INFO round-trip readers ----
     /// INFO input could not be read. Two classes share the code: the
     /// interchange object walk failed (malformed SurrealQL object
@@ -628,6 +672,10 @@ impl Diag {
             Diag::IncludeUnsupported { .. } => "SDL-E1068",
             Diag::IncludeMisplaced { .. } => "SDL-E1069",
             Diag::IncludeScopeBanned { .. } => "SDL-E1070",
+            Diag::UnknownAlias { .. } => "SDL-E1071",
+            Diag::InvalidAliasName { .. } => "SDL-E1072",
+            Diag::AliasExpansionDepth { .. } => "SDL-E1073",
+            Diag::AliasExpansionInvalid { .. } => "SDL-E1074",
             Diag::ExpectedClauseValue { .. } => "SDL-E1010",
             Diag::UnexpectedClauseForm { .. } => "SDL-E1011",
             Diag::InvalidDuration { .. } => "SDL-E1012",
@@ -739,6 +787,10 @@ impl Diag {
             | Diag::CrossSectionDependency { .. } => "spec/README.md#design-rules-settled",
             Diag::IncludeUnsupported { .. } | Diag::IncludeMisplaced { .. } => "spec/include.md",
             Diag::IncludeScopeBanned { .. } => "spec/include.md",
+            Diag::UnknownAlias { .. } | Diag::InvalidAliasName { .. } => "spec/type-alias.md",
+            Diag::AliasExpansionDepth { .. } | Diag::AliasExpansionInvalid { .. } => {
+                "spec/type-alias.md"
+            }
             Diag::InvalidPassscram { .. } => "spec/user.md",
             Diag::InvalidPermissionsShorthand {
                 statement: "field", ..
@@ -1110,6 +1162,37 @@ impl Diag {
                  silent empty expansion"
                     .to_string(),
             },
+            Diag::UnknownAlias { suggestion, .. } => match suggestion {
+                Some(s) => format!(
+                    "did you mean `{s}`? declare the alias anywhere in this \
+                     document — `type {s} = <kind>;` — references resolve \
+                     against the whole composition, any file, any position"
+                ),
+                None => "declare the alias anywhere in this document — \
+                 `type <Name> = <kind>;` — references resolve against the \
+                 whole composition, any file, any position; a reference \
+                 that names nothing is an error, never a silent kind"
+                    .to_string(),
+            },
+            Diag::InvalidAliasName { .. } => {
+                "rename the alias — a use site is a bare Capitalized word, so \
+                 the name must start uppercase and must not be a SurrealQL \
+                 kind head"
+                    .to_string()
+            },
+            Diag::AliasExpansionDepth { .. } => {
+                "shorten the chain — each link adds its nesting to the whole, \
+                 and the expansion the database receives must stay within the \
+                 ceiling every kind walk can traverse"
+                    .to_string()
+            },
+            Diag::AliasExpansionInvalid { .. } => {
+                "each link is legal on its own, but the composition crosses the \
+                 grammar — e.g. a chain of option wrappers composes \
+                 option<option<…>>, which no parser accepts; flatten the chain \
+                 or drop the wrapping link"
+                    .to_string()
+            },
             Diag::DuplicateDefinition { family, .. } => {
                 format!(
                     "definitions are unique across the document — any file, \
@@ -1431,6 +1514,20 @@ impl Diag {
             Diag::UnknownMixin { span, .. } => {
                 Some(("no mixin of this name in the document".to_string(), *span))
             }
+            Diag::UnknownAlias { span, .. } => Some((
+                "no type alias of this name in the document".to_string(),
+                *span,
+            )),
+            Diag::InvalidAliasName { span, .. } => {
+                Some(("this cannot name a type alias".to_string(), *span))
+            }
+            Diag::AliasExpansionDepth { span, .. } => {
+                Some(("this expansion nests too deep".to_string(), *span))
+            }
+            Diag::AliasExpansionInvalid { span, .. } => Some((
+                "this expansion is not an expressible kind".to_string(),
+                *span,
+            )),
             Diag::DuplicateDefinition { family, span, .. } => {
                 Some((format!("this {family} name is taken"), *span))
             }
@@ -1772,6 +1869,21 @@ impl fmt::Display for Diag {
             Diag::UnknownMixin { name, .. } => {
                 write!(f, "spread names no mixin of the document: `{name}`")
             }
+            Diag::UnknownAlias { name, .. } => {
+                write!(f, "no type alias of the document is named `{name}`")
+            }
+            Diag::InvalidAliasName { name, reason, .. } => {
+                write!(f, "`{name}` cannot name a type alias: {reason}")
+            }
+            Diag::AliasExpansionDepth { owner, depth, .. } => write!(
+                f,
+                "the expansion of {owner} nests {depth} levels — \
+                 beyond the kind nesting ceiling (256)"
+            ),
+            Diag::AliasExpansionInvalid { owner, text, .. } => write!(
+                f,
+                "the expansion of {owner} is not a kind the grammar accepts: `{text}`"
+            ),
             Diag::DuplicateDefinition { family, name, .. } => {
                 write!(f, "{family} `{name}` is already defined")
             }
@@ -2565,6 +2677,38 @@ mod tests {
                 Diag::IncludeScopeBanned {
                     span: Span::point(0),
                     statement: "namespace",
+                },
+            ),
+            (
+                1071,
+                Diag::UnknownAlias {
+                    span: Span::point(0),
+                    name: "Email".into(),
+                    suggestion: None,
+                },
+            ),
+            (
+                1072,
+                Diag::InvalidAliasName {
+                    span: Span::point(0),
+                    name: "string".into(),
+                    reason: "reserved".into(),
+                },
+            ),
+            (
+                1073,
+                Diag::AliasExpansionDepth {
+                    span: Span::point(0),
+                    owner: "type alias `Deep`".into(),
+                    depth: 300,
+                },
+            ),
+            (
+                1074,
+                Diag::AliasExpansionInvalid {
+                    span: Span::point(0),
+                    owner: "type alias `Wrapped`".into(),
+                    text: "option<option<int>>".into(),
                 },
             ),
             (

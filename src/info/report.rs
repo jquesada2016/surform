@@ -312,6 +312,9 @@ pub(crate) fn family_word(family: Family) -> &'static str {
         // Linter-only (allow comments) — never a drift family; the
         // word exists so the vocabulary stays total.
         Family::Comment => "comment",
+        // SDL-only, never a drift family (the differ's SDL side is
+        // pre-expanded); the word keeps the vocabulary total.
+        Family::TypeAlias => "type alias",
         Family::Config => "config",
         Family::Database => "database",
         Family::Event => "event",

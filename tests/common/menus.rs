@@ -307,6 +307,18 @@ pub fn families() -> Vec<Family> {
             exec_skip: &[],
             expected_execd: 36,
         },
+        Family {
+            name: "type-alias",
+            docs: type_alias_docs,
+            expected_count: 9,
+            // `table Email` backs the name-list non-use doc: the
+            // `record<Email>` interior names the TABLE, and the
+            // engine's define-time record check (wherever it bites)
+            // must find it.
+            setup: "namespace test;\ndatabase scratch;\ntable Email schemafull;\n",
+            exec_skip: &[],
+            expected_execd: 9,
+        },
     ]
 }
 
@@ -1283,5 +1295,42 @@ pub fn mixin_docs() -> Vec<String> {
             }
         }
     }
+    docs
+}
+
+/// The type-alias family: the MECHANISM is the menu's subject —
+/// the Capitalized reference at each legal kind position, the chain
+/// (a reference inside a declaration's own RHS), use-before-define
+/// (the declarative namespace), the function-argument/return kinds,
+/// and the name-list NON-use (`record<Email>`'s interior names the
+/// TABLE — the setup defines it). Every doc executes: the emitted
+/// DDL is fully expanded, the `type` statements themselves emit
+/// nothing.
+pub fn type_alias_docs() -> Vec<String> {
+    let mut docs = Vec::new();
+    let uses = [
+        "a: Email;",
+        "a: option<Email>;",
+        "a: Email | int;",
+        "a: { email: Email };",
+        "a: array<Email, 3>;",
+    ];
+    for use_shape in uses {
+        docs.push(format!(
+            "type Email = string;\ntable al_x schemafull {{\n  {use_shape}\n}};"
+        ));
+    }
+    docs.push(
+        "type Email = string;\ntype Emails = array<Email>;\n\
+         table al_y schemafull { a: Emails; };"
+            .to_string(),
+    );
+    docs.push("table al_z schemafull { a: Email; };\ntype Email = string;".to_string());
+    docs.push(
+        "type Email = string;\ntype Emails = array<Email>;\n\
+         fn al_f($e: Email) -> Emails { return [$e]; };"
+            .to_string(),
+    );
+    docs.push("type Email = string;\ntable al_w schemafull { a: record<Email>; };".to_string());
     docs
 }

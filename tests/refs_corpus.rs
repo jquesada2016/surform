@@ -68,6 +68,7 @@ const PINNED_FAMILIES: &[(&str, [usize; 5])] = &[
     ("table", [688, 688, 0, 0, 0]),
     ("field", [2026, 2026, 0, 0, 0]),
     ("mixin", [36, 36, 0, 0, 0]),
+    ("type-alias", [9, 9, 0, 0, 0]),
 ];
 
 /// Corpus-wide mutes by why: `[ExpressionLedTarget, DynamicCall,
@@ -76,7 +77,7 @@ const PINNED_MUTES: [usize; 3] = [0; 3];
 
 /// Corpus-wide references by kind: `[Table, Fn, Param, Analyzer,
 /// Mixin]` — what a checker would get to check.
-const PINNED_REFS: [usize; 5] = [12_452, 174, 1_668, 13, 72];
+const PINNED_REFS: [usize; 5] = [12_453, 174, 1_668, 13, 72];
 
 /// Corpus-wide PARAM reads by how the environment explains them:
 /// `[session ambient, site ambient, defined param, unknown]` —

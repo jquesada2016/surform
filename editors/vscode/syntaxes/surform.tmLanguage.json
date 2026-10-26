@@ -65,6 +65,9 @@
       "include": "#statement-heads"
     },
     {
+      "include": "#type-alias-statement"
+    },
+    {
       "include": "#sub-block-heads"
     },
     {
@@ -158,6 +161,23 @@
       "comment": "The include statement (spec/include.md) — column 0 ONLY: `include original;` is the changefeed phrase-flag and every clause is legal at column 0 (indentation is cosmetic), so indented include lines must stay flags. The path string inks through #strings.",
       "name": "keyword.control.surform",
       "match": "(?i)^include\\b"
+    },
+    "type-alias-statement": {
+      "comment": "The type-alias statement (spec/type-alias.md) — its OWN line-anchored rule (not in #statement-heads), so an indented `type:` clause line (the access/index clause key) never false-inks as a head; the Capitalized name is the rule's whole point (the alias/kind disambiguation — a lowercase word is never an alias). The head word folds case via (?i:type); the name class stays case-sensitive.",
+      "match": "^[ \\t]*(?i:type)[ \\t]+([A-Z][A-Za-z0-9_]*)[ \\t]*=",
+      "captures": {
+        "1": {
+          "name": "keyword.control.surform"
+        },
+        "2": {
+          "name": "entity.name.surform"
+        }
+      }
+    },
+    "alias-use": {
+      "comment": "A Capitalized word at a kind position — an alias reference (spec/type-alias.md); the lowercase heads ink through #type-words first. Display-only: a Capitalized record-name interior also inks here (the ledger's display-only class).",
+      "match": "(?<![A-Za-z0-9_])[A-Z][A-Za-z0-9_]*(?![A-Za-z0-9_])",
+      "name": "entity.name.type.surform"
     },
     "spread-entry": {
       "comment": "A spread entry — `...name;` — a table-block body entry, not a clause (spec/mixin.md): sigil-led, no key, no colon. Line-anchored like the field rules, so a `...` inside a value or SurrealQL region never fires.",
@@ -706,6 +726,10 @@
         {
           "include": "#type-words"
         },
+
+        {
+          "include": "#alias-use"
+        },
         {
           "include": "#value-words"
         },
@@ -743,6 +767,10 @@
       "patterns": [
         {
           "include": "#type-words"
+        },
+
+        {
+          "include": "#alias-use"
         },
         {
           "include": "#value-words"
@@ -783,6 +811,10 @@
       "patterns": [
         {
           "include": "#type-words"
+        },
+
+        {
+          "include": "#alias-use"
         },
         {
           "include": "#value-words"

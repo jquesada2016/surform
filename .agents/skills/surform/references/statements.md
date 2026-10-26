@@ -1,4 +1,4 @@
-# The 16 DEFINE statements (+ raw + mixin)
+# The 16 DEFINE statements (+ raw + mixin + type aliases)
 
 Grammar sketches and verified examples, one section per statement, in
 a sensible file order. Fences tagged `sdl` are runnable: every one
@@ -13,7 +13,8 @@ don't run them. Clause menus mark `// required:` / `// optional:`;
   [analyzer](#analyzer) · [access](#access) · [user](#user) ·
   [fn](#fn) · [param](#param) · [sequence](#sequence) ·
   [api](#api) · [bucket](#bucket) · [config](#config) ·
-  [module](#module) · [raw](#raw) · [mixin](#mixin)
+  [module](#module) · [raw](#raw) · [mixin](#mixin) ·
+  [type aliases](#type-aliases)
 
 ## namespace
 
@@ -341,6 +342,49 @@ spread, covering state-equal members and materializing a diverged one
 as the explicit override (the overshadow rule performing the
 adoption). `mixin` is not a SurrealQL keyword: fields named `mixin`
 parse bare.
+
+## type-aliases
+
+SDL-only: `type <Name> = <kind>;` names a kind once; a bare
+**Capitalized** word at any kind position is the reference, expanded
+to the alias's kind at compile time (before emission — the database
+never sees an alias name, so the feature's meaning does not depend on
+the server version). Lowercase words at kind positions are SurrealQL
+kinds — the case of the first letter is the whole disambiguation.
+
+```sdl
+type Email = string;
+type Emails = array<Email>;
+
+table user schemafull {
+  name: string;
+  contact: Emails;
+  recovery: option<Email>;
+  both: Email | int;
+  profile: { email: Email };
+  owner: record<email>;
+};
+
+fn contacts($e: Email) -> Emails { return [$e]; };
+```
+
+Rules: the name is `[A-Z][A-Za-z0-9_]*` and not a SurrealQL kind head
+(ASCII-case-insensitively — `type String = int;` is rejected, `String`
+would lose every use site to the `string` head; `NaN`/`Infinity` are
+reserved exact-case) — SDL-E1072; references resolve document-wide
+(any file, any position, use before define legal), a reference naming
+nothing is SDL-E1071 with a did-you-mean; duplicates are SDL-E1062;
+an alias cycle is SDL-E0015 with the chain named; `flexible` on an
+alias-referencing field decides on the EXPANSION (SDL-E1050 when it
+holds no object); no `///` on the statement (it emits nothing).
+
+Gotchas: `record<Email>` / `table<Email>` / `file<Email>` interiors
+are table NAMES at every case, never references (the example above
+names the table `email`); `raw` bodies are verbatim — never expanded;
+fmt round-trips the statement verbatim (the kind in its authored
+spelling); the reverse path lands with the merge unit — INFO stores
+only concrete kinds, so reads emit expanded text and the reverse
+reader's strict grammar accepts no references.
 
 ## include
 

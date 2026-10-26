@@ -1253,7 +1253,11 @@ fn unwrap_single_statement_block(text: &str) -> Option<String> {
 /// each site listed once).
 fn visit_stmt_exprs(stmt: &mut Stmt, f: &mut impl FnMut(&mut crate::ast::Expr)) {
     match stmt {
-        Stmt::Namespace(_) | Stmt::Analyzer(_) | Stmt::Raw(_) | Stmt::Include(_) => {}
+        Stmt::Namespace(_)
+        | Stmt::Analyzer(_)
+        | Stmt::Raw(_)
+        | Stmt::Include(_)
+        | Stmt::TypeAlias(_) => {}
         Stmt::Module(module) => visit_permission(&mut module.permissions, f),
         Stmt::Sequence(sequence) => {
             visit_option(&mut sequence.start, f);

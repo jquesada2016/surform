@@ -506,6 +506,11 @@ impl Walker {
                     self.walk_member(member, None, index);
                 }
             }
+            Stmt::TypeAlias(_) => {
+                // The alias's own kind contributes no references: it is
+                // a textual template, and the USE sites (post-expansion
+                // kinds) are where its record/table names materialize.
+            }
             Stmt::Raw(_) => {
                 // The escape hatch rides verbatim — references inside
                 // are unreadable by construction.
@@ -805,6 +810,10 @@ impl Walker {
             | KindAst::Infinity
             | KindAst::Geometry(_)
             | KindAst::Str(_)
+            // An unexpanded alias reference names no table (expansion
+            // has rewritten every kind the walk reaches on a resolved
+            // file).
+            | KindAst::Alias(_)
             | KindAst::Num(_) => {}
         }
     }

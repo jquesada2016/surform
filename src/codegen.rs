@@ -876,6 +876,9 @@ fn emit_lowered(file: &SdlFile, session_lines: bool) -> String {
             Stmt::Mixin(_) | Stmt::Spread(_) => {
                 unreachable!("expansion drops mixin statements and spread entries before emission")
             }
+            Stmt::TypeAlias(_) => {
+                unreachable!("expansion drops type-alias statements before emission")
+            }
             Stmt::Include(_) => unreachable!(
                 "composition lowers includes before emission (the loader flattens; \
                  the strict parse entry rejects them)"

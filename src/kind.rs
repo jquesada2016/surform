@@ -29,6 +29,62 @@ const KIND_BARE_HEADS: &[&str] = &[
     "number", "object", "point", "range", "regex", "string", "true", "false", "uuid",
 ];
 
+/// Whether a kind grammar accepts Capitalized alias references at
+/// kind positions (spec/type-alias.md). [`KindMode::Strict`] is the
+/// reverse reader's grammar — the database stores only concrete
+/// kinds, so INFO never carries an alias name and the reader stays
+/// fail-closed. [`KindMode::WithAliases`] is every forward capture's
+/// grammar: an identifier whose first char is uppercase and whose
+/// ASCII-lowercase form is NOT a reserved head parses as
+/// [`KindAst::Alias`]. Lowercase unknown words are rejected in BOTH
+/// modes (the SDL-E1026 class is untouched).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum KindMode {
+    Strict,
+    WithAliases,
+}
+
+/// An alias reference's word shape: `[A-Z][A-Za-z0-9_]*` — the whole
+/// name, decoded (quoted declaration spellings decode first). The
+/// Capitalized rule is what keeps alias uses grammatically distinct
+/// from SurrealQL's lowercase kind heads (only the exact
+/// `NaN`/`Infinity` literal spellings share the territory, and
+/// [`is_reserved_alias_name`] rejects those).
+fn is_alias_shaped(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_uppercase() => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// The heads an alias name may not take, ASCII-case-insensitively:
+/// every kind head would win at the use site (head matching is
+/// ASCII-case-insensitive) and leave the alias unreachable. Only
+/// `NaN`/`Infinity` are exact-case (the constant-literal spellings).
+pub(crate) fn is_reserved_alias_name(name: &str) -> bool {
+    // The constant-literal spellings are exact-case (lowercase `nan`
+    // is an identifier upstream); every other head matches
+    // ASCII-case-insensitively.
+    if matches!(name, "NaN" | "Infinity") {
+        return true;
+    }
+    let lower = name.to_ascii_lowercase();
+    KIND_BARE_HEADS.contains(&lower.as_str())
+        || matches!(
+            lower.as_str(),
+            "record" | "table" | "geometry" | "file" | "array" | "set" | "option" | "any"
+        )
+}
+
+/// A declaration's name is valid when it is alias-shaped and not
+/// reserved — every declared alias is then usable at every alias
+/// position (a bare word decision can never miss it).
+pub(crate) fn is_valid_alias_name(name: &str) -> bool {
+    is_alias_shaped(name) && !is_reserved_alias_name(name)
+}
+
 /// `geometry<…>`'s interiors.
 const GEOMETRY_WORDS: &[&str] = &[
     "collection",
@@ -44,10 +100,13 @@ const GEOMETRY_WORDS: &[&str] = &[
 const KIND_DURATION_UNITS: &[&str] = &["µs", "ns", "us", "ms", "s", "m", "h", "d", "w", "y"];
 
 /// Parses one kind production (README rule 4) and returns the
-/// trimmed source spelling — codegen prints it verbatim.
+/// trimmed source spelling — codegen prints it verbatim. The FORWARD
+/// captures' entry (field kinds, function returns): alias references
+/// parse (spec/type-alias.md); the reverse reader's strict grammar is
+/// [`read_kind`].
 pub(crate) fn parse_kind_text(text: &str) -> Option<String> {
     let start = strip_capture_trivia(text)?;
-    let tail = read_kind(start)?;
+    let tail = read_kind_mode(start, KindMode::WithAliases)?;
     strip_capture_trivia(tail)?
         .is_empty()
         .then(|| start[..start.len() - tail.len()].to_string())
@@ -56,29 +115,41 @@ pub(crate) fn parse_kind_text(text: &str) -> Option<String> {
 /// A kind union: one single kind, then `|`-joined concrete kinds.
 /// `any` stands alone — upstream's `parse_inner_kind` returns before
 /// the union loop, leaving the `|` for the caller to choke on, so
-/// `any | int` is a parse error there and here alike.
+/// `any | int` is a parse error there and here alike. STRICT: the
+/// reverse reader's entry (INFO kinds are always concrete).
 pub(crate) fn read_kind(text: &str) -> Option<&str> {
-    let (head, tail) = read_kind_single(text)?;
+    read_kind_mode(text, KindMode::Strict)
+}
+
+/// The forward entry for function-argument kinds (the fn header's
+/// capture carries the text, so only validation is needed):
+/// [`read_kind`]'s shape with alias references legal.
+pub(crate) fn read_kind_with_aliases(text: &str) -> Option<&str> {
+    read_kind_mode(text, KindMode::WithAliases)
+}
+
+fn read_kind_mode(text: &str, mode: KindMode) -> Option<&str> {
+    let (head, tail) = read_kind_single(text, mode)?;
     if head.eq_ignore_ascii_case("any") {
         return Some(tail);
     }
-    kind_union_tail(tail)
+    kind_union_tail(tail, mode)
 }
 
 /// The `|`-joined continuation shared by the top-level union and the
 /// `option<…>` interior's (members are concrete kinds in both).
-fn kind_union_tail(mut tail: &str) -> Option<&str> {
+fn kind_union_tail(mut tail: &str, mode: KindMode) -> Option<&str> {
     loop {
         let rest = strip_capture_trivia(tail)?;
         let Some(rest) = rest.strip_prefix('|') else {
             return Some(tail);
         };
-        tail = read_kind_concrete(strip_capture_trivia(rest)?)?;
+        tail = read_kind_concrete(strip_capture_trivia(rest)?, mode)?;
     }
 }
 
 /// One single kind: `any`, `option<…>`, or a concrete kind.
-fn read_kind_single(text: &str) -> Option<(&str, &str)> {
+fn read_kind_single(text: &str, mode: KindMode) -> Option<(&str, &str)> {
     // Digit- and sign-led text is a literal kind, never a word head
     // (`word_prefix_len` counts digits — `1h` is not a word).
     match text.chars().next()? {
@@ -86,31 +157,31 @@ fn read_kind_single(text: &str) -> Option<(&str, &str)> {
             let len = word_prefix_len(text);
             match text[..len].to_ascii_lowercase().as_str() {
                 "any" => Some((&text[..len], &text[len..])),
-                "option" => read_kind_angle(text, len),
+                "option" => read_kind_angle(text, len, mode),
                 // The literal spellings are case-SENSITIVE (upstream's
                 // lexer compares them exactly — lowercase `nan` is an
                 // identifier).
                 "nan" if &text[..len] == "NaN" => Some((&text[..len], &text[len..])),
                 "infinity" if &text[..len] == "Infinity" => Some((&text[..len], &text[len..])),
-                _ => read_kind_concrete_word(text, len),
+                _ => read_kind_concrete_word(text, len, mode),
             }
         }
-        _ => read_kind_literal(text),
+        _ => read_kind_literal(text, mode),
     }
 }
 
 /// A concrete kind — everything but `any`/`option` (upstream's
 /// `parse_concrete_kind`), the only members a union may join.
-fn read_kind_concrete(text: &str) -> Option<&str> {
+fn read_kind_concrete(text: &str, mode: KindMode) -> Option<&str> {
     match text.chars().next()? {
         c if c.is_ascii_alphabetic() || c == '_' => {
-            read_kind_concrete_word(text, word_prefix_len(text)).map(|(_, tail)| tail)
+            read_kind_concrete_word(text, word_prefix_len(text), mode).map(|(_, tail)| tail)
         }
-        _ => read_kind_literal(text).map(|(_, tail)| tail),
+        _ => read_kind_literal(text, mode).map(|(_, tail)| tail),
     }
 }
 
-fn read_kind_concrete_word(text: &str, len: usize) -> Option<(&str, &str)> {
+fn read_kind_concrete_word(text: &str, len: usize, mode: KindMode) -> Option<(&str, &str)> {
     match text[..len].to_ascii_lowercase().as_str() {
         // Excluded from concrete position: `option` has no arm in
         // upstream's concrete parser and `any` returns early above.
@@ -120,7 +191,17 @@ fn read_kind_concrete_word(text: &str, len: usize) -> Option<(&str, &str)> {
         _ if KIND_BARE_HEADS.contains(&text[..len].to_ascii_lowercase().as_str()) => {
             Some((&text[..len], &text[len..]))
         }
-        "record" | "table" | "geometry" | "file" | "array" | "set" => read_kind_angle(text, len),
+        "record" | "table" | "geometry" | "file" | "array" | "set" => {
+            read_kind_angle(text, len, mode)
+        }
+        // The alias fallthrough (spec/type-alias.md): a Capitalized
+        // word at a kind position references the document's alias of
+        // that name. Bare words only — a quoted spelling at kind
+        // position stays invalid, and lowercase words stay the
+        // SDL-E1026 rejection in every mode.
+        _ if mode == KindMode::WithAliases && is_alias_shaped(&text[..len]) => {
+            Some((&text[..len], &text[len..]))
+        }
         _ => None,
     }
 }
@@ -137,7 +218,7 @@ fn read_kind_concrete_word(text: &str, len: usize) -> Option<(&str, &str)> {
 /// `array`/`set` — a full union plus an optional `, <size>`.
 /// `head_len` is the head word's length in `text`; the returned head
 /// spelling runs from the head through the `>`.
-fn read_kind_angle(text: &str, head_len: usize) -> Option<(&str, &str)> {
+fn read_kind_angle(text: &str, head_len: usize, mode: KindMode) -> Option<(&str, &str)> {
     let head = &text[..head_len];
     let tail = &text[head_len..];
     let rest = strip_capture_trivia(tail)?;
@@ -146,12 +227,14 @@ fn read_kind_angle(text: &str, head_len: usize) -> Option<(&str, &str)> {
     };
     let interior_tail = match head.to_ascii_lowercase().as_str() {
         "option" => {
-            let first = read_kind_concrete(strip_capture_trivia(rest)?)?;
-            kind_union_tail(first)?
+            let first = read_kind_concrete(strip_capture_trivia(rest)?, mode)?;
+            kind_union_tail(first, mode)?
         }
+        // Name/geometry lists take no mode: a `record<Email>` interior
+        // is a table NAME at every case, never an alias reference.
         "record" | "table" | "file" => read_kind_name_list(rest)?,
         "geometry" => read_kind_geometry_list(rest)?,
-        _ => read_kind_sized(rest)?,
+        _ => read_kind_sized(rest, mode)?,
     };
     let close = strip_capture_trivia(interior_tail)?.strip_prefix('>')?;
     Some((&text[..text.len() - close.len()], close))
@@ -210,8 +293,8 @@ fn read_kind_geometry_name(text: &str) -> Option<&str> {
 /// `array<K(, N)?>` / `set<K(, N)?>`: the element kind is a full
 /// union (`array<option<int> | string>` parses upstream), the size
 /// an optional number or duration literal.
-fn read_kind_sized(mut rest: &str) -> Option<&str> {
-    rest = read_kind(strip_capture_trivia(rest)?)?;
+fn read_kind_sized(mut rest: &str, mode: KindMode) -> Option<&str> {
+    rest = read_kind_mode(strip_capture_trivia(rest)?, mode)?;
     let Some(after_comma) = strip_capture_trivia(rest)?.strip_prefix(',') else {
         return Some(rest);
     };
@@ -264,14 +347,17 @@ fn kind_digit_run(text: &str) -> Option<usize> {
 
 /// The literal kinds: strings, signed numbers, durations, and the
 /// brace-bearing object/array literals.
-fn read_kind_literal(text: &str) -> Option<(&str, &str)> {
+fn read_kind_literal(text: &str, mode: KindMode) -> Option<(&str, &str)> {
     match text.chars().next()? {
         '\'' | '"' => {
             let (_, rest) = lex_string_literal(text)?;
             Some((&text[..text.len() - rest.len()], rest))
         }
-        '{' => read_kind_object(&text[1..]).map(|tail| (&text[..text.len() - tail.len()], tail)),
-        '[' => read_kind_array_lit(&text[1..]).map(|tail| (&text[..text.len() - tail.len()], tail)),
+        '{' => {
+            read_kind_object(&text[1..], mode).map(|tail| (&text[..text.len() - tail.len()], tail))
+        }
+        '[' => read_kind_array_lit(&text[1..], mode)
+            .map(|tail| (&text[..text.len() - tail.len()], tail)),
         '+' | '-' | '0'..='9' => {
             let tail = kind_number_or_duration_tail(text)?;
             Some((&text[..text.len() - tail.len()], tail))
@@ -350,7 +436,7 @@ fn kind_number_compound_tail(mut rest: &str) -> Option<&str> {
 /// An object literal kind `{ key: kind, … }` — commas optional
 /// between pairs and a trailing one legal (upstream's loop `eat`s
 /// the comma), the empty `{}` legal. Values are full unions.
-fn read_kind_object(mut rest: &str) -> Option<&str> {
+fn read_kind_object(mut rest: &str, mode: KindMode) -> Option<&str> {
     loop {
         rest = strip_capture_trivia(rest)?;
         if let Some(tail) = rest.strip_prefix('}') {
@@ -358,7 +444,7 @@ fn read_kind_object(mut rest: &str) -> Option<&str> {
         }
         rest = read_kind_object_key(rest)?;
         rest = strip_capture_trivia(rest)?.strip_prefix(':')?;
-        rest = read_kind(strip_capture_trivia(rest)?)?;
+        rest = read_kind_mode(strip_capture_trivia(rest)?, mode)?;
         rest = strip_capture_trivia(rest)?;
         rest = rest.strip_prefix(',').unwrap_or(rest);
     }
@@ -386,15 +472,39 @@ fn read_kind_object_key(text: &str) -> Option<&str> {
 }
 
 /// An array literal kind `[kind, …]` — the same optional-comma shape.
-fn read_kind_array_lit(mut rest: &str) -> Option<&str> {
+fn read_kind_array_lit(mut rest: &str, mode: KindMode) -> Option<&str> {
     loop {
         rest = strip_capture_trivia(rest)?;
         if let Some(tail) = rest.strip_prefix(']') {
             return Some(tail);
         }
-        rest = read_kind(strip_capture_trivia(rest)?)?;
+        rest = read_kind_mode(strip_capture_trivia(rest)?, mode)?;
         rest = strip_capture_trivia(rest)?;
         rest = rest.strip_prefix(',').unwrap_or(rest);
+    }
+}
+
+/// Whether a kind holds an object — with the alias-aware third
+/// answer (spec/type-alias.md): `AliasReferenced` when the kind
+/// references an alias, so the answer is the EXPANSION's, unknown
+/// until resolution — the order pass re-asks on the expanded text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ObjectPresence {
+    Yes,
+    No,
+    AliasReferenced,
+}
+
+impl ObjectPresence {
+    /// Yes dominates; an unresolved alias beats a definite No.
+    fn or(self, other: ObjectPresence) -> ObjectPresence {
+        match (self, other) {
+            (ObjectPresence::Yes, _) | (_, ObjectPresence::Yes) => ObjectPresence::Yes,
+            (ObjectPresence::AliasReferenced, _) | (_, ObjectPresence::AliasReferenced) => {
+                ObjectPresence::AliasReferenced
+            }
+            (ObjectPresence::No, ObjectPresence::No) => ObjectPresence::No,
+        }
     }
 }
 
@@ -408,18 +518,21 @@ fn read_kind_array_lit(mut rest: &str) -> Option<&str> {
 /// are name lists, never kinds — they contain nothing. `text` must
 /// have parsed through [`parse_kind_text`] first (the flexible check
 /// is the only caller).
-pub(crate) fn kind_contains_object(text: &str) -> bool {
+pub(crate) fn kind_contains_object(text: &str) -> ObjectPresence {
     let Some(start) = strip_capture_trivia(text) else {
-        return false;
+        return ObjectPresence::No;
     };
-    matches!(kind_has_object(start), Some((_, true)))
+    match kind_has_object(start, KindMode::WithAliases) {
+        Some((_, presence)) => presence,
+        None => ObjectPresence::No,
+    }
 }
 
 /// One kind (a union head plus its `|`-joined concrete arms): the
 /// tail after the production and whether any arm holds an object.
-fn kind_has_object(text: &str) -> Option<(&str, bool)> {
-    let (head, tail) = read_kind_single(text)?;
-    let mut has = kind_head_has_object(head)?;
+fn kind_has_object(text: &str, mode: KindMode) -> Option<(&str, ObjectPresence)> {
+    let (head, tail) = read_kind_single(text, mode)?;
+    let mut has = kind_head_has_object(head, mode)?;
     if head.eq_ignore_ascii_case("any") {
         // `any` stands alone — upstream's parser leaves any `|` for
         // the caller to choke on.
@@ -431,67 +544,71 @@ fn kind_has_object(text: &str) -> Option<(&str, bool)> {
         let Some(rest) = rest.strip_prefix('|') else {
             return Some((tail, has));
         };
-        let (arm, arm_tail) = read_kind_concrete_pair(strip_capture_trivia(rest)?)?;
-        has |= kind_head_has_object(arm)?;
+        let (arm, arm_tail) = read_kind_concrete_pair(strip_capture_trivia(rest)?, mode)?;
+        has = has.or(kind_head_has_object(arm, mode)?);
         tail = arm_tail;
     }
 }
 
 /// A union arm's `(head, tail)` — concrete kinds only (no `any`, no
 /// `option<…>`), word or literal.
-fn read_kind_concrete_pair(text: &str) -> Option<(&str, &str)> {
+fn read_kind_concrete_pair(text: &str, mode: KindMode) -> Option<(&str, &str)> {
     match text.chars().next()? {
         c if c.is_ascii_alphabetic() || c == '_' => {
-            read_kind_concrete_word(text, word_prefix_len(text))
+            read_kind_concrete_word(text, word_prefix_len(text), mode)
         }
-        _ => read_kind_literal(text),
+        _ => read_kind_literal(text, mode),
     }
 }
 
 /// Whether one kind production (no union tail) holds an object. The
 /// generic-head interiors are walked through the real readers — no
 /// interior slicing, so strings and trivia inside them cannot mislead.
-fn kind_head_has_object(head: &str) -> Option<bool> {
+fn kind_head_has_object(head: &str, mode: KindMode) -> Option<ObjectPresence> {
     let len = word_prefix_len(head);
     if len == 0 || !head.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
         // A literal kind: the object literal IS an object; array
         // literals recurse into their elements; strings, numbers,
         // and durations hold nothing.
         return match head.chars().next()? {
-            '{' => Some(true),
-            '[' => kind_array_lit_has_object(head),
-            _ => Some(false),
+            '{' => Some(ObjectPresence::Yes),
+            '[' => kind_array_lit_has_object(head, mode),
+            _ => Some(ObjectPresence::No),
         };
     }
     match head[..len].to_ascii_lowercase().as_str() {
-        "object" => Some(true),
+        "object" => Some(ObjectPresence::Yes),
         "option" | "array" | "set" => {
             // The `<…>` interiors hold kinds; the bare generic forms
             // (`array` = inner `any`) hold none.
             let after_word = strip_capture_trivia(&head[len..])?;
             let Some(after_lt) = after_word.strip_prefix('<') else {
-                return Some(false);
+                return Some(ObjectPresence::No);
             };
-            let (_, has) = kind_has_object(strip_capture_trivia(after_lt)?)?;
+            let (_, has) = kind_has_object(strip_capture_trivia(after_lt)?, mode)?;
             Some(has)
+        }
+        // An alias may expand to an object — the expansion decides.
+        _ if mode == KindMode::WithAliases && is_alias_shaped(&head[..len]) => {
+            Some(ObjectPresence::AliasReferenced)
         }
         // Bare heads hold nothing; `record`/`table`/`file`/`geometry`
         // interiors are name lists, never kinds.
-        _ => Some(false),
+        _ => Some(ObjectPresence::No),
     }
 }
 
 /// An array literal's elements: each a full union, comma-optional
 /// between them (the same loop [`read_kind_array_lit`] walks).
-fn kind_array_lit_has_object(text: &str) -> Option<bool> {
+fn kind_array_lit_has_object(text: &str, mode: KindMode) -> Option<ObjectPresence> {
     let mut rest = strip_capture_trivia(&text[1..])?;
-    let mut has = false;
+    let mut has = ObjectPresence::No;
     loop {
         if rest.starts_with(']') {
             return Some(has);
         }
-        let (tail, element_has) = kind_has_object(rest)?;
-        has |= element_has;
+        let (tail, element_has) = kind_has_object(rest, mode)?;
+        has = has.or(element_has);
         rest = strip_capture_trivia(tail)?;
         rest = rest.strip_prefix(',').unwrap_or(rest);
         rest = strip_capture_trivia(rest)?;
@@ -557,6 +674,13 @@ pub(crate) enum KindAst {
     Object(Vec<(ObjKey, KindAst)>),
     /// An array literal kind.
     ArrayLit(Vec<KindAst>),
+    /// A type-alias reference (spec/type-alias.md): the decoded name —
+    /// Capitalized by the grammar, so it can never be a SurrealQL
+    /// kind head. Exists only under [`KindMode::WithAliases`]; the
+    /// strict entries never produce one, and expansion rewrites every
+    /// reference away — the kind algebra below never compares an
+    /// unexpanded one.
+    Alias(String),
 }
 
 /// An object literal kind's key, kept in its authored class: a bare
@@ -582,9 +706,13 @@ pub(crate) fn canonical_kind_text(text: &str) -> String {
 
 /// Parses one kind production into the AST — [`parse_kind_text`]'s
 /// shape (strip, read, require an empty tail) building structure.
+/// Alias-permissive: the compiled walks (expansion, the order pass's
+/// resolution, the differ's canonicalization) run on authored text
+/// where references are legal, and on expanded text where none
+/// remain — the variant is inert either way.
 pub(crate) fn parse_kind_ast(text: &str) -> Option<KindAst> {
     let start = strip_capture_trivia(text)?;
-    let (ast, tail) = kind_ast(start)?;
+    let (ast, tail) = kind_ast(start, KindMode::WithAliases)?;
     strip_capture_trivia(tail)?.is_empty().then_some(ast)
 }
 
@@ -598,8 +726,8 @@ pub(crate) fn write_kind(ast: &KindAst) -> String {
 /// One kind (a union head plus its `|`-joined concrete arms):
 /// [`read_kind`]'s exact shape — `any` returns before the union loop,
 /// everything else collects arms and folds.
-fn kind_ast(text: &str) -> Option<(KindAst, &str)> {
-    let (first, mut tail) = kind_ast_single(text)?;
+fn kind_ast(text: &str, mode: KindMode) -> Option<(KindAst, &str)> {
+    let (first, mut tail) = kind_ast_single(text, mode)?;
     if matches!(first, KindAst::Any) {
         return Some((first, tail));
     }
@@ -609,7 +737,7 @@ fn kind_ast(text: &str) -> Option<(KindAst, &str)> {
         let Some(rest) = rest.strip_prefix('|') else {
             break;
         };
-        let (arm, arm_tail) = kind_ast_concrete(strip_capture_trivia(rest)?)?;
+        let (arm, arm_tail) = kind_ast_concrete(strip_capture_trivia(rest)?, mode)?;
         arms.push(arm);
         tail = arm_tail;
     }
@@ -640,13 +768,13 @@ fn fold_union(arms: Vec<KindAst>) -> KindAst {
 
 /// One single kind: `any`, `option<…>`, or a concrete kind —
 /// [`read_kind_single`]'s shape.
-fn kind_ast_single(text: &str) -> Option<(KindAst, &str)> {
+fn kind_ast_single(text: &str, mode: KindMode) -> Option<(KindAst, &str)> {
     match text.chars().next()? {
         c if c.is_ascii_alphabetic() || c == '_' => {
             let len = word_prefix_len(text);
             match text[..len].to_ascii_lowercase().as_str() {
                 "any" => Some((KindAst::Any, &text[len..])),
-                "option" => kind_ast_angle(text, len),
+                "option" => kind_ast_angle(text, len, mode),
                 // The literal spellings are case-SENSITIVE (lowercase
                 // `nan` is an identifier).
                 "nan" if &text[..len] == "NaN" => Some((KindAst::Nan, &text[len..])),
@@ -659,25 +787,25 @@ fn kind_ast_single(text: &str) -> Option<(KindAst, &str)> {
                         .find(|head| **head == text[..len].to_ascii_lowercase())?;
                     Some((KindAst::Word(word), &text[len..]))
                 }
-                _ => kind_ast_concrete_word(text, len),
+                _ => kind_ast_concrete_word(text, len, mode),
             }
         }
-        _ => kind_ast_literal(text),
+        _ => kind_ast_literal(text, mode),
     }
 }
 
 /// A concrete kind — everything but `any`/`option` —
 /// [`read_kind_concrete`]'s shape.
-fn kind_ast_concrete(text: &str) -> Option<(KindAst, &str)> {
+fn kind_ast_concrete(text: &str, mode: KindMode) -> Option<(KindAst, &str)> {
     match text.chars().next()? {
         c if c.is_ascii_alphabetic() || c == '_' => {
-            kind_ast_concrete_word(text, word_prefix_len(text))
+            kind_ast_concrete_word(text, word_prefix_len(text), mode)
         }
-        _ => kind_ast_literal(text),
+        _ => kind_ast_literal(text, mode),
     }
 }
 
-fn kind_ast_concrete_word(text: &str, len: usize) -> Option<(KindAst, &str)> {
+fn kind_ast_concrete_word(text: &str, len: usize, mode: KindMode) -> Option<(KindAst, &str)> {
     match text[..len].to_ascii_lowercase().as_str() {
         "any" | "option" => None,
         "nan" if &text[..len] == "NaN" => Some((KindAst::Nan, &text[len..])),
@@ -688,7 +816,15 @@ fn kind_ast_concrete_word(text: &str, len: usize) -> Option<(KindAst, &str)> {
                 .find(|head| **head == text[..len].to_ascii_lowercase())?;
             Some((KindAst::Word(word), &text[len..]))
         }
-        "record" | "table" | "file" | "geometry" | "array" | "set" => kind_ast_angle(text, len),
+        "record" | "table" | "file" | "geometry" | "array" | "set" => {
+            kind_ast_angle(text, len, mode)
+        }
+        // The alias fallthrough — the authored spelling rides (the
+        // head word as written; `is_alias_shaped` already bounded it
+        // to bare-word characters, so no decoding applies).
+        _ if mode == KindMode::WithAliases && is_alias_shaped(&text[..len]) => {
+            Some((KindAst::Alias(text[..len].to_string()), &text[len..]))
+        }
         _ => None,
     }
 }
@@ -696,7 +832,7 @@ fn kind_ast_concrete_word(text: &str, len: usize) -> Option<(KindAst, &str)> {
 /// A generic head, its `<…>` interior, and the closing `>` —
 /// [`read_kind_angle`]'s shape. The `<` is optional for every head
 /// but `option`; the interiors mirror the reader's exactly.
-fn kind_ast_angle(text: &str, head_len: usize) -> Option<(KindAst, &str)> {
+fn kind_ast_angle(text: &str, head_len: usize, mode: KindMode) -> Option<(KindAst, &str)> {
     let head = &text[..head_len];
     let tail = &text[head_len..];
     let rest = strip_capture_trivia(tail)?;
@@ -716,9 +852,11 @@ fn kind_ast_angle(text: &str, head_len: usize) -> Option<(KindAst, &str)> {
     };
     let (ast, interior_tail) = match head.to_ascii_lowercase().as_str() {
         "option" => {
-            let (inner, interior_tail) = kind_ast_concrete_union(strip_capture_trivia(rest)?)?;
+            let (inner, interior_tail) =
+                kind_ast_concrete_union(strip_capture_trivia(rest)?, mode)?;
             (KindAst::Option(Box::new(inner)), interior_tail)
         }
+        // Name/geometry lists take no mode: interiors stay names.
         "record" | "table" | "file" => {
             let (names, interior_tail) = kind_ast_name_list(rest)?;
             let ast = match head.to_ascii_lowercase().as_str() {
@@ -733,7 +871,7 @@ fn kind_ast_angle(text: &str, head_len: usize) -> Option<(KindAst, &str)> {
             (KindAst::Geometry(words), interior_tail)
         }
         _ => {
-            let (inner, interior_tail) = kind_ast_sized(rest)?;
+            let (inner, interior_tail) = kind_ast_sized(rest, mode)?;
             (
                 KindAst::Sized {
                     array: head.eq_ignore_ascii_case("array"),
@@ -751,15 +889,15 @@ fn kind_ast_angle(text: &str, head_len: usize) -> Option<(KindAst, &str)> {
 /// `option`'s interior: the concrete union as one kind — a lone arm
 /// is itself, `|`-joined arms a [`KindAst::Union`] (no fold — the
 /// wrapper IS the fold).
-fn kind_ast_concrete_union(text: &str) -> Option<(KindAst, &str)> {
-    let (first, mut tail) = kind_ast_concrete(text)?;
+fn kind_ast_concrete_union(text: &str, mode: KindMode) -> Option<(KindAst, &str)> {
+    let (first, mut tail) = kind_ast_concrete(text, mode)?;
     let mut arms = vec![first];
     loop {
         let rest = strip_capture_trivia(tail)?;
         let Some(rest) = rest.strip_prefix('|') else {
             break;
         };
-        let (arm, arm_tail) = kind_ast_concrete(strip_capture_trivia(rest)?)?;
+        let (arm, arm_tail) = kind_ast_concrete(strip_capture_trivia(rest)?, mode)?;
         arms.push(arm);
         tail = arm_tail;
     }
@@ -816,8 +954,8 @@ fn kind_ast_geometry_name(text: &str) -> Option<(&'static str, &str)> {
 /// `array<K(, N)?>` / `set<K(, N)?>`: a full union (folded like any
 /// interior — `array<none | int>` ≡ `array<option<int>>`), an
 /// optional size kept as its trimmed text.
-fn kind_ast_sized(text: &str) -> Option<((KindAst, Option<String>), &str)> {
-    let (inner, rest) = kind_ast(strip_capture_trivia(text)?)?;
+fn kind_ast_sized(text: &str, mode: KindMode) -> Option<((KindAst, Option<String>), &str)> {
+    let (inner, rest) = kind_ast(strip_capture_trivia(text)?, mode)?;
     let Some(after_comma) = strip_capture_trivia(rest)?.strip_prefix(',') else {
         return Some(((inner, None), rest));
     };
@@ -832,14 +970,14 @@ fn kind_ast_size(text: &str) -> Option<(String, &str)> {
 
 /// The literal kinds — [`read_kind_literal`]'s shape; strings decode,
 /// numbers/durations keep their trimmed source text.
-fn kind_ast_literal(text: &str) -> Option<(KindAst, &str)> {
+fn kind_ast_literal(text: &str, mode: KindMode) -> Option<(KindAst, &str)> {
     match text.chars().next()? {
         '\'' | '"' => {
             let (value, rest) = lex_string_literal(text)?;
             Some((KindAst::Str(value), rest))
         }
-        '{' => kind_ast_object(&text[1..]),
-        '[' => kind_ast_array_lit(&text[1..]),
+        '{' => kind_ast_object(&text[1..], mode),
+        '[' => kind_ast_array_lit(&text[1..], mode),
         '+' | '-' | '0'..='9' => {
             let tail = kind_number_or_duration_tail(text)?;
             Some((
@@ -853,7 +991,7 @@ fn kind_ast_literal(text: &str) -> Option<(KindAst, &str)> {
 
 /// An object literal kind — [`read_kind_object`]'s shape: commas
 /// optional between pairs, a trailing one legal, the empty `{}` legal.
-fn kind_ast_object(mut rest: &str) -> Option<(KindAst, &str)> {
+fn kind_ast_object(mut rest: &str, mode: KindMode) -> Option<(KindAst, &str)> {
     let mut pairs = Vec::new();
     loop {
         rest = strip_capture_trivia(rest)?;
@@ -862,7 +1000,7 @@ fn kind_ast_object(mut rest: &str) -> Option<(KindAst, &str)> {
         }
         let (key, key_tail) = kind_ast_object_key(rest)?;
         rest = strip_capture_trivia(key_tail)?.strip_prefix(':')?;
-        let (value, value_tail) = kind_ast(strip_capture_trivia(rest)?)?;
+        let (value, value_tail) = kind_ast(strip_capture_trivia(rest)?, mode)?;
         pairs.push((key, value));
         rest = strip_capture_trivia(value_tail)?;
         rest = rest.strip_prefix(',').unwrap_or(rest);
@@ -901,14 +1039,14 @@ fn kind_ast_object_key(text: &str) -> Option<(ObjKey, &str)> {
 }
 
 /// An array literal kind — [`read_kind_array_lit`]'s shape.
-fn kind_ast_array_lit(mut rest: &str) -> Option<(KindAst, &str)> {
+fn kind_ast_array_lit(mut rest: &str, mode: KindMode) -> Option<(KindAst, &str)> {
     let mut items = Vec::new();
     loop {
         rest = strip_capture_trivia(rest)?;
         if let Some(tail) = rest.strip_prefix(']') {
             return Some((KindAst::ArrayLit(items), tail));
         }
-        let (item, item_tail) = kind_ast(strip_capture_trivia(rest)?)?;
+        let (item, item_tail) = kind_ast(strip_capture_trivia(rest)?, mode)?;
         items.push(item);
         rest = strip_capture_trivia(item_tail)?;
         rest = rest.strip_prefix(',').unwrap_or(rest);
@@ -992,6 +1130,11 @@ fn push_kind(out: &mut String, ast: &KindAst) {
             }
             out.push(']');
         }
+        // An unexpanded reference prints its authored name — the
+        // canonical writer's fallback path (fmt round-trips aliases);
+        // expansion has rewritten every reference the algebra and the
+        // emitter ever see.
+        KindAst::Alias(name) => out.push_str(name),
     }
 }
 
@@ -1061,6 +1204,10 @@ pub(crate) fn normalize_kind(ast: &KindAst) -> KindAst {
         | KindAst::Str(_)
         | KindAst::Record(_)
         | KindAst::Table(_)
+        // An unexpanded reference rides verbatim (expansion has
+        // rewritten every reference the algebra compares — this arm
+        // is the total function's completeness, not a fold).
+        | KindAst::Alias(_)
         | KindAst::File(_) => ast.clone(),
         KindAst::Num(text) => KindAst::Num(normalize_num_text(text)),
         KindAst::Geometry(words) => KindAst::Geometry(words.clone()),
@@ -1220,6 +1367,10 @@ pub(crate) fn inner_kind(ast: &KindAst) -> Option<KindAst> {
             KindAst::Any => None,
             other => Some(normalize_kind(other)),
         },
+        // An unexpanded reference writes no subfield level the
+        // algebra can name (expansion has replaced every reference
+        // the fold reaches).
+        KindAst::Alias(_) => None,
         KindAst::Option(inner) => inner_kind(inner),
         KindAst::Union(arms) => {
             let arms: Vec<KindAst> = arms.iter().filter_map(inner_kind).collect();

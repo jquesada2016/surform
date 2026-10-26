@@ -15,13 +15,25 @@
 //! [`crate::codegen::emit`] runs this pass itself — emission's
 //! property, so no caller can forget it. The canonical SDL writer
 //! ([`crate::info::write::write_canonical`]) deliberately does NOT
-//! lower: fmt round-trips spreads.
+//! lower: fmt round-trips spreads — and type aliases, whose leg this
+//! pass also owns (spec/type-alias.md): the document's alias set is
+//! collected, every `Kind` referencing one is rewritten to its
+//! expansion's text (references inside kind positions only — a
+//! `record<Name>` interior is a table name at every case), and the
+//! `type` statements drop from the lowered file. Resolution and
+//! cycles are the order pass's ([`crate::order::check_document`] —
+//! SDL-E1071/E0015 are its findings), so this leg is infallible on
+//! any document that pass cleared; on a dirty file an unresolved (or
+//! cycle-tied) reference rides through unresolved — the emission is
+//! advisory only, the mixin precedent.
 //!
 //! Resolution ([`winning_members`]) is one home shared with the
 //! parser's table fold: its validations re-run over exactly the
 //! members that land, so a loser is invisible to both.
 
-use crate::ast::{Ident, MemberKey, SdlFile, Stmt, Table};
+use crate::ast::{Ident, MemberKey, SdlFile, Stmt, Table, TypeAlias};
+use crate::kind::{KindAst, write_kind};
+use std::collections::HashMap;
 
 /// Which members of each spread entry land on the spreading table —
 /// spec/mixin.md's resolution, the one home the parser's table-fold
@@ -65,9 +77,11 @@ pub fn winning_members(keys: &[Vec<Option<MemberKey>>], explicit: &[MemberKey]) 
     lands
 }
 
-/// Expands every spread and drops the mixin statements. Total on any
-/// parser-produced file: a spread resolving to nothing lands nothing —
-/// the resolution pass ([`crate::parser::resolve_spreads`]) already
+/// Expands every spread, rewrites every type-alias reference, and
+/// drops the `mixin` and `type` statements. Total on any
+/// parser-produced file: a spread resolving to nothing lands nothing
+/// and a reference resolving to nothing rides through unresolved —
+/// the resolution pass ([`crate::order::check_document`]) already
 /// explained why, and a dirty file's emission is advisory only.
 pub fn expand(file: &SdlFile) -> SdlFile {
     // The document's mixin set — GLOBAL, any position (the
@@ -84,18 +98,356 @@ pub fn expand(file: &SdlFile) -> SdlFile {
             _ => None,
         })
         .collect();
-    let items = file
+    // The document's alias set — the same global shape. First-wins on
+    // a duplicate (unobservable on a cleared file, the registry's
+    // finding).
+    let aliases: Vec<(&str, &TypeAlias)> = file
         .items
         .iter()
         .filter_map(|stmt| match stmt {
-            Stmt::Mixin(_) => None,
+            Stmt::TypeAlias(alias) => Some((alias.name.raw.as_str(), alias)),
+            _ => None,
+        })
+        .collect();
+    let mut items: Vec<Stmt> = file
+        .items
+        .iter()
+        .filter_map(|stmt| match stmt {
+            Stmt::Mixin(_) | Stmt::TypeAlias(_) => None,
             Stmt::Table(table) => Some(Stmt::Table(expand_table(table, &mixins))),
             other => Some(other.clone()),
         })
         .collect();
+    // The alias leg runs AFTER the spreads: a spread's landed members
+    // are ordinary statements by now, their kinds rewritten like any
+    // other field's. Resolutions are built once, iteratively (a chain
+    // never recurses per link — [`AliasResolutions::build`]); the
+    // faults are the order pass's diagnostics, and on a dirty file an
+    // unresolved reference rides through.
+    let (resolutions, _) = AliasResolutions::build(&aliases);
+    for stmt in &mut items {
+        rewrite_stmt_kinds(stmt, &resolutions);
+        if let Stmt::Table(table) = stmt {
+            for nested in &mut table.nested {
+                rewrite_stmt_kinds(nested, &resolutions);
+            }
+        }
+    }
     SdlFile {
         items,
         trailing_comments: file.trailing_comments.clone(),
+    }
+}
+
+/// Every `Kind` one statement carries, rewritten to its expansion
+/// (fields' header kinds, functions' argument and return kinds). The
+/// resolutions are shared across the whole document — one alias's
+/// expansion is computed once.
+fn rewrite_stmt_kinds(stmt: &mut Stmt, resolutions: &AliasResolutions) {
+    match stmt {
+        Stmt::Field(field) => {
+            if let Some(kind) = &mut field.kind {
+                kind.text = resolve_kind_text(&kind.text, resolutions);
+            }
+        }
+        Stmt::Function(function) => {
+            for (_, kind) in &mut function.args {
+                kind.text = resolve_kind_text(&kind.text, resolutions);
+            }
+            if let Some(returns) = &mut function.returns {
+                returns.text = resolve_kind_text(&returns.text, resolutions);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Resolves one kind text against the document's alias resolutions:
+/// parsed permissively, every [`KindAst::Alias`] node substituted
+/// with its alias's completed expansion, the result re-printed. A
+/// reference with no resolution (unknown, cycle-tied, over-ceiling,
+/// shape-invalid) rides through unresolved — the order pass owns the
+/// findings (SDL-E1071/E0015/E1073/E1074), so this is infallible on
+/// any document that pass cleared and advisory on a dirty one.
+pub(crate) fn resolve_kind_text(text: &str, resolutions: &AliasResolutions) -> String {
+    let Some(ast) = crate::kind::parse_kind_ast(text) else {
+        return text.to_string();
+    };
+    write_kind(&resolve_ast(&ast, resolutions))
+}
+
+pub(crate) fn resolve_ast(ast: &KindAst, resolutions: &AliasResolutions) -> KindAst {
+    match ast {
+        KindAst::Alias(name) => resolutions
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| ast.clone()),
+        KindAst::Sized { array, inner, size } => KindAst::Sized {
+            array: *array,
+            inner: inner
+                .as_ref()
+                .map(|inner| Box::new(resolve_ast(inner, resolutions))),
+            size: size.clone(),
+        },
+        KindAst::Option(inner) => KindAst::Option(Box::new(resolve_ast(inner, resolutions))),
+        KindAst::Union(arms) => KindAst::Union(
+            arms.iter()
+                .map(|arm| resolve_ast(arm, resolutions))
+                .collect(),
+        ),
+        KindAst::Object(pairs) => KindAst::Object(
+            pairs
+                .iter()
+                .map(|(key, value)| (key.clone(), resolve_ast(value, resolutions)))
+                .collect(),
+        ),
+        KindAst::ArrayLit(items) => KindAst::ArrayLit(
+            items
+                .iter()
+                .map(|item| resolve_ast(item, resolutions))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+/// The kind nesting ceiling: how many levels a kind's EXPANSION may
+/// nest — an alias definition's or a use site's composition alike —
+/// before the document is refused (SDL-E1073). A chain composes
+/// nesting one link at a time, and every walk the expanded kind feeds
+/// — the writer's, the algebra's, the engine's own parser — recurses
+/// over it; the ceiling keeps that recursion bounded at a height no
+/// real schema approaches and the deep-chain stack overflow (the
+/// review's P1) cannot reach.
+pub(crate) const ALIAS_NESTING_CEILING: usize = 256;
+
+/// Why one alias's expansion stays unresolved. The order pass maps
+/// each fault to its diagnostic at the FAULTING statement (the pair
+/// carries the entry's index in the aliases slice — a cross-file
+/// duplicate name anchors where the bad composition is, never at a
+/// namesake); references RIDING an unresolved name are never faults
+/// themselves (the root cause is reported once).
+pub(crate) enum AliasFault {
+    /// The expansion nests beyond [`ALIAS_NESTING_CEILING`].
+    Overceiling { depth: usize },
+    /// The expansion's shape is not a kind the strict grammar accepts
+    /// (a chain of option wrappers composes `option<option<…>>` —
+    /// legal per alias, unexpressible whole).
+    InvalidShape { text: String },
+}
+
+/// A kind's expansion depth — every wrapper and container walk one
+/// level, leaves (alias references included; the substitution
+/// flattened them away) one. The expanded AST holds no alias nodes,
+/// so the walk's height is the expansion's own nesting: bounded by
+/// the authored depth plus [`ALIAS_NESTING_CEILING`].
+pub(crate) fn expanded_depth(ast: &KindAst) -> usize {
+    let children = |kids: &[&KindAst]| -> usize {
+        kids.iter()
+            .map(|kid| expanded_depth(kid))
+            .max()
+            .unwrap_or(0)
+    };
+    match ast {
+        KindAst::Sized {
+            inner: Some(inner), ..
+        } => 1 + expanded_depth(inner),
+        KindAst::Option(inner) => 1 + expanded_depth(inner),
+        KindAst::Union(arms) => 1 + children(&arms.iter().collect::<Vec<_>>()),
+        KindAst::Object(pairs) => 1 + children(&pairs.iter().map(|(_, v)| v).collect::<Vec<_>>()),
+        KindAst::ArrayLit(items) => 1 + children(&items.iter().collect::<Vec<_>>()),
+        _ => 1,
+    }
+}
+
+/// The document's alias resolutions: each resolvable alias's
+/// fully-expanded kind.
+pub(crate) struct AliasResolutions {
+    expansions: HashMap<String, KindAst>,
+}
+
+impl AliasResolutions {
+    pub(crate) fn get(&self, name: &str) -> Option<&KindAst> {
+        self.expansions.get(name)
+    }
+
+    /// Builds every alias's expansion ITERATIVELY — the review's P1:
+    /// a chain must never recurse one frame per link. Dependencies
+    /// resolve first (iterative DFS post-order), each expansion is
+    /// one bounded walk over its own right-hand side substituting
+    /// completed expansions by value, and the faults (unparseable
+    /// RHS, cycles, over-ceiling depth, shape-invalid compositions)
+    /// come back for the order pass's diagnostics. Every walk's
+    /// recursion height is the right-hand side's OWN nesting — the
+    /// depth the strict grammar already accepted — never a chain's.
+    pub(crate) fn build<'a>(
+        aliases: &[(&'a str, &'a TypeAlias)],
+    ) -> (Self, Vec<(usize, AliasFault)>) {
+        let mut faults: Vec<(usize, AliasFault)> = Vec::new();
+        // Index-based graph: names in first-definition order, refs as
+        // index vectors — the DFS borrows nothing but the arrays.
+        let names: Vec<&'a str> = aliases.iter().map(|(name, _)| *name).collect();
+        let mut parsed: Vec<Option<KindAst>> = Vec::with_capacity(aliases.len());
+        let mut refs: Vec<Vec<usize>> = Vec::with_capacity(aliases.len());
+        for (at, (_, alias)) in aliases.iter().enumerate() {
+            parsed.push(crate::kind::parse_kind_ast(&alias.kind.text));
+            refs.push(Vec::new());
+            if parsed.last().unwrap().is_none() {
+                // Never a parser-produced shape; refuse to touch it.
+                faults.push((
+                    at,
+                    AliasFault::InvalidShape {
+                        text: alias.kind.text.clone(),
+                    },
+                ));
+            }
+        }
+        let index_of: HashMap<&str, usize> = names
+            .iter()
+            .enumerate()
+            .map(|(at, name)| (*name, at))
+            .collect();
+        for (at, ast) in parsed.iter().enumerate() {
+            if let Some(ast) = ast {
+                let mut out = Vec::new();
+                collect_refs(ast, &mut out);
+                refs[at] = out
+                    .into_iter()
+                    .filter_map(|name| index_of.get(name.as_str()).copied())
+                    .collect();
+            }
+        }
+        // Iterative DFS post-order — dependencies before dependents;
+        // a cycle's members never reach post-order (they stay
+        // unresolved, SDL-E0015's finding, reported once by the order
+        // pass — not a fault here).
+        #[derive(Clone, Copy, PartialEq)]
+        enum Mark {
+            Open,
+            Done,
+        }
+        let mut marks = vec![None; aliases.len()];
+        let mut order: Vec<usize> = Vec::new();
+        let mut unresolved = vec![false; aliases.len()];
+        for root in 0..aliases.len() {
+            if marks[root].is_some() {
+                continue;
+            }
+            let mut stack: Vec<(usize, usize)> = vec![(root, 0)];
+            marks[root] = Some(Mark::Open);
+            while let Some((at, visited)) = stack.pop() {
+                let edges = refs[at].as_slice();
+                if visited < edges.len() {
+                    stack.push((at, visited + 1));
+                    let next = edges[visited];
+                    match marks[next] {
+                        None => {
+                            marks[next] = Some(Mark::Open);
+                            stack.push((next, 0));
+                        }
+                        Some(Mark::Open) => {
+                            // A back-edge: the whole cycle stays
+                            // unresolved.
+                            unresolved[next] = true;
+                        }
+                        Some(Mark::Done) => {}
+                    }
+                } else {
+                    marks[at] = Some(Mark::Done);
+                    order.push(at);
+                }
+            }
+        }
+        // Dependencies-first resolution. `depths` rides beside the
+        // expansions so an alias's nesting is measured NUMERICALLY —
+        // never by walking a deep expanded tree.
+        let mut depths: HashMap<String, usize> = HashMap::new();
+        let mut resolutions = AliasResolutions {
+            expansions: HashMap::new(),
+        };
+        for at in order {
+            let name = names[at];
+            if unresolved[at] {
+                continue;
+            }
+            let Some(ast) = &parsed[at] else {
+                continue;
+            };
+            if refs[at].iter().any(|dep| unresolved[*dep]) {
+                // Riding an unresolved name: no expansion of our own,
+                // no fault either (the root cause is reported once).
+                unresolved[at] = true;
+                continue;
+            }
+            let depth = ast_depth_against(ast, &depths);
+            if depth > ALIAS_NESTING_CEILING {
+                faults.push((at, AliasFault::Overceiling { depth }));
+                unresolved[at] = true;
+                continue;
+            }
+            let expanded = resolve_ast(ast, &resolutions);
+            let text = write_kind(&expanded);
+            if crate::kind::parse_kind_text(&text).is_none() {
+                faults.push((at, AliasFault::InvalidShape { text }));
+                unresolved[at] = true;
+                continue;
+            }
+            depths.insert(name.to_string(), depth);
+            resolutions.expansions.insert(name.to_string(), expanded);
+        }
+        (resolutions, faults)
+    }
+}
+
+/// The alias references one kind AST carries, in appearance order,
+/// deduplicated.
+fn collect_refs(ast: &KindAst, out: &mut Vec<String>) {
+    match ast {
+        KindAst::Alias(name) => {
+            if !out.contains(name) {
+                out.push(name.clone());
+            }
+        }
+        KindAst::Sized {
+            inner: Some(inner), ..
+        } => collect_refs(inner, out),
+        KindAst::Option(inner) => collect_refs(inner, out),
+        KindAst::Union(arms) | KindAst::ArrayLit(arms) => {
+            for arm in arms {
+                collect_refs(arm, out);
+            }
+        }
+        KindAst::Object(pairs) => {
+            for (_, value) in pairs {
+                collect_refs(value, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// A kind AST's alias-aware nesting depth: one level per wrapper and
+/// container walk, an unresolved reference counts as a leaf. The
+/// recursion height is the AST's OWN nesting (the right-hand side
+/// the strict grammar accepted), never a chain's — referenced
+/// aliases contribute their already-computed numbers.
+fn ast_depth_against(ast: &KindAst, depths: &HashMap<String, usize>) -> usize {
+    let children = |kids: &[&KindAst]| -> usize {
+        kids.iter()
+            .map(|kid| ast_depth_against(kid, depths))
+            .max()
+            .unwrap_or(0)
+    };
+    match ast {
+        KindAst::Alias(name) => depths.get(name).copied().unwrap_or(1),
+        KindAst::Sized {
+            inner: Some(inner), ..
+        } => 1 + ast_depth_against(inner, depths),
+        KindAst::Option(inner) => 1 + ast_depth_against(inner, depths),
+        KindAst::Union(arms) => 1 + children(&arms.iter().collect::<Vec<_>>()),
+        KindAst::Object(pairs) => 1 + children(&pairs.iter().map(|(_, v)| v).collect::<Vec<_>>()),
+        KindAst::ArrayLit(items) => 1 + children(&items.iter().collect::<Vec<_>>()),
+        _ => 1,
     }
 }
 

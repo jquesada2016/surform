@@ -61,7 +61,8 @@ are SurrealQL verbatim, so real schema work usually needs both.
 
 ## Reference files
 
-- `references/statements.md` — all 16 `DEFINE` statements plus `raw` and `mixin`:
+- `references/statements.md` — all 16 `DEFINE` statements plus `raw`,
+  `mixin`, and the `type` aliases:
   grammar sketch, verified examples, per-statement gotchas. **Read a
   statement's entry before writing it non-trivially** — the variant
   rules and clause menus are where the traps live.

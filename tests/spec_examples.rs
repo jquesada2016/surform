@@ -114,7 +114,25 @@ fn spec_examples_parse_emit_and_validate() {
                     };
                     let expect: Vec<String> =
                         expect.split(',').map(|c| c.trim().to_string()).collect();
-                    let (_, diags) = surform::parser::parse_file(&body);
+                    let (ast, mut diags) = surform::parser::parse_file(&body);
+                    // The E1061/E1071 classes report at the resolution
+                    // passes (the declarative namespace, the alias
+                    // set) — an error fence demonstrates them through
+                    // the same contract, so a clean parse still
+                    // resolves (the site verifier's Error contract,
+                    // kept in sync here).
+                    if diags.is_empty() {
+                        let spans: Vec<surform::lexer::Span> = surform::lint::scan_source(&body)
+                            .statements
+                            .iter()
+                            .map(|s| s.span)
+                            .collect();
+                        diags.extend(
+                            surform::order::check_document(&ast.items, &[], &spans)
+                                .into_iter()
+                                .map(|(d, _)| d),
+                        );
+                    }
                     let codes: Vec<String> = diags
                         .iter()
                         .filter_map(|d| d.code().map(|c| c.to_string()))
@@ -151,6 +169,23 @@ fn spec_examples_parse_emit_and_validate() {
                     } else {
                         ""
                     }
+                );
+                continue;
+            }
+            // The full check-class contract (the declarative
+            // namespace + the alias resolution): a fence must not
+            // silently emit through a duplicate, a cycle, or an
+            // unresolved type-alias reference.
+            let spans: Vec<surform::lexer::Span> = surform::lint::scan_source(&text)
+                .statements
+                .iter()
+                .map(|s| s.span)
+                .collect();
+            let unresolved = surform::order::check_document(&ast.items, &[], &spans);
+            if !unresolved.is_empty() {
+                let _ = writeln!(
+                    failures,
+                    "{where_}: the example does not resolve:\n{unresolved:#?}"
                 );
                 continue;
             }

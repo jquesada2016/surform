@@ -42,6 +42,13 @@ pub enum Stmt {
     Table(Table),
     Field(Field),
     Mixin(Mixin),
+    /// `type <Name> = <kind>;` (spec/type-alias.md) — SDL-only: a
+    /// named type alias whose uses (a Capitalized identifier at a kind
+    /// position) expand, at compile time, to the alias's kind text.
+    /// Emits no DDL of its own; expansion ([`crate::expand`]) rewrites
+    /// every `Kind` that references it and drops the statement from
+    /// the lowered file.
+    TypeAlias(TypeAlias),
     /// `...<name>;` — a spread entry, produced only inside a non-view
     /// [`Table::nested`] (spec/mixin.md).
     Spread(Spread),
@@ -1614,6 +1621,41 @@ pub struct Mixin {
     pub clause_comments: Vec<ClauseComment>,
 }
 
+/// `type <Name> = <kind>;` (spec/type-alias.md) — SDL-only: a named
+/// type alias. The name MUST start with an uppercase letter (the
+/// Capitalized-identifier rule that keeps alias uses grammatically
+/// distinct from SurrealQL's lowercase kind heads — only the exact
+/// `NaN`/`Infinity` literal spellings share the territory, and the
+/// parse rejects those as alias names). The right-hand side is a full
+/// kind in the permissive grammar — alias references legal, so
+/// aliases chain. Emits no DDL of its own — no COMMENT target, so
+/// `///` is rejected on the statement (rule 5). Alias names are their
+/// own namespace (they collide with nothing); a duplicate name —
+/// within one file (the parse) or across a composition's files (the
+/// order pass) — is SDL-E1062, and the order pass owns the unknown-
+/// reference (SDL-E1071) and cycle (SDL-E0015) checks. Expansion
+/// ([`crate::expand`]) rewrites every `Kind` referencing the alias
+/// and drops the statement from the lowered file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeAlias {
+    pub name: Ident,
+    /// The right-hand kind, its authored spelling carried verbatim
+    /// (the writer never re-spells it — [`Kind`]'s invariant; alias
+    /// references inside may only be resolved by
+    /// [`crate::expand`], never by the writer).
+    pub kind: Kind,
+    /// The name's span — the duplicate/name diagnostics' anchor,
+    /// zeroed by the compare normalizer.
+    pub name_span: Span,
+    /// Plain `//` lines above the statement (rule 5).
+    pub comments: Vec<Comment>,
+    pub trailing_comments: Vec<Comment>,
+    /// Per-clause comment anchors (rule 5) — [`ClauseComment`]; the
+    /// statement defines no clauses, so the empty path is this
+    /// field's only resident.
+    pub clause_comments: Vec<ClauseComment>,
+}
+
 /// `...<name>;` — a **spread entry**: a table-block body entry (not a
 /// clause — no key, no colon; spec/mixin.md) that expands to its
 /// mixin's members at the entry's position — explicitly overshadowed
@@ -1829,6 +1871,12 @@ impl Stmt {
                 Some(&mut s.trailing_comments),
                 &mut s.clause_comments,
             ),
+            Stmt::TypeAlias(s) => (
+                None,
+                &mut s.comments,
+                Some(&mut s.trailing_comments),
+                &mut s.clause_comments,
+            ),
             Stmt::Spread(s) => (None, &mut s.comments, None, &mut s.clause_comments),
             Stmt::Raw(s) => (None, &mut s.comments, None, &mut s.clause_comments),
             Stmt::Include(s) => (None, &mut s.comments, None, &mut s.clause_comments),
@@ -2034,6 +2082,12 @@ fn normalize_stmt_for_compare(stmt: &mut Stmt) {
                 normalize_stmt_for_compare(member);
             }
             mixin.members.sort_by_key(member_sort_key);
+        }
+        Stmt::TypeAlias(alias) => {
+            alias.comments = Vec::new();
+            alias.trailing_comments = Vec::new();
+            alias.clause_comments = Vec::new();
+            alias.name_span = Span::point(0);
         }
         Stmt::Spread(spread) => {
             spread.comments = Vec::new();

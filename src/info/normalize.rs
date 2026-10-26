@@ -89,6 +89,12 @@ pub enum Family {
     /// (INFO cannot carry mixins); only the linter's authored
     /// findings carry it.
     Mixin,
+    /// SDL-only ([`crate::ast::TypeAlias`]) — never a read-side family
+    /// (INFO stores only concrete kinds, so the database cannot carry
+    /// an alias); the statement itself pairs with no read entry and
+    /// stays authored through the merge, the [`Family::Mixin`]
+    /// precedent. (The FIELD spellings are Unit T2's preserve arm.)
+    TypeAlias,
     Module,
     Namespace,
     Param,
@@ -138,6 +144,7 @@ pub(crate) fn classify(stmt: &Stmt) -> (Family, String) {
         // reaches a leftover adoptee. Total, never a panic, for the
         // library caller and the CLI alike.
         Stmt::Mixin(s) => (Family::Mixin, s.name.raw.clone()),
+        Stmt::TypeAlias(s) => (Family::TypeAlias, s.name.raw.clone()),
         Stmt::Spread(s) => (Family::Mixin, s.name.raw.clone()),
         // `include` (spec/include.md) rides the Raw family: SDL-only,
         // no read entry ever pairs with it, and the composed-root

@@ -26,12 +26,12 @@ use crate::ast::{
     FnPath, Function, Graphql, GraphqlConfig, Ident, Include, Index, IndexKind, Introspection,
     JwtIssuer, JwtSource, JwtVerify, Kind, Language, Level, MemberKey, Middleware, Mixin, Module,
     Namespace, OnDelete, OpPermissions, Param, ParamName, Pass, Permission, PermissionGroup,
-    PermissionOp, Raw, Role, SdlFile, Sequence, Spread, Stmt, Table, TableKind, Tokenizer, User,
-    VectorType,
+    PermissionOp, Raw, Role, SdlFile, Sequence, Spread, Stmt, Table, TableKind, Tokenizer,
+    TypeAlias, User, VectorType,
 };
 use crate::diag::Diag;
 use crate::expr::{self, EmbeddedError, Slot};
-use crate::kind::{kind_contains_object, parse_kind_text, read_kind};
+use crate::kind::{kind_contains_object, parse_kind_text, read_kind_with_aliases};
 use crate::lexer::{Scanner, Span, lex_string_literal, strip_capture_trivia, word_prefix_len};
 use std::str::FromStr;
 use surrealdb_types::Duration;
@@ -60,6 +60,7 @@ const STATEMENT_KEYWORDS: &[&str] = &[
     "table",
     "field",
     "mixin",
+    "type",
     "raw",
     "include",
 ];
@@ -1007,6 +1008,7 @@ fn parse_with_mode(src: &str, composable: bool, included: bool) -> (SdlFile, Vec
         diags: Vec::new(),
         table_host: None,
         mixin_names: Vec::new(),
+        alias_names: Vec::new(),
         comments: Vec::new(),
         field_close_note: None,
         op_permissions_interior: Vec::new(),
@@ -1294,6 +1296,14 @@ struct FileParser<'src> {
     /// and [`resolve_spreads_homed`] checks them against the whole
     /// document's mixin set after the parse.
     mixin_names: Vec<String>,
+    /// The type-alias names parsed so far (spec/type-alias.md): a
+    /// duplicate name in one file is SDL-E1062 at parse — no
+    /// last-one-wins fold, the reference would be ambiguous in
+    /// intent. Use-site resolution is NOT the parser's: references
+    /// parse as opaque [`KindAst::Alias`] nodes and the order pass
+    /// checks them against the whole document's alias set after the
+    /// parse.
+    alias_names: Vec<String>,
     /// Whether `include` statements are kept (spec/include.md): the
     /// composable entry (loader, formatter) versus the strict entry,
     /// which rejects and drops them.
@@ -1480,6 +1490,11 @@ impl<'src> FileParser<'src> {
                         }
                         "mixin" => {
                             if let Some(stmt) = self.parse_mixin(pending_doc.take()) {
+                                items.push(stmt);
+                            }
+                        }
+                        "type" => {
+                            if let Some(stmt) = self.parse_type_alias(pending_doc.take()) {
                                 items.push(stmt);
                             }
                         }
@@ -4322,7 +4337,7 @@ impl<'src> FileParser<'src> {
             };
             rest = strip_capture_trivia(after_colon)?;
             let kind_at = text.len() - rest.len();
-            let Some(kind_tail) = read_kind(rest) else {
+            let Some(kind_tail) = read_kind_with_aliases(rest) else {
                 self.diags.push(Diag::InvalidKind {
                     span: Span::new(base + kind_at, text.len() - kind_at),
                     text: rest.trim().to_string(),
@@ -5825,6 +5840,96 @@ impl<'src> FileParser<'src> {
         }))
     }
 
+    /// `type <Name> = <kind>;` (spec/type-alias.md) — the SDL-only
+    /// type alias, top-level only. `///` is rejected (no COMMENT
+    /// target — the statement emits nothing). The name MUST be
+    /// alias-shaped — an uppercase ASCII letter, then letters, digits,
+    /// or `_`, decoded (a quoted declaration spelling decodes first) —
+    /// and not reserved: a SurrealQL kind head would win at every use
+    /// site (head matching is ASCII-case-insensitive) and leave the
+    /// alias unreachable; the Capitalized rule is what keeps alias
+    /// uses grammatically distinct from the lowercase kind heads
+    /// (SDL-E1072 either way). The right-hand kind captures through
+    /// the permissive grammar to the `;` — the same
+    /// [`Self::capture_incremental_kind`] a field's header rides, so
+    /// brace-bearing object kinds fold. Uses parse as opaque
+    /// [`crate::kind::KindAst::Alias`] nodes; the order pass owns the
+    /// unknown-reference (SDL-E1071), cycle (SDL-E0015), and deferred
+    /// flexible checks against the whole document's alias set. Emits
+    /// no DDL; expansion ([`crate::expand`]) rewrites every
+    /// referencing `Kind` and drops the statement from the lowered
+    /// file.
+    fn parse_type_alias(&mut self, pending_doc: Option<DocBlock>) -> Option<Stmt> {
+        if let Some(doc) = pending_doc {
+            self.diags.push(Diag::DocCommentUnsupported {
+                span: doc.span,
+                statement: "type",
+            });
+        }
+        let comments = self.take_pending_comments();
+        let name_start = self.scan.offset();
+        let name = self.read_statement_name()?;
+        let name_span = Span::new(name_start, self.scan.offset() - name_start);
+        if !crate::kind::is_valid_alias_name(&name.raw) {
+            let reason = if crate::kind::is_reserved_alias_name(&name.raw) {
+                format!(
+                    "`{}` is a SurrealQL kind head — it would win at every use site",
+                    name.raw
+                )
+            } else {
+                "alias names are Capitalized: an uppercase letter, then letters, digits, or `_`"
+                    .to_string()
+            };
+            self.diags.push(Diag::InvalidAliasName {
+                span: name_span,
+                name: name.raw.clone(),
+                reason,
+            });
+            self.recover_to_statement_end();
+            return None;
+        }
+        self.take_comments();
+        if self.scan.peek_byte() != Some(b'=') {
+            self.diags.push(Diag::UnexpectedClauseForm {
+                span: Span::point(self.scan.offset()),
+                message: "expected ` = <kind>` — a type alias declares its kind in the header"
+                    .to_string(),
+            });
+            self.recover_to_statement_end();
+            return None;
+        }
+        self.scan.eat_byte(b'=');
+        // The `;`-terminated capture: EOF is the file's final
+        // statement missing its terminator — the kind still landed.
+        let (kind_text, _) = match self.capture_incremental_kind(b";") {
+            Ok(found) => found,
+            Err(_) => return None,
+        };
+        // The duplicate-name rejection (README rule 7's generalized
+        // rule, type-alias family) — parse keeps only the first
+        // spelling; the order pass catches the cross-file class.
+        if self.alias_names.iter().any(|entry| entry == &name.raw) {
+            self.diags.push(Diag::DuplicateDefinition {
+                span: name_span,
+                family: "type alias",
+                name: name.raw.clone(),
+            });
+            return None;
+        }
+        self.alias_names.push(name.raw.clone());
+        // The close note joins the statement's own line (the
+        // empty-path anchor — the statement has no clauses).
+        let close_note = self.peek_same_line_note(self.cursor_line());
+        Some(Stmt::TypeAlias(TypeAlias {
+            name,
+            kind: Kind::new(kind_text),
+            name_span,
+            comments,
+            trailing_comments: self.take_pending_comments(),
+            clause_comments: collect_clause_comments(&[], close_note),
+        }))
+    }
+
     /// The view body (spec/table.md): the block IS the query — a
     /// single `;`-terminated select, no clause key — optionally
     /// followed by ordinary clauses over [`TABLE_VIEW_CLAUSES`]
@@ -6924,7 +7029,12 @@ impl<'src> FileParser<'src> {
                         message: "`flexible;` needs a header type — none was written".to_string(),
                     });
                 }
-                Some(kind) if !kind_contains_object(&kind.text) => {
+                // An alias-referencing kind decides at resolution: the
+                // answer is the expansion's, and the order pass
+                // re-asks on the expanded text.
+                Some(kind)
+                    if kind_contains_object(&kind.text) == crate::kind::ObjectPresence::No =>
+                {
                     valid = false;
                     self.diags.push(Diag::InvalidFieldFlexible {
                         span: flexible_span,
@@ -8421,8 +8531,9 @@ impl<'src> FileParser<'src> {
 }
 
 /// Did-you-mean over a keyword table (strsim Jaro-Winkler): the
-/// closest candidate scoring at least 0.75, else `None`.
-fn did_you_mean(word: &str, candidates: &[&str]) -> Option<String> {
+/// closest candidate scoring at least 0.75, else `None`. The order
+/// pass's alias-reference findings share it.
+pub(crate) fn did_you_mean(word: &str, candidates: &[&str]) -> Option<String> {
     // Candidates are canonical lowercase spellings; scoring the
     // lowercased input too means an uppercase or mixed-case misspelling
     // (`VALUE:`, `Namespace`) still gets a did-you-mean, while plain
@@ -10515,6 +10626,7 @@ raw {
                 Stmt::Table(table) => table.name.raw.clone(),
                 Stmt::Field(_) => String::new(),
                 Stmt::Mixin(mixin) => mixin.name.raw.clone(),
+                Stmt::TypeAlias(alias) => alias.name.raw.clone(),
                 // A spread never rides the file's top level.
                 Stmt::Spread(_) => String::new(),
                 Stmt::Raw(_) => String::new(),

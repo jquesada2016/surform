@@ -3063,6 +3063,9 @@ fn remove_line(family: Family, key: &str, on_table: Option<&str>, stmt: &Stmt) -
         // Defensive: mixins never reach the differ (the SDL side
         // arrives pre-expanded) and emit nothing to remove.
         Family::Mixin => return None,
+        // Defensive: type aliases never reach the differ either (the
+        // SDL side arrives pre-expanded) and emit nothing to remove.
+        Family::TypeAlias => return None,
         // Defensive: the linter's allow-comment family never reaches
         // the differ either (nothing in INFO classifies to it).
         Family::Comment => return None,

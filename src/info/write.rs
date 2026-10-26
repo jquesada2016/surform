@@ -447,6 +447,7 @@ fn write_stmt(w: &mut Writer, stmt: &Stmt, nested: bool) {
         Stmt::Table(stmt) => write_table(w, stmt),
         Stmt::Field(stmt) => write_field(w, stmt, nested),
         Stmt::Mixin(stmt) => write_mixin(w, stmt),
+        Stmt::TypeAlias(stmt) => write_type_alias(w, stmt),
         Stmt::Spread(stmt) => write_spread(w, stmt),
         Stmt::Raw(stmt) => write_raw(w, stmt),
         Stmt::Include(stmt) => write_include(w, stmt),
@@ -472,6 +473,7 @@ fn stmt_comments(stmt: &Stmt) -> &[String] {
         Stmt::Table(stmt) => &stmt.comments,
         Stmt::Field(stmt) => &stmt.comments,
         Stmt::Mixin(stmt) => &stmt.comments,
+        Stmt::TypeAlias(stmt) => &stmt.comments,
         Stmt::Spread(stmt) => &stmt.comments,
         Stmt::Raw(stmt) => &stmt.comments,
         Stmt::Include(stmt) => &stmt.comments,
@@ -1736,6 +1738,20 @@ fn write_include(w: &mut Writer, stmt: &Include) {
     quoted_string(&mut line, &stmt.path);
     line.push(';');
     w.line_a(&stmt.clause_comments, "", &line);
+}
+
+/// `type <Name> = <kind>;` (spec/type-alias.md) — the alias survives
+/// fmt like `mixin` does (the canonical writer never lowers): the
+/// kind prints as authored ([`Kind`]'s verbatim invariant — alias
+/// references inside are never resolved by the writer).
+fn write_type_alias(w: &mut Writer, stmt: &crate::ast::TypeAlias) {
+    let mut line = String::from("type ");
+    push_ident(&mut line, &stmt.name.raw);
+    line.push_str(" = ");
+    line.push_str(&stmt.kind.text);
+    line.push(';');
+    w.line_a(&stmt.clause_comments, "", &line);
+    w.comments(&stmt.trailing_comments);
 }
 
 fn write_field(w: &mut Writer, stmt: &Field, nested: bool) {

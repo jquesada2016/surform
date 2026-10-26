@@ -27,6 +27,7 @@ const STATEMENTS: &[&str] = &[
     "param",
     "sequence",
     "table",
+    "type-alias",
     "user",
 ];
 

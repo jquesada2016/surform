@@ -383,7 +383,11 @@ impl Definitions {
         key: String,
     ) {
         let scope = match family {
-            Family::Mixin => KeyScope::Global,
+            // Both SDL-only families resolve against the composition's
+            // GLOBAL set (the declarative namespace — spec/mixin.md,
+            // spec/type-alias.md): a reference resolves against every
+            // definition in the document, not the ones above it.
+            Family::Mixin | Family::TypeAlias => KeyScope::Global,
             _ => KeyScope::Scoped(walk.lookup_scope(stmt)),
         };
         let id = DefKey { scope, family, key };
@@ -433,6 +437,7 @@ fn def_ident(stmt: &Stmt) -> Option<(Family, String)> {
         | Stmt::Raw(_)
         | Stmt::Include(_)
         | Stmt::Spread(_) => None,
+        Stmt::TypeAlias(alias) => Some((Family::TypeAlias, alias.name.raw.clone())),
         Stmt::Field(field) => Some((
             Family::Field,
             format!("{}::{}", field.on.raw, field_path_key(&field.name)),
@@ -485,6 +490,7 @@ fn family_word(family: Family) -> &'static str {
         Family::Function => "function",
         Family::Index => "index",
         Family::Mixin => "mixin",
+        Family::TypeAlias => "type alias",
         Family::Module => "module",
         Family::Namespace => "namespace",
         Family::Param => "param",
@@ -537,7 +543,358 @@ pub fn check_document(
 ) -> Vec<(Diag, usize)> {
     let mut out = crate::parser::resolve_spreads_homed(items, item_homes);
     out.extend(check(items, item_homes, item_spans));
+    out.extend(check_aliases(items, item_homes, item_spans));
     out
+}
+
+/// The type-alias half of the check-class contract (spec/
+/// type-alias.md): every Capitalized reference at a kind position
+/// resolves against the whole composed document's alias set
+/// (SDL-E1071 — a typo'd alias is an error, never a silent kind);
+/// alias definitions form a cycle class of their own (SDL-E0015 —
+/// `type A = B; type B = A;` has no expansion); and a `flexible`
+/// field whose kind references an alias re-asks the object-presence
+/// question on the EXPANSION (the parse deferred it). Diagnostics
+/// anchor at their statement's authored span — a reference names its
+/// field path in the message; the parse-time capture carries no
+/// per-reference span.
+fn check_aliases(items: &[Stmt], item_homes: &[usize], item_spans: &[Span]) -> Vec<(Diag, usize)> {
+    let home_of = |at: usize| item_homes.get(at).copied().unwrap_or(0);
+    let mut out: Vec<(Diag, usize)> = Vec::new();
+    // The document's alias set, first-definition order (the
+    // did-you-mean candidates; duplicates are the registry's E1062).
+    let mut names: Vec<&str> = Vec::new();
+    let mut aliases: Vec<(usize, &crate::ast::TypeAlias)> = Vec::new();
+    for (at, stmt) in items.iter().enumerate() {
+        if let Stmt::TypeAlias(alias) = stmt {
+            if !names.contains(&alias.name.raw.as_str()) {
+                names.push(alias.name.raw.as_str());
+            }
+            aliases.push((at, alias));
+        }
+    }
+    // The expansions: built iteratively (a chain never recurses per
+    // link — the review's stack-overflow P1), the faults mapped to
+    // their diagnostics below. A cycle's members are the E0015's;
+    // the faults here are the depth ceiling and the shape class.
+    let alias_table: Vec<(&str, &crate::ast::TypeAlias)> = aliases
+        .iter()
+        .map(|(_, a)| (a.name.raw.as_str(), *a))
+        .collect();
+    let (resolutions, faults) = crate::expand::AliasResolutions::build(&alias_table);
+    // Faults carry their entry's index in the aliases slice: the set
+    // of FAULTED NAMES is what the walk's skip contract checks.
+    let faulted: std::collections::BTreeSet<String> = faults
+        .iter()
+        .map(|(at, _)| aliases[*at].1.name.raw.clone())
+        .collect();
+    // The reference walk: every kind-bearing statement, its references
+    // against the set — and, when every reference resolves clean, the
+    // same two gates the definitions pass (spec/type-alias.md): the
+    // site's EXPANDED kind must strict-reparse (an `option<A>` over an
+    // option-alias composes `option<option<…>>` — legal authored,
+    // unexpressible whole) and stay within the ceiling. The site's own
+    // wrapper counts: `option<A>` over a ceiling-deep `A` is one level
+    // over.
+    let kind_site =
+        |kind: &crate::ast::Kind, owner: &str, at: usize, out: &mut Vec<(Diag, usize)>| {
+            let refs = alias_refs(&kind.text);
+            for name in refs.iter().cloned() {
+                if !names.contains(&name.as_str()) {
+                    out.push((
+                        Diag::UnknownAlias {
+                            span: item_spans[at],
+                            suggestion: did_you_mean_word(&name, &names),
+                            name,
+                        },
+                        home_of(at),
+                    ));
+                }
+            }
+            if refs.is_empty()
+                || refs.iter().any(|name| !names.contains(&name.as_str()))
+                || refs.iter().any(|name| faulted.contains(name))
+            {
+                return;
+            }
+            let Some(ast) = crate::kind::parse_kind_ast(&kind.text) else {
+                return;
+            };
+            let expanded = crate::expand::resolve_ast(&ast, &resolutions);
+            let text = crate::kind::write_kind(&expanded);
+            if crate::kind::parse_kind_text(&text).is_none() {
+                out.push((
+                    Diag::AliasExpansionInvalid {
+                        span: item_spans[at],
+                        owner: owner.to_string(),
+                        text,
+                    },
+                    home_of(at),
+                ));
+                return;
+            }
+            let depth = crate::expand::expanded_depth(&expanded);
+            if depth > crate::expand::ALIAS_NESTING_CEILING {
+                out.push((
+                    Diag::AliasExpansionDepth {
+                        span: item_spans[at],
+                        owner: owner.to_string(),
+                        depth,
+                    },
+                    home_of(at),
+                ));
+            }
+        };
+    for (at, stmt) in items.iter().enumerate() {
+        match stmt {
+            Stmt::Field(field) => {
+                if let Some(kind) = &field.kind {
+                    kind_site(
+                        kind,
+                        &format!("field `{}`", field_path_key(&field.name)),
+                        at,
+                        &mut out,
+                    );
+                }
+            }
+            Stmt::Function(function) => {
+                for (param, kind) in &function.args {
+                    kind_site(
+                        kind,
+                        &format!(
+                            "the argument `${}` of fn `{}`",
+                            param.raw,
+                            function.name.segments.join("::")
+                        ),
+                        at,
+                        &mut out,
+                    );
+                }
+                if let Some(returns) = &function.returns {
+                    kind_site(
+                        returns,
+                        &format!(
+                            "the return kind of fn `{}`",
+                            function.name.segments.join("::")
+                        ),
+                        at,
+                        &mut out,
+                    );
+                }
+            }
+            // A faulted alias's own site would re-derive the fault the
+            // definition mapping reported — once is the contract.
+            Stmt::TypeAlias(alias) if !faulted.contains(&alias.name.raw) => kind_site(
+                &alias.kind,
+                &format!("type alias `{}`", alias.name.raw),
+                at,
+                &mut out,
+            ),
+            Stmt::Table(table) => {
+                for nested in &table.nested {
+                    if let Stmt::Field(field) = nested
+                        && let Some(kind) = &field.kind
+                    {
+                        kind_site(
+                            kind,
+                            &format!("field `{}`", field_path_key(&field.name)),
+                            at,
+                            &mut out,
+                        );
+                    }
+                }
+            }
+            // A mixin's members are fields whose kinds land at every
+            // spreading table — the same gates, the member's path the
+            // owner (the span names the mixin; the message names the
+            // member).
+            Stmt::Mixin(mixin) => {
+                for member in &mixin.members {
+                    if let Stmt::Field(field) = member
+                        && let Some(kind) = &field.kind
+                    {
+                        kind_site(
+                            kind,
+                            &format!("field `{}`", field_path_key(&field.name)),
+                            at,
+                            &mut out,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    // The cycles: alias → alias edges from each definition's RHS,
+    // indexed by the aliases' item positions, through the same
+    // rotation-normalized finder the other classes share.
+    let index_of: HashMap<&str, usize> = aliases
+        .iter()
+        .map(|(at, a)| (a.name.raw.as_str(), *at))
+        .collect();
+    let mut edges: Vec<Vec<usize>> = vec![Vec::new(); items.len()];
+    for (at, alias) in &aliases {
+        for name in alias_refs(&alias.kind.text) {
+            if let Some(dep) = index_of.get(name.as_str())
+                && !edges[*at].contains(dep)
+            {
+                edges[*at].push(*dep);
+            }
+        }
+    }
+    let alias_nodes: Vec<usize> = aliases.iter().map(|(at, _)| *at).collect();
+    for chain in find_cycles(&edges) {
+        // Only alias-to-alias cycles are this pass's class; a chain
+        // through any other node cannot arise (no other edges exist
+        // in `edges`).
+        if !chain.iter().all(|node| alias_nodes.contains(node)) {
+            continue;
+        }
+        let anchor = *chain.iter().min().expect("a cycle holds nodes");
+        let mut names_chain: Vec<String> = chain.iter().map(|&at| node_word(&items[at])).collect();
+        names_chain.push(node_word(&items[chain[0]]));
+        out.push((
+            Diag::DefineCycle {
+                span: item_spans[anchor],
+                chain: names_chain.join(" → "),
+            },
+            home_of(anchor),
+        ));
+    }
+    // The definition faults map to their diagnostics (the expansions
+    // themselves were built above, before the reference walk).
+    // Once per NAME, anchored at the FAULTING statement: the pair
+    // carries the entry's index in the aliases slice, so a cross-file
+    // duplicate reports where its own composition is (the E1062 owns
+    // the duplication itself).
+    let mut fault_reported: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+    for (entry_at, fault) in &faults {
+        let (at, alias) = aliases[*entry_at];
+        if !fault_reported.insert(alias.name.raw.as_str()) {
+            continue;
+        }
+        match fault {
+            crate::expand::AliasFault::Overceiling { depth } => {
+                out.push((
+                    Diag::AliasExpansionDepth {
+                        span: item_spans[at],
+                        owner: format!("type alias `{}`", alias.name.raw),
+                        depth: *depth,
+                    },
+                    home_of(at),
+                ));
+            }
+            crate::expand::AliasFault::InvalidShape { text } => {
+                out.push((
+                    Diag::AliasExpansionInvalid {
+                        span: item_spans[at],
+                        owner: format!("type alias `{}`", alias.name.raw),
+                        text: text.clone(),
+                    },
+                    home_of(at),
+                ));
+            }
+        }
+    }
+    // The deferred flexible checks: a field whose kind references an
+    // alias decides on the expansion. An unresolved reference already
+    // reported stays un-linted here (the E1071 dominates), and an
+    // alias with no resolution (a fault's root cause, already
+    // reported) ditto.
+    let mut flexible_deferred: Vec<(usize, &crate::ast::Field)> = Vec::new();
+    for (at, stmt) in items.iter().enumerate() {
+        match stmt {
+            Stmt::Field(field) if field.flexible => flexible_deferred.push((at, field)),
+            Stmt::Table(table) => {
+                for nested in &table.nested {
+                    if let Stmt::Field(field) = nested
+                        && field.flexible
+                    {
+                        flexible_deferred.push((at, field));
+                    }
+                }
+            }
+            // A mixin member's flexible decides on the expansion too
+            // (the member lands at every spreading table).
+            Stmt::Mixin(mixin) => {
+                for member in &mixin.members {
+                    if let Stmt::Field(field) = member
+                        && field.flexible
+                    {
+                        flexible_deferred.push((at, field));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    for (at, field) in flexible_deferred {
+        let Some(kind) = &field.kind else { continue };
+        let refs = alias_refs(&kind.text);
+        if refs.is_empty() {
+            continue;
+        }
+        if refs.iter().any(|name| !names.contains(&name.as_str())) {
+            continue;
+        }
+        if refs.iter().any(|name| faulted.contains(name)) {
+            continue;
+        }
+        let expanded = crate::expand::resolve_kind_text(&kind.text, &resolutions);
+        if crate::kind::kind_contains_object(&expanded) == crate::kind::ObjectPresence::No {
+            out.push((
+                Diag::InvalidFieldFlexible {
+                    span: item_spans[at],
+                    message: format!(
+                        "FLEXIBLE can only be used with types containing object — \
+                         `{}` (the expansion of `{}`) does not",
+                        expanded, kind.text
+                    ),
+                },
+                home_of(at),
+            ));
+        }
+    }
+    out
+}
+
+/// The alias references one kind text carries: the decoded
+/// [`KindAst::Alias`] names, in appearance order, deduplicated.
+fn alias_refs(kind_text: &str) -> Vec<String> {
+    fn walk(ast: &crate::kind::KindAst, out: &mut Vec<String>) {
+        match ast {
+            crate::kind::KindAst::Alias(name) => {
+                if !out.contains(name) {
+                    out.push(name.clone());
+                }
+            }
+            crate::kind::KindAst::Sized {
+                inner: Some(inner), ..
+            } => walk(inner, out),
+            crate::kind::KindAst::Option(inner) => walk(inner, out),
+            crate::kind::KindAst::Union(arms) | crate::kind::KindAst::ArrayLit(arms) => {
+                for arm in arms {
+                    walk(arm, out);
+                }
+            }
+            crate::kind::KindAst::Object(pairs) => {
+                for (_, value) in pairs {
+                    walk(value, out);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    if let Some(ast) = crate::kind::parse_kind_ast(kind_text) {
+        walk(&ast, &mut out);
+    }
+    out
+}
+
+/// The use-site did-you-mean over the document's alias names.
+fn did_you_mean_word(word: &str, candidates: &[&str]) -> Option<String> {
+    crate::parser::did_you_mean(word, candidates)
 }
 
 /// The order half of the check-class contract: every duplicate
@@ -583,7 +940,7 @@ fn check(items: &[Stmt], item_homes: &[usize], item_spans: &[Span]) -> Vec<(Diag
     let lowered_to_authored: Vec<usize> = items
         .iter()
         .enumerate()
-        .filter(|(_, stmt)| !matches!(stmt, Stmt::Mixin(_)))
+        .filter(|(_, stmt)| !matches!(stmt, Stmt::Mixin(_) | Stmt::TypeAlias(_)))
         .map(|(at, _)| at)
         .collect();
     debug_assert_eq!(lowered_to_authored.len(), lowered.items.len());

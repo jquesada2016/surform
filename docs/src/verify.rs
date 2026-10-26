@@ -526,14 +526,25 @@ pub async fn verify(
                     render_diags(&diags, body)
                 )));
             }
-            // The check-class contract (the declarative namespace): a
-            // spread naming no mixin of the document is an error, so a
-            // fence must not silently emit without its members.
-            let unresolved = parser::resolve_spreads(&ast);
+            // The check-class contract (the declarative namespace +
+            // the alias resolution): a spread naming no mixin, a
+            // duplicate, a cycle, or an unresolved type-alias
+            // reference is an error, so a fence must not silently emit
+            // through one.
+            let spans: Vec<surform::lexer::Span> = surform::lint::scan_source(body)
+                .statements
+                .iter()
+                .map(|s| s.span)
+                .collect();
+            let unresolved = surform::order::check_document(&ast.items, &[], &spans);
             if !unresolved.is_empty() {
+                let rendered: Vec<String> = unresolved
+                    .iter()
+                    .map(|(d, _)| render_diags(std::slice::from_ref(d), body))
+                    .collect();
                 return Err(err(format!(
                     "the example does not resolve:\n{}",
-                    render_diags(&unresolved, body)
+                    rendered.join("\n")
                 )));
             }
             let ddl = codegen::emit(&ast);
@@ -571,11 +582,21 @@ pub async fn verify(
         }
         ExampleKind::Error { expect } => {
             let (ast, diags) = parser::parse_file(body);
-            // The E1061 class reports at the resolution pass now (the
-            // declarative namespace) — an error fence demonstrates it
-            // through the same pass, so a clean parse still resolves.
+            // The resolution classes (the declarative namespace's
+            // E1061, the alias set's E1071, the cycles, the
+            // duplicates) report at the check-class contract — an
+            // error fence demonstrates them through it, so a clean
+            // parse still resolves.
             let diags = if diags.is_empty() {
-                parser::resolve_spreads(&ast)
+                let spans: Vec<surform::lexer::Span> = surform::lint::scan_source(body)
+                    .statements
+                    .iter()
+                    .map(|s| s.span)
+                    .collect();
+                surform::order::check_document(&ast.items, &[], &spans)
+                    .into_iter()
+                    .map(|(d, _)| d)
+                    .collect()
             } else {
                 diags
             };

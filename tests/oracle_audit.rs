@@ -135,6 +135,11 @@ fn every_menu_terminal_appears_in_the_corpus() {
         "h: int;",
         "index h_idx { fields: h; };",
         "event f_evt { then: 1; };",
+        // type-alias: the declaration, the sized use, and the
+        // name-list non-use.
+        "type Email = string;",
+        "array<Email, 3>;",
+        "record<Email>;",
     ];
     for terminal in terminals {
         assert!(
@@ -150,7 +155,7 @@ fn every_menu_terminal_appears_in_the_corpus() {
 #[test]
 fn the_menu_table_is_complete() {
     let names: Vec<&str> = menus::families().iter().map(|f| f.name).collect();
-    assert_eq!(names.len(), 17, "seventeen families, one per spec file");
+    assert_eq!(names.len(), 18, "eighteen families");
     for expected in [
         "sequence",
         "param",
@@ -169,6 +174,7 @@ fn the_menu_table_is_complete() {
         "table",
         "field",
         "mixin",
+        "type-alias",
     ] {
         assert!(names.contains(&expected), "missing family: {expected}");
     }

@@ -1,6 +1,8 @@
 Every field's type is SurrealDB's own kind grammar, passed through
-verbatim — Surform adds no spellings and hides none. This page covers
-the shapes you'll use most; SurrealQL's `kind` grammar is the complete
+verbatim — Surform adds no spellings and hides none. (The one
+addition is the compile-time [`type` alias](type-aliases.html): a
+named kind a Capitalized word references.) This page covers the
+shapes you'll use most; SurrealQL's `kind` grammar is the complete
 reference.
 
 ## Scalars

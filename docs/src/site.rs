@@ -40,6 +40,12 @@ pages![
         "The language"
     ),
     ("types", "types.md", "Types (kinds)", "The language"),
+    (
+        "type-aliases",
+        "type-aliases.md",
+        "Type aliases",
+        "The language"
+    ),
     ("relations", "relations.md", "Relations", "The language"),
     ("indexes", "indexes.md", "Indexes", "The language"),
     ("events", "events.md", "Events", "The language"),
@@ -202,6 +208,12 @@ pages![
         "spec-table",
         "../../spec/table.md",
         "Spec: DEFINE TABLE",
+        "Language spec"
+    ),
+    (
+        "spec-type-alias",
+        "../../spec/type-alias.md",
+        "Spec: TYPE (type aliases)",
         "Language spec"
     ),
     (
