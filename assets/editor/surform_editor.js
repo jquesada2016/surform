@@ -316,7 +316,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('surform_editor_bg.bdeb93d7.wasm', import.meta.url);
+        module_or_path = new URL('surform_editor_bg.2fee8afd.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
