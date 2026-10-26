@@ -11,7 +11,7 @@ opt-level = 3
 
 [package]
 name = "surform"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 # The locked =3.3.0 graph's real floor, NOT the 1.85 edition floor —
 # re-pinned at the 2026-09-25 floor move.
