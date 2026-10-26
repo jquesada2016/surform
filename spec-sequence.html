@@ -42,6 +42,7 @@
 <a href="mixins.html">Mixins</a>
 <a href="includes.html">Multi-file schemas (include)</a>
 <a href="types.html">Types (kinds)</a>
+<a href="type-aliases.html">Type aliases</a>
 <a href="relations.html">Relations</a>
 <a href="indexes.html">Indexes</a>
 <a href="events.html">Events</a>
@@ -87,6 +88,7 @@
 <a href="spec-param.html">Spec: DEFINE PARAM</a>
 <a href="spec-sequence.html" class="active">Spec: DEFINE SEQUENCE</a>
 <a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-type-alias.html">Spec: TYPE (type aliases)</a>
 <a href="spec-user.html">Spec: DEFINE USER</a>
 </div>
 </nav>
@@ -158,7 +160,7 @@ sequence &lt;name&gt; {
 <p>usage (for orientation — not SDL):</p>
 <div class="codebox"><span class="lang-chip">surql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>sequence::nextval('invoice_number');   -- → 1000, then 1001, …</code></pre></div>
 <script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
-<script type="module" src="assets/editor/editor.99d26567.js"></script>
+<script type="module" src="assets/editor/editor.c7a27a1d.js"></script>
 
   </article>
   <div class="pager" id="pager"></div>
@@ -170,7 +172,7 @@ sequence &lt;name&gt; {
 </div>
 <footer class="footer">
   <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
-  <span>Built from commit 533ba74 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/sequence.md">Edit this page</a></span>
+  <span>Built from commit c2c4ae4 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/sequence.md">Edit this page</a></span>
 </footer>
 <script src="search-index.js" defer></script>
 <script src="assets/site.js" defer></script>

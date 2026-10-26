@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: TYPE (type aliases) · Surform</title>
+<meta name="description" content="Surform — declarative SurrealDB schemas: Spec: TYPE (type aliases)">
+<link rel="canonical" href="spec-type-alias.html">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' rx='4' fill='%23ff2e88'/%3E%3Cpath d='M10 11h12M10 16h12M10 21h7' stroke='%230e1116' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  // Theme before first paint to avoid a flash of the wrong scheme.
+  (function () {
+    var saved = localStorage.getItem("surform-theme");
+    var dark = saved ? saved === "dark"
+      : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+<header class="topbar">
+  <button class="navtoggle" id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <a class="brand" href="index.html"><span class="brand-mark">surform</span><span class="brand-tag">SurrealDB schemas, declared</span></a>
+  <div class="search" id="search">
+    <input id="search-input" type="search" placeholder="Search the docs…  /" autocomplete="off" aria-label="Search the docs">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+  <button class="theme" id="theme-toggle" aria-label="Toggle light and dark theme">◐</button>
+</header>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+<div class="nav-group"><div class="nav-head">Start</div>
+<a href="playground.html">Playground</a>
+<a href="index.html">What is Surform?</a>
+<a href="getting-started.html">Getting started</a>
+<a href="basics.html">How a schema file works</a>
+</div>
+<div class="nav-group"><div class="nav-head">The language</div>
+<a href="tables.html">Tables</a>
+<a href="fields.html">Fields</a>
+<a href="mixins.html">Mixins</a>
+<a href="includes.html">Multi-file schemas (include)</a>
+<a href="types.html">Types (kinds)</a>
+<a href="type-aliases.html">Type aliases</a>
+<a href="relations.html">Relations</a>
+<a href="indexes.html">Indexes</a>
+<a href="events.html">Events</a>
+<a href="functions.html">Functions</a>
+<a href="users.html">Users &amp; roles</a>
+<a href="access.html">Access (sign-in &amp; tokens)</a>
+<a href="analyzers.html">Fulltext indexes</a>
+<a href="params.html">Params &amp; sequences</a>
+<a href="config.html">Config (GraphQL &amp; middleware)</a>
+<a href="buckets.html">Buckets (files)</a>
+<a href="api.html">API routes</a>
+<a href="modules.html">Modules (Surrealism)</a>
+<a href="raw.html">The raw escape hatch</a>
+</div>
+<div class="nav-group"><div class="nav-head">Tools</div>
+<a href="cli.html">The surform CLI</a>
+<a href="fmt.html">Formatting</a>
+<a href="normalize.html">Adopting a database</a>
+<a href="migrate.html">Schema migration</a>
+<a href="in-database.html">Surform inside SurrealDB</a>
+<a href="lint.html">The linter</a>
+<a href="vscode.html">The VS Code extension</a>
+</div>
+<div class="nav-group"><div class="nav-head">Behind the scenes</div>
+<a href="verification.html">How examples are verified</a>
+</div>
+<div class="nav-group"><div class="nav-head">Language spec</div>
+<a href="spec.html">Spec — conventions &amp; rules</a>
+<a href="spec-access.html">Spec: DEFINE ACCESS</a>
+<a href="spec-analyzer.html">Spec: DEFINE ANALYZER</a>
+<a href="spec-api.html">Spec: DEFINE API</a>
+<a href="spec-bucket.html">Spec: DEFINE BUCKET</a>
+<a href="spec-config.html">Spec: DEFINE CONFIG</a>
+<a href="spec-database.html">Spec: DEFINE DATABASE</a>
+<a href="spec-event.html">Spec: DEFINE EVENT</a>
+<a href="spec-field.html">Spec: DEFINE FIELD</a>
+<a href="spec-function.html">Spec: DEFINE FUNCTION</a>
+<a href="spec-include.html">Spec: INCLUDE</a>
+<a href="spec-index.html">Spec: DEFINE INDEX</a>
+<a href="spec-mixin.html">Spec: MIXIN</a>
+<a href="spec-module.html">Spec: DEFINE MODULE</a>
+<a href="spec-namespace.html">Spec: DEFINE NAMESPACE</a>
+<a href="spec-param.html">Spec: DEFINE PARAM</a>
+<a href="spec-sequence.html">Spec: DEFINE SEQUENCE</a>
+<a href="spec-table.html">Spec: DEFINE TABLE</a>
+<a href="spec-type-alias.html" class="active">Spec: TYPE (type aliases)</a>
+<a href="spec-user.html">Spec: DEFINE USER</a>
+</div>
+</nav>
+
+<main class="content">
+  <div class="breadcrumb"><span class="crumb-group">Language spec</span><span class="crumb-title">Spec: TYPE (type aliases)</span></div>
+  <article>
+<h1 class="page-title">Spec: TYPE (type aliases)</h1>
+<p>Global conventions and notation: <a href="spec.html">spec/README.md</a>.</p>
+<p><strong>SDL-only statement</strong> — <code>type &lt;Name&gt; = &lt;kind&gt;;</code> names a type alias: a compile-time textual expansion rewrites every kind that references the name into the alias's kind. SurrealDB has no type-alias concept (no <code>DEFINE TYPE</code> exists; the 3.3 <code>Kind</code> grammar is ground truth — <code>sql/kind.rs</code>), so the statement emits no DDL of its own, the database only ever sees the expanded kinds, and no parser ground truth applies to the statement itself (the surface is SDL's own, the <a href="spec-mixin.html">mixin</a> precedent).</p>
+<p><strong>Surface decisions (settled):</strong></p>
+<ul><li><strong>Names are Capitalized, and that is the disambiguation</strong> (2026-10-25 design dialogue): an alias's name is an identifier whose decoded form matches <code>[A-Z][A-Za-z0-9_]*</code>. At every kind position, a bare Capitalized word is an alias REFERENCE and a lowercase word is a SurrealQL kind — the case of the first letter is the whole distinction, no sigil, no qualification. SurrealQL's kind heads are all lowercase (<code>string</code>, <code>record</code>, <code>array</code>, …) except the exact-case math literals <code>NaN</code>/<code>Infinity</code>, so the grammar territories do not overlap: no SurrealDB kind can ever be spelled <code>Email</code>. This is the collision-immunity guarantee, and it is structural, not procedural: a SurrealDB minor bump that adds kind heads cannot reinterpret an existing alias use (expansion is total before emission anyway — the server never sees an alias name), and the unthinkable case of a capitalized upstream head is a floor-bump spec event whose reservation check re-extracts from the new grammar and fails the DECLARATION loudly — never a silent change of meaning at use sites.</li>
+<li><strong>Reserved names</strong>: a declaration whose name ASCII-lowercases to any SurrealQL kind head — the bare heads plus the generic heads (<code>record table geometry file array set option</code>) plus <code>any</code> — is SDL-E1072: head matching is ASCII-case-insensitive, so such an alias would lose EVERY use site to the head and be unreachable (<code>type String = int;</code> parses uses of <code>String</code> as the <code>string</code> head). The exact-case <code>NaN</code>/<code>Infinity</code> spellings are reserved by the same code. A quoted declaration spelling decodes first: the DECODED name must satisfy the Capitalized rule; a name that could not be spelled bare (<code>2Fast</code>, non-word characters) is E1072 or the name position's own rejection.</li>
+<li><strong>Legal reference positions</strong> — exactly the kind positions the <a href="spec-field.html">field</a> grammar's type clause and the <a href="spec-function.html">function</a> argument/return kinds share: the kind's top level, a union arm, an <code>option&lt;…&gt;</code> interior, an <code>array&lt;/set&lt;</code> element kind, an object literal's VALUE, an array literal's element. <strong>The name-list positions are NEVER references</strong>: <code>record&lt;Email&gt;</code>, <code>table&lt;Email&gt;</code>, and <code>file&lt;Email&gt;</code> interiors name tables and buckets at every case (the name grammar is unchanged), and <code>geometry&lt;…&gt;</code> interiors are the fixed keyword set. Quoted spellings are not references either — a backtick word at a kind position stays invalid.</li>
+<li><strong>Expansion is total before emission</strong> (the codegen model's &quot;alias expansion precedes emission&quot;): the lowering pass rewrites every <code>Kind</code> referencing an alias to its expansion's text (chained aliases resolve recursively, memoized) and drops the <code>type</code> statements. Upstream's kind parser rejects unknown bare words, so a leaked name would be a hard error there — the stage-2 DDL oracle would catch it; the totality is what makes the feature server-version-immune. The <code>table</code> TYPE clause (<code>NORMAL/ANY/ RELATION/VIEW</code>) and the vector-index <code>TYPE</code> (F32/BF16/F64) are not data kinds and take no aliases.</li>
+<li><strong>The kind grammar inside a declaration is the permissive one</strong>: a declaration's right-hand side may reference other aliases (<code>type Emails = array&lt;Email&gt;;</code>), and everything else the kind grammar accepts — unions, generics, literal kinds, object literals — parses unchanged. <code>none | T</code> folds to <code>option&lt;T&gt;</code> at use and emission exactly as authored kinds do.</li>
+<li><strong>Resolution is global</strong> (the declarative namespace): a reference resolves against the composition's WHOLE alias set — defined anywhere, any file, any position; use before define is legal. The parse carries references as opaque names; the check-class pass ([<code>order::check_document</code>] — the CLI's loader runs it; fmt never does) reports a name resolving to nothing as SDL-E1071 with a did-you-mean: a typo'd alias is an error, never a silent kind. A lowercase unknown word keeps the kind grammar's own rejection (SDL-E1026).</li>
+<li><strong>Duplicates and cycles</strong>: a duplicate alias name — within one file (the parse's registry) or across a composition's files (the order pass) — is SDL-E1062, no last-one-wins fold (the reference would be ambiguous in intent). Alias definitions form a cycle class of their own: <code>type A = B; type B = A;</code> has no expansion and is SDL-E0015 with the chain named.</li>
+<li><strong>The expansion must be an expressible kind within the ceiling</strong> (2026-10-25, the deep-chain review): each alias's expansion is resolved bottom-up (iteratively — a chain never recurses per link) and checked whole. A composition whose expansion crosses the kind grammar is refused — each link legal on its own, the whole unexpressible: a chain of option wrappers composes <code>option&lt;option&lt;…&gt;&gt;</code>, which no parser accepts (SDL-E1074, the expansion named). An expansion nesting beyond the <strong>kind nesting ceiling (256 levels)</strong> is refused — every walk the expanded kind feeds (the writer's, the algebra's, the engine's own parser) recurses over it, and the ceiling keeps that bounded at a height no real schema approaches (SDL-E1073, the measured depth named). Both gates hold at every kind position: a declaration's expansion AND a use site's composition (<code>option&lt;A&gt;</code> over an option-alias is the same unexpressible whole, the field the offender), the site's own wrapper counted against the ceiling. Aliases riding an unresolved name carry no finding of their own — the root cause is reported once.</li>
+<li><strong>Alias names are their own namespace</strong> (the mixin rule): they collide with nothing — a table, a mixin, or a param may share an alias's name; only another TYPE declaration collides.</li>
+<li><strong>The <code>flexible</code> interaction defers</strong>: <code>flexible;</code> demands a kind containing an object — a parse-time check (<a href="spec-field.html">field.md</a>). A kind that references an alias decides at resolution: the order pass re-asks the question on the EXPANSION and reports SDL-E1050 naming it when the expansion holds no object. An unresolved reference stays the E1071's business (no double-report).</li>
+<li><strong><code>raw</code> is verbatim</strong> (rule 8): alias references inside a raw body are SurrealQL text and are never expanded.</li>
+<li><strong><code>///</code> is rejected on the statement</strong> — it emits nothing, so there is no <code>COMMENT</code> target (the <code>sequence</code>/<code>config</code>/<code>mixin</code> precedent, rule 5); <code>//</code> comments ride at both ends (the statement's leading block and its same-line after-note).</li>
+<li><strong>fmt round-trips aliases</strong>: the canonical writer prints the statement verbatim — the kind in its authored spelling (rule 4's invariant: the writer never re-spells a kind) — and expansion is never visible in canonical SDL written from an authored file. Statements break with one blank line like any definition (no include-style packing). Top level only: the statement is illegal in every block (a table body's <code>type</code> remains the clause key; the extension grammar gives the head its own rule so an indented <code>type:</code> clause line never inks as a statement).</li>
+<li><strong>Reverse path</strong>: INFO stores only concrete kinds, so the reader never sees an alias name and the strict kind grammar the readers use is unchanged. The merge carries the authored spellings: a kind whose references resolve algebra-equal to the read state keeps its spelling — a field's type, a function's argument and return kinds, and a spread member alike (the member compares in its EXPANDED form, the differ's own posture, so a read child holding the expansion is covered by the spread). A divergence adopts the read state's canonical spelling, and a reference resolving to nothing fails the comparison the same way (the order pass owns that finding). The loop is idempotent. The linter's SDL-L0027 advises on a declaration no kind references.</li>
+</ul>
+<div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>// top level only; no /// on the statement; the name is [A-Z][A-Za-z0-9_]*
+type &lt;Name&gt; = &lt;kind&gt;;        // the kind: the permissive grammar —
+                             //   other alias references legal (chaining)
+
+// inside a kind (field type, fn args/returns) — a bare Capitalized
+// word at a kind position is the reference:
+//   &lt;Name&gt;                    top level
+//   &lt;Name&gt; | &lt;concrete&gt;       a union arm
+//   option&lt;&lt;Name&gt;&gt;            an option interior
+//   array&lt;&lt;Name&gt;(, N)?&gt;       the element kind
+//   { key: &lt;Name&gt; }           an object-literal value
+//   [&lt;Name&gt;, …]               an array-literal element
+//   record&lt;lowercase-name&gt;    NOT a reference — a table name</code></pre></div>
+<p><strong>Errors</strong> (the SDL-only-construct block continues; codes are hand-assigned, gaps stay):</p>
+<p>| code | error | | --- | --- | | SDL-E1071 | a Capitalized word at a kind position resolving to no alias of the composition — the order pass's finding: any file, any position; a typo'd alias is an error, never a silent kind | | SDL-E1072 | a declaration's name is not usable: not Capitalized (<code>[A-Z][A-Za-z0-9_]*</code>), or reserved — a SurrealQL kind head ASCII-case-insensitively, or the exact-case <code>NaN</code>/<code>Infinity</code> | | SDL-E1073 | a kind's expansion nests beyond the kind nesting ceiling (256 levels) — a declaration's or a use site's composition alike, the site's own wrapper counted; the owner and measured depth are named | | SDL-E1074 | a kind's expansion is not a kind the grammar accepts — each part legal, the composition crossed (an option chain's or an <code>option&lt;A&gt;</code> use site's <code>option&lt;option&lt;…&gt;&gt;</code>); the owner and expansion are named |</p>
+<p>Ridden rules: SDL-E1062 (duplicate alias name — parse within a file, the order pass across files), SDL-E0015 (an alias-definition cycle, the chain named), SDL-E1050 (the deferred flexible check on the expansion), SDL-E1026 (a lowercase unknown word at a kind position — unchanged).</p>
+<h2 id="examples">Examples</h2>
+<p>a declaration, chained aliases, and the use positions:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> Email = <span class="tok-k">string</span>;
+<span class="tok-k">type</span> Emails = <span class="tok-k">array</span>&lt;Email&gt;;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> <span class="tok-k">schemafull</span> {
+  name: <span class="tok-k">string</span>;
+  contact: Emails;
+  recovery: <span class="tok-k">option</span>&lt;Email&gt;;
+  both: Email | <span class="tok-k">int</span>;
+  profile: { email: Email };
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> name <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> contact <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">array</span>&lt;<span class="tok-k">string</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> recovery <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">option</span>&lt;<span class="tok-k">string</span>&gt;;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> both <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> <span class="tok-k">string</span> | <span class="tok-k">int</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> profile <span class="tok-k">ON</span> `<span class="tok-k">user</span>` <span class="tok-k">TYPE</span> { email: <span class="tok-k">string</span> };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"type Email = string;\ntype Emails = array\u003cEmail>;\n\ntable user schemafull {\n  name: string;\n  contact: Emails;\n  recovery: option\u003cEmail>;\n  both: Email | int;\n  profile: { email: Email };\n};"}</script>
+</figure>
+<p>a function's argument and return kinds take aliases:</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> Email = <span class="tok-k">string</span>;
+<span class="tok-k">type</span> Emails = <span class="tok-k">array</span>&lt;Email&gt;;
+
+fn contacts(<span class="tok-v">$e</span>: Email) -&gt; Emails { <span class="tok-k">return</span> [<span class="tok-v">$e</span>]; };</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">FUNCTION</span> <span class="tok-k">OVERWRITE</span> fn::contacts(<span class="tok-v">$e</span>: <span class="tok-k">string</span>) -&gt; <span class="tok-k">array</span>&lt;<span class="tok-k">string</span>&gt; { <span class="tok-k">RETURN</span> [<span class="tok-v">$e</span>] };
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"type Email = string;\ntype Emails = array\u003cEmail>;\n\nfn contacts($e: Email) -> Emails { return [$e]; };"}</script>
+</figure>
+<p>use before define — the declarative namespace (position is not resolution's business):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">table</span> post <span class="tok-k">schemafull</span> {
+  author_email: Email;
+};
+
+<span class="tok-k">type</span> Email = <span class="tok-k">string</span>;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> author_email <span class="tok-k">ON</span> `post` <span class="tok-k">TYPE</span> <span class="tok-k">string</span>;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"table post schemafull {\n  author_email: Email;\n};\n\ntype Email = string;"}</script>
+</figure>
+<p>the name-list position is a table NAME, never a reference (the <code>record&lt;email&gt;</code> kind survives expansion untouched):</p>
+<figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> Email = <span class="tok-k">string</span>;
+
+<span class="tok-k">table</span> account <span class="tok-k">schemafull</span> {
+  <span class="tok-k">owner:</span> <span class="tok-k">record</span>&lt;email&gt;;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="ddl"><div class="ex-label">surform build</div><div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">TABLE</span> <span class="tok-k">OVERWRITE</span> account <span class="tok-k">TYPE</span> <span class="tok-k">NORMAL</span> <span class="tok-k">SCHEMAFULL</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">FIELD</span> <span class="tok-k">OVERWRITE</span> <span class="tok-k">owner</span> <span class="tok-k">ON</span> account <span class="tok-k">TYPE</span> <span class="tok-k">record</span>&lt;email&gt;;
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"sdl","body":"type Email = string;\n\ntable account schemafull {\n  owner: record\u003cemail>;\n};"}</script>
+</figure>
+<p>an unknown reference is an error — a typo'd alias can never slip through as a silent kind:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> Email = <span class="tok-k">string</span>;
+
+<span class="tok-k">table</span> <span class="tok-k">user</span> <span class="tok-k">schemafull</span> {
+  contact: Emial;
+};</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1071 (spec/type-alias.md)
+
+  x no type alias of the document is named `Emial`
+   ,-[3:1]
+ 2 |     
+ 3 | ,-&gt; table user schemafull {
+ 4 | |     contact: Emial;
+ 5 | |-&gt; };
+   : `---- no type alias of this name in the document
+   `----
+  help: did you mean `Email`? declare the alias anywhere in this document — `type Email = &lt;kind&gt;;` — references resolve against the whole composition, any file, any position
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"type Email = string;\n\ntable user schemafull {\n  contact: Emial;\n};"}</script>
+</figure>
+<p>a reserved name is rejected — the kind head would win at every use site:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> <span class="tok-k">String</span> = <span class="tok-k">int</span>;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1072 (spec/type-alias.md)
+
+  x `String` cannot name a type alias: `String` is a SurrealQL kind head — it would win at every use site
+   ,----
+ 1 | type String = int;
+   :     ^^^|^^^
+   :        `-- this cannot name a type alias
+   `----
+  help: rename the alias — a use site is a bare Capitalized word, so the name must start uppercase and must not be a SurrealQL kind head
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"type String = int;"}</script>
+</figure>
+<p>a duplicate name is SDL-E1062, and an alias cycle is SDL-E0015 with the chain named:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> Foo = <span class="tok-k">int</span>;
+<span class="tok-k">type</span> Foo = <span class="tok-k">string</span>;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1062 (spec/README.md#design-rules-settled)
+
+  x type alias `Foo` is already defined
+   ,-[2:5]
+ 1 | type Foo = int;
+ 2 | type Foo = string;
+   :     ^^|^
+   :       `-- this type alias name is taken
+   `----
+  help: definitions are unique across the document — any file, any position, this type alias family included: rename one of the two, or delete the definition you meant to replace; OVERWRITE remains
+        only the emitted DDL's re-apply default
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"type Foo = int;\ntype Foo = string;"}</script>
+</figure>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> A = B;
+<span class="tok-k">type</span> B = A;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E0015 (spec/README.md#design-rules-settled)
+
+  x these definitions form a cycle the engine cannot apply in any order: type alias `A` → type alias `B` → type alias `A`
+   ,-[1:1]
+ 1 | type A = B;
+   : ^^^^^|^^^^^
+   :      `-- this definition closes a cycle
+ 2 | type B = A;
+   `----
+  help: break the cycle — a view's top `FROM` chain and a param's `VALUE` chain are the two classes the engine evaluates at define time and cannot apply in any order; every other reference (fn
+        bodies, permissions, events, field defaults) is runtime-evaluated and stays edge-free
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"type A = B;\ntype B = A;"}</script>
+</figure>
+<p>an expansion that crosses the grammar is refused — each link legal, the whole unexpressible:</p>
+<figure class="example" data-interactive="error"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>real Surform diagnostics</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">this schema is wrong on purpose</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">type</span> A = <span class="tok-k">option</span>&lt;<span class="tok-k">int</span>&gt;;
+<span class="tok-k">type</span> B = <span class="tok-k">option</span>&lt;A&gt;;</code></pre></div>
+</div>
+<div class="ex-block" data-pane="diags"><div class="ex-label">what Surform reports</div><div class="codebox"><span class="lang-chip">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>SDL-E1074 (spec/type-alias.md)
+
+  x the expansion of type alias `B` is not a kind the grammar accepts: `option&lt;option&lt;int&gt;&gt;`
+   ,-[2:1]
+ 1 | type A = option&lt;int&gt;;
+ 2 | type B = option&lt;A&gt;;
+   : ^^^^^^^^^|^^^^^^^^^
+   :          `-- this expansion is not an expressible kind
+   `----
+  help: each link is legal on its own, but the composition crosses the grammar — e.g. a chain of option wrappers composes option&lt;option&lt;…&gt;&gt;, which no parser accepts; flatten the chain or drop the
+        wrapping link
+
+</code></pre></div>
+</div>
+<script type="application/json" class="surform-example">{"kind":"error","body":"type A = option\u003cint>;\ntype B = option\u003cA>;"}</script>
+</figure>
+<p>a chain nesting past the ceiling (an <code>array</code> chain is the shape-legal way to reach it — 257 aliased links) is SDL-E1073 with the measured depth named; at 256 links per level the example does not fit a fence, and the depth pass reports the FIRST link that crosses the line.</p>
+<script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
+<script type="module" src="assets/editor/editor.c7a27a1d.js"></script>
+
+  </article>
+  <div class="pager" id="pager"></div>
+</main>
+<aside class="toc"><div class="toc-head">On this page</div>
+<a class="toc-2" href="#examples">Examples</a>
+</aside>
+</div>
+<footer class="footer">
+  <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
+  <span>Built from commit c2c4ae4 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/spec/type-alias.md">Edit this page</a></span>
+</footer>
+<script src="search-index.js" defer></script>
+<script src="assets/site.js" defer></script>
+</body>
+</html>
