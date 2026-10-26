@@ -1649,36 +1649,32 @@ fn write_table_clauses(w: &mut Writer, stmt: &Table, view: bool) {
 }
 
 /// The canonical member layout table and mixin bodies share
-/// (spec/table.md, spec/mixin.md): fields, then spreads (RELATIVE
-/// ORDER PRESERVED — the last-occurrence-wins resolution's semantics
-/// lives there), then indexes, then events; each group a stable sort
-/// (authored order rides through inside a group, and comments
-/// anchored to a member ride its statement through the reorder).
+/// (spec/table.md, spec/mixin.md): spreads, then fields, then
+/// indexes, then events (RELATIVE SPREAD ORDER PRESERVED — the
+/// last-occurrence-wins resolution's semantics lives there); each
+/// group a stable sort (authored order rides through inside a group,
+/// and comments anchored to a member ride its statement through the
+/// reorder).
 ///
-/// The group order is define-order safe (the engine validates an
-/// index's field existence at define, schemafull tables): every
-/// EXPLICIT field prints before the spreads (a spread-carried index
-/// may name one, which is why fields come first),
-/// the spreads print before the EXPLICIT indexes (one may name a
-/// member field), and relative spread order carries the one ordering
-/// members can depend on among themselves (a later spread's index
-/// naming an earlier spread's field keeps its order; one naming a
-/// LATER spread's field was already broken in the authored
-/// SCHEMAFULL file — emission is authored order; schemaless tables
-/// accept an index above its field, and the preserved spread order
-/// carries those through unchanged). Events define against nothing.
-/// A computed field and an index on it reject in BOTH orders, so no
-/// working file holds the pair to break.
+/// Spreads print FIRST (2026-10-26, issue #111): the table's
+/// inherited members read before its own definitions. The layout is
+/// presentation only — define-order safety is the emitter's business
+/// (rule 7's sort lands an index after the fields it names regardless
+/// of authored or SDL position), so the group order carries no
+/// define-order constraint; the one ordering members can depend on
+/// among themselves is the relative spread order (a later spread's
+/// member shadows an earlier spread's — SDL-L0022's subject), which
+/// the stable sort preserves.
 fn write_members(w: &mut Writer, members: &[Stmt]) {
     for member in members
         .iter()
-        .filter(|member| matches!(member, Stmt::Field(_)))
+        .filter(|member| matches!(member, Stmt::Spread(_)))
     {
         write_stmt(w, member, true);
     }
     for member in members
         .iter()
-        .filter(|member| matches!(member, Stmt::Spread(_)))
+        .filter(|member| matches!(member, Stmt::Field(_)))
     {
         write_stmt(w, member, true);
     }

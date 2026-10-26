@@ -2045,7 +2045,7 @@ mod tests {
                  field updated_at: datetime;\n  field title: string;\n};"
             ),
             "mixin stamp {\n  field created_at: datetime;\n  field updated_at: datetime;\n};\n\
-             \ntable entry {\n  schemafull;\n  field title: string;\n  ...stamp;\n};\n"
+             \ntable entry {\n  schemafull;\n  ...stamp;\n  field title: string;\n};\n"
         );
         // Diverged member: the read child materializes as the
         // override; the spread (and the covered sibling) survives.
@@ -2056,8 +2056,8 @@ mod tests {
         assert_eq!(
             diverged_output,
             "mixin stamp {\n  field created_at: datetime;\n  field updated_at: datetime;\n};\n\
-             \ntable entry {\n  schemafull;\n  field created_at: datetime {\n    \
-             default: time::now();\n  };\n  field title: string;\n  ...stamp;\n};\n"
+             \ntable entry {\n  schemafull;\n  ...stamp;\n  field created_at: datetime {\n    \
+             default: time::now();\n  };\n  field title: string;\n};\n"
         );
         // Idempotence: the merge of the merged output (with the
         // override now explicit — its spread counterpart no longer
@@ -2089,7 +2089,7 @@ mod tests {
                  field title: string;\n};"
             ),
             "mixin stamp {\n  field created_at: datetime;\n  field updated_at: datetime;\n};\n\
-             \ntable entry {\n  schemafull;\n  field title: string;\n  ...stamp;\n};\n"
+             \ntable entry {\n  schemafull;\n  ...stamp;\n  field title: string;\n};\n"
         );
     }
 
@@ -2189,7 +2189,7 @@ mod tests {
             merge_once("table entry {\n  schemafull;\n  field created_at: int;\n};"),
             "type Stamp = datetime;\n\
              \nmixin stamp {\n  field created_at: Stamp;\n};\n\
-             \ntable entry {\n  schemafull;\n  field created_at: int;\n  ...stamp;\n};\n"
+             \ntable entry {\n  schemafull;\n  ...stamp;\n  field created_at: int;\n};\n"
         );
     }
 

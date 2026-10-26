@@ -284,11 +284,12 @@ analyzer rides the table's own top-level edge, and authored order
 breaks the ties; on schemafull tables SurrealDB validates
 field existence at define time). The canonical SDL body prints in the
 member layout: the
-table's clauses, then fields, then the spread entries (relative order
-preserved — the last-occurrence-wins resolution's semantics lives
-there), then indexes, then events, each group a stable sort — fields
-before the spreads so a spread-carried index can never define above
-an explicit field it names; DDL emission reorders only by the rule-7
+table's clauses, then the spread entries (relative order preserved —
+the last-occurrence-wins resolution's semantics lives there), then
+fields, then indexes, then events, each group a stable sort —
+inherited members read before the table's own definitions (2026-10-26,
+issue #111). The layout is presentation only: define-order safety is
+the emitter's business, and DDL emission reorders only by the rule-7
 sort.
 
 ```sdl

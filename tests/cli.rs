@@ -201,8 +201,8 @@ fn normalize_preserves_and_materializes_spreads() {
     assert_eq!(
         stdout,
         "namespace acme;\n\ndatabase shop;\n\nmixin stamp {\n  field created_at: datetime;\n  \
-         field updated_at: datetime;\n};\n\ntable entry {\n  schemafull;\n  field title: \
-         string;\n  ...stamp;\n};\n",
+         field updated_at: datetime;\n};\n\ntable entry {\n  schemafull;\n  ...stamp;\n  field \
+         title: string;\n};\n",
         "stdout: {stdout}"
     );
     // The drifted state: `created_at` gained a default in the
@@ -230,8 +230,8 @@ fn normalize_preserves_and_materializes_spreads() {
     assert_eq!(
         stdout,
         "namespace acme;\n\ndatabase shop;\n\nmixin stamp {\n  field created_at: datetime;\n  \
-         field updated_at: datetime;\n};\n\ntable entry {\n  schemafull;\n  field created_at: \
-         datetime {\n    default: time::now();\n  };\n  field title: string;\n  ...stamp;\n};\n",
+         field updated_at: datetime;\n};\n\ntable entry {\n  schemafull;\n  ...stamp;\n  field \
+         created_at: datetime {\n    default: time::now();\n  };\n  field title: string;\n};\n",
         "stdout: {stdout}"
     );
     // Idempotence on the drifted merge's own output.
@@ -2203,7 +2203,7 @@ fn compose_tree(tag: &str) -> (std::path::PathBuf, std::path::PathBuf, std::path
     let t = dir.join("parts/t.surdl");
     std::fs::write(
         &t,
-        "table task {\n  field name: string;\n  ...stamped;\n};\n",
+        "table task {\n  ...stamped;\n  field name: string;\n};\n",
     )
     .expect("t writes");
     (root, m, t)
@@ -2233,7 +2233,7 @@ fn fmt_in_place_on_a_root_writes_every_participant() {
     );
     let t_text = std::fs::read_to_string(&t).expect("t reads");
     assert_eq!(
-        t_text, "table task {\n  field name: string;\n  ...stamped;\n};\n",
+        t_text, "table task {\n  ...stamped;\n  field name: string;\n};\n",
         "the table file is canonical again, spread intact"
     );
 }

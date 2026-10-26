@@ -162,11 +162,11 @@ mixin stamp {
 };
 
 table post schemafull {
+  ...stamp;
   created_at: datetime {
     default: time::now();
   };
   title: string;
-  ...stamp;
 };
 ```
 

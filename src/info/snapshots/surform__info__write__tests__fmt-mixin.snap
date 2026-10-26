@@ -1,6 +1,6 @@
 ---
 source: src/info/write.rs
-assertion_line: 2151
+assertion_line: 2223
 expression: once
 ---
 // shared audit columns
@@ -13,7 +13,7 @@ mixin timestamped {
 
 table `post` {
   schemafull;
+  ...timestamped; // audit trail
   field title: string;
   field created_at: datetime; // overrides the member
-  ...timestamped; // audit trail
 };

@@ -289,12 +289,11 @@ fn fmt_anchors_comments_to_their_clauses_at_every_depth() {
         "a flattened before-note prints above the statement:\n{once}"
     );
     // The canonical table-body layout (spec/mixin.md): an out-of-group authored
-    // order groups into fields, spreads (relative order preserved),
+    // order groups into spreads (relative order preserved), fields,
     // indexes, events — and a member's anchored `//` note rides its
-    // statement through the reorder. Fields print before the spreads
-    // (a spread-carried index never defines above an explicit field
-    // it names) and the spreads before the explicit indexes (an
-    // explicit index may name a member field).
+    // statement through the reorder. Spreads print first (the table's
+    // inherited members read before its own definitions); the layout
+    // is presentation only, the emitter ordering by rule 7.
     let (ast, _) = parse_file(
         "mixin extra { c: int; };\n\
          mixin more { d: string; };\n\
@@ -305,8 +304,8 @@ fn fmt_anchors_comments_to_their_clauses_at_every_depth() {
     assert_eq!(
         once,
         "mixin extra {\n  field c: int;\n};\n\nmixin more {\n  field d: string;\n};\n\n\
-         table t {\n  schemafull;\n  field b: int;\n  field a: int;\n  ...extra;\n  \
-         ...more; // m2\n  index i {\n    fields: a;\n  };\n  event e {\n    then: 1;\n  }; // m1\n};\n"
+         table t {\n  schemafull;\n  ...extra;\n  ...more; // m2\n  field b: int;\n  \
+         field a: int;\n  index i {\n    fields: a;\n  };\n  event e {\n    then: 1;\n  }; // m1\n};\n"
     );
     // The mixin body's own member groups: fields, then indexes, then
     // events (no spreads — mixin-into-mixin is v1-out).

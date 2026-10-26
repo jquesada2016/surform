@@ -80,11 +80,10 @@ param $default_limit = 50;
   and the block interiors — fn bodies, a table's fields — stay
   packed, where structure comes from indentation instead.
 - A table body prints in the **member layout**: the table's clauses,
-  then fields, then the spread entries (in their authored order —
-  which spread wins a collision is order), then indexes, then events
-  — fields first keeps a spread-carried index from ever defining
-  above the explicit field it names. A `mixin` body prints its
-  members in the same layout minus spreads.
+  then the spread entries (in their authored order — which spread wins
+  a collision is order), then fields, then indexes, then events —
+  inherited members read before the table's own definitions. A
+  `mixin` body prints its members in the same layout minus spreads.
 - Long lines wrap: a statement that would run past the width budget
   (100 columns by default, `--max-width` to change it) breaks at its
   natural seams — one IF/ELSE branch per line, boolean chains

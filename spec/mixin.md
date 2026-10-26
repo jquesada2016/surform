@@ -113,12 +113,11 @@ member's own spec's.
   member's or a spread entry's `//` lines ride it). Expansion is never
   visible in canonical SDL written from an authored file. The table
   body prints in the canonical member layout (spec/table.md):
-  clauses, then fields, then spreads (relative order preserved — the
-  semantics lives there), then indexes, then events, each group a
-  stable sort — fields before the spreads so a spread-carried index
-  can never define above an explicit field it names (the engine
-  validates field existence at define); a mixin body prints its
-  members in the same layout minus spreads.
+  clauses, then spreads (relative order preserved — the semantics
+  lives there), then fields, then indexes, then events, each group a
+  stable sort — inherited members read before the table's own
+  definitions; a mixin body prints its members in the same layout
+  minus spreads.
 - **Reverse path** (the spread-preserving merge): INFO
   cannot carry mixins — the reader never adopts or synthesizes one
   (the class `raw` occupies: apply-pending, never a define the tool
@@ -131,7 +130,7 @@ member's own spec's.
   the child materializes as an explicit statement on the table — the
   overshadow rule performing the adoption, the spread surviving with
   its member overshadowed position-independently (the canonical
-  layout prints the override before the spread — order is
+  layout prints the spread before the override — order is
   semantic-free there; idempotent: round two sees the override as an
   explicit member and converges); **absent from the database** and
   the member stays declared through the spread (apply-pending). A
