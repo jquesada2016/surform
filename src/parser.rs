@@ -3042,7 +3042,22 @@ impl<'src> FileParser<'src> {
         // accepts in fn paths).
         let mut segments = Vec::new();
         match self.scan.read_ident() {
-            Ok(Some((_, segment, _))) => segments.push(segment),
+            Ok(Some((segment_span, segment, _))) => {
+                // The keyword already carries the `fn::` prefix, so a
+                // first segment spelling `fn` would emit
+                // `fn::fn::…` — a different function than the author
+                // spelled (issue #110). Fail at the declaration; SDL
+                // spells the header path bare (`raw` carries the
+                // SurrealQL spelling if the doubled name is really
+                // wanted).
+                if segment == "fn" {
+                    self.diags
+                        .push(Diag::FnNameDoubledPrefix { span: segment_span });
+                    self.recover_to_statement_end();
+                    return None;
+                }
+                segments.push(segment);
+            }
             Ok(None) => {
                 self.diags.push(Diag::InvalidFunctionSignature {
                     span: Span::point(self.scan.offset()),
@@ -12628,6 +12643,26 @@ raw {
             }
             other => panic!("expected FunctionParamTrailingComma: {other:?}"),
         }
+        // The doubled prefix (issue #110): the keyword already carries
+        // the `fn::`, so a first segment spelling `fn` would emit
+        // `fn::fn::…` — a different function than the author spelled.
+        // Quoted spellings decode first, so the quoted shape rejects
+        // too; every other first segment parses (multi-segment paths
+        // included).
+        match first_error("fn fn::weird($a: int) { 1 };") {
+            Diag::FnNameDoubledPrefix { span } => {
+                assert_eq!(span.slice("fn fn::weird($a: int) { 1 };"), "fn");
+            }
+            other => panic!("expected FnNameDoubledPrefix: {other:?}"),
+        }
+        match first_error("fn `fn`::weird($a: int) { 1 };") {
+            Diag::FnNameDoubledPrefix { span } => {
+                assert_eq!(span.slice("fn `fn`::weird($a: int) { 1 };"), "`fn`");
+            }
+            other => panic!("expected FnNameDoubledPrefix (quoted): {other:?}"),
+        }
+        let (_, diags) = parse_file("fn util::deep($a: int) { 1 };");
+        assert!(diags.is_empty(), "{diags:?}");
         // A bad kind anchors at its own text.
         let src = "fn a($a: frobnicate<int>) { 1 };";
         match first_error(src) {

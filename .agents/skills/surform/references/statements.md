@@ -760,7 +760,9 @@ Gotchas:
 
 The one two-block statement: first block is the SurrealQL body
 (captured brace-balanced), optional second block holds SDL clauses.
-The name emits with the `fn::` prefix; params keep their `$`.
+The name emits with the `fn::` prefix and never spells it — a first
+segment reading `fn` (as in `fn fn::weird(…)`) is SDL-E1075: it would
+emit `fn::fn::weird`, a different function. Params keep their `$`.
 
 ```sdl-grammar
 /// <doc comment>

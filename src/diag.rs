@@ -209,6 +209,13 @@ pub enum Diag {
     /// (`expected a parameter`, spec/function.md), so SDL rejects the
     /// spelling at parse with the fix in the help.
     FunctionParamNeedsDollar { span: Span },
+    /// A `fn` header whose first path segment spells `fn` — the
+    /// keyword already carries the prefix, so `fn fn::weird(…)` would
+    /// emit `DEFINE FUNCTION fn::fn::weird(…)`, a different function
+    /// than the author spelled (the doubled-prefix class, issue #110).
+    /// SDL's header path is bare; `fn::` belongs to reference
+    /// positions.
+    FnNameDoubledPrefix { span: Span },
     /// A trailing `,` in `fn`'s parameter list. SurrealQL accepts the
     /// shape; SDL is deliberately stricter since INFO never emits one
     /// (spec/function.md).
@@ -691,6 +698,7 @@ impl Diag {
             Diag::ModuleExecutableName { .. } => "SDL-E1022",
             Diag::InvalidFunctionSignature { .. } => "SDL-E1023",
             Diag::FunctionParamNeedsDollar { .. } => "SDL-E1024",
+            Diag::FnNameDoubledPrefix { .. } => "SDL-E1075",
             Diag::FunctionParamTrailingComma { .. } => "SDL-E1025",
             Diag::InvalidKind { .. } => "SDL-E1026",
             Diag::UnknownVariant { .. } => "SDL-E1027",
@@ -753,6 +761,7 @@ impl Diag {
             Diag::InvalidKind { .. } => "spec/README.md#design-rules-settled",
             Diag::InvalidFunctionSignature { .. }
             | Diag::FunctionParamNeedsDollar { .. }
+            | Diag::FnNameDoubledPrefix { .. }
             | Diag::FunctionParamTrailingComma { .. } => "spec/function.md",
             Diag::UnknownVariant { .. } | Diag::InvalidMiddleware { .. } => "spec/config.md",
             Diag::InvalidIndexFields { .. }
@@ -1038,6 +1047,13 @@ impl Diag {
             }
             Diag::FunctionParamNeedsDollar { .. } => {
                 "parameters keep their `$` — SurrealQL requires it (spec/function.md)".to_string()
+            }
+            Diag::FnNameDoubledPrefix { .. } => {
+                "the header's path is bare — the `fn` keyword already carries the \
+                 `fn::` prefix, so drop it from the name (`fn weird(…)`, never \
+                 `fn fn::weird(…)`); a `raw` body carries the SurrealQL spelling \
+                 if the doubled name is really wanted"
+                    .to_string()
             }
             Diag::FunctionParamTrailingComma { .. } => {
                 "remove the trailing `,`; SurrealQL accepts one but INFO never \
@@ -1464,6 +1480,9 @@ impl Diag {
             Diag::FunctionParamNeedsDollar { span } => {
                 Some(("parameter name without `$`".to_string(), *span))
             }
+            Diag::FnNameDoubledPrefix { span } => {
+                Some(("doubled `fn::` prefix".to_string(), *span))
+            }
             Diag::FunctionParamTrailingComma { span } => {
                 Some(("trailing comma".to_string(), *span))
             }
@@ -1789,6 +1808,13 @@ impl fmt::Display for Diag {
             Diag::InvalidFunctionSignature { message, .. } => write!(f, "{message}"),
             Diag::FunctionParamNeedsDollar { .. } => {
                 write!(f, "fn parameter without `$`")
+            }
+            Diag::FnNameDoubledPrefix { .. } => {
+                write!(
+                    f,
+                    "the fn header's path starts with `fn` — with the keyword's \
+                     own prefix the emitted name would double it"
+                )
             }
             Diag::FunctionParamTrailingComma { .. } => {
                 write!(f, "trailing `,` in the parameter list")

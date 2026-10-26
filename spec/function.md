@@ -69,6 +69,14 @@ emits body → COMMENT → GRAPHQL_* → PERMISSIONS — both parse;
 the differ compares resolved state (kinds under the algebra, expressions over canonical text) (a stored body compares byte-wise: the canon and the engine
 print agree).
 
+The `<name>` is the path AFTER the prefix — the `fn` keyword carries
+`fn::` itself, so the name never spells it: a first segment reading
+`fn` (quoted spellings decode first) is SDL-E1075 — `fn
+fn::weird(…)` would emit `fn::fn::weird(…)`, a different function
+than the author spelled. Every other first segment parses
+(multi-segment paths included); a `raw` body carries the SurrealQL
+spelling if a doubled name is really wanted.
+
 ## Reverse parser (INFO → SDL)
 
 INFO emits the plain `DEFINE` with `PERMISSIONS` **always** rendered
@@ -170,4 +178,13 @@ fn util::slugify($s: string) -> string {
 DEFINE FUNCTION fn::util::slugify($s: string) -> string {
   string::lowercase(string::replace($s, ' ', '-'))
 } GRAPHQL_ALIAS 'slugify';
+```
+
+the doubled prefix rejects (the keyword carries `fn::`; a first
+segment reading `fn` would emit `fn::fn::…`):
+
+```sdl-error expect=SDL-E1075
+fn fn::weird($x: int) {
+  return $x;
+};
 ```

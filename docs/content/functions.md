@@ -85,7 +85,10 @@ fn last_opt($req: number, $opt: option<number>) {
 ## Names with segments, GraphQL hints
 
 Names may carry `::` segments — `fn util::slugify(…)` defines
-`fn::util::slugify`. GraphQL hints ride the second block:
+`fn::util::slugify`. The name never spells the prefix itself — the
+`fn` keyword carries it, so `fn fn::weird(…)` is an error
+(SDL-E1075): spelled as written it would define `fn::fn::weird`, a
+different function. GraphQL hints ride the second block:
 
 ```sdl
 namespace acme;
