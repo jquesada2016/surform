@@ -182,7 +182,7 @@
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
 <span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
-<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">OVERWRITE</span> invoice_number <span class="tok-k">START</span> <span class="tok-n">1000</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">IF</span> <span class="tok-k">NOT</span> <span class="tok-k">EXISTS</span> invoice_number <span class="tok-k">START</span> <span class="tok-n">1000</span>;
 </code></pre></div>
 </div>
 <script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nsequence invoice_number = 1000;"}</script>
@@ -201,7 +201,7 @@
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
 <span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
-<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">OVERWRITE</span> order_number <span class="tok-k">BATCH</span> <span class="tok-n">100</span> <span class="tok-k">START</span> <span class="tok-n">5000</span> <span class="tok-k">TIMEOUT</span> <span class="tok-n">5s</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">IF</span> <span class="tok-k">NOT</span> <span class="tok-k">EXISTS</span> order_number <span class="tok-k">BATCH</span> <span class="tok-n">100</span> <span class="tok-k">START</span> <span class="tok-n">5000</span> <span class="tok-k">TIMEOUT</span> <span class="tok-n">5s</span>;
 </code></pre></div>
 </div>
 <script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nsequence order_number {\n  start: 5000;\n  batch: 100;\n  timeout: 5s;\n};"}</script>
@@ -216,11 +216,15 @@
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
 <span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
-<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">OVERWRITE</span> row_ids;
+<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">IF</span> <span class="tok-k">NOT</span> <span class="tok-k">EXISTS</span> row_ids;
 </code></pre></div>
 </div>
 <script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\nsequence row_ids;"}</script>
 </figure>
+<p>A sequence definition is <strong>bootstrap-only</strong>: the emitted form is <code>DEFINE SEQUENCE IF NOT EXISTS</code>, so applying your build to a fresh database seeds the counter at the declared start, and applying it again leaves a running counter alone. That is deliberate — the redefining form restarts the counter, re-issuing numbers already handed out. The same holds for <code>batch:</code> and <code>timeout:</code>: changing them in the file does not reconfigure a sequence that already exists. Repositioning a live counter is a manual, destructive step that must spell every clause you want to keep — an omitted clause falls back to its default (<code>start</code> 0, <code>batch</code> 1000, <code>timeout</code> none):</p>
+<div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">OVERWRITE</span> invoice_number <span class="tok-k">BATCH</span> <span class="tok-n">1000</span> <span class="tok-k">START</span> <span class="tok-n">5000</span>;</code></pre></div>
+<p>A <code>timeout:</code>-only change has a non-destructive repair that leaves the counter running:</p>
+<div class="codebox"><span class="lang-chip">sql</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code>ALTER <span class="tok-k">SEQUENCE</span> invoice_number <span class="tok-k">TIMEOUT</span> <span class="tok-n">5s</span>;</code></pre></div>
 <p>One rule to remember: <strong><code>sequence</code> has no COMMENT clause in SurrealQL</strong>, so a <code>///</code> doc comment above one is rejected — use a plain <code>//</code> line instead:</p>
 <figure class="example" data-interactive="sdl"><span class="badge"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.5 12.5 2 8l1.5-1.5 3 3 6-6L14 5z"/></svg>applied to SurrealDB 3.3.0</span><div class="ex-toolbar" hidden><span class="badge ex-status" role="status"></span><button class="ex-btn" type="button" data-act="reset">Reset</button><button class="ex-btn" type="button" data-act="format">Format</button></div><div class="ex-block" data-pane="editor"><div class="ex-label">schema.surdl</div><div class="codebox"><span class="lang-chip">sdl</span><button class="copy" type="button" aria-label="Copy code">Copy</button><pre><code><span class="tok-k">namespace</span> acme;
 <span class="tok-k">database</span> shop;
@@ -234,7 +238,7 @@
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme;
 <span class="tok-k">DEFINE</span> <span class="tok-k">DATABASE</span> <span class="tok-k">OVERWRITE</span> shop;
 <span class="tok-k">USE</span> <span class="tok-k">NS</span> acme <span class="tok-k">DB</span> shop;
-<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">OVERWRITE</span> invoice_number <span class="tok-k">START</span> <span class="tok-n">1000</span>;
+<span class="tok-k">DEFINE</span> <span class="tok-k">SEQUENCE</span> <span class="tok-k">IF</span> <span class="tok-k">NOT</span> <span class="tok-k">EXISTS</span> invoice_number <span class="tok-k">START</span> <span class="tok-n">1000</span>;
 </code></pre></div>
 </div>
 <script type="application/json" class="surform-example">{"kind":"sdl","body":"namespace acme;\ndatabase shop;\n\n// Invoice numbers start at 1000 — a plain comment, because sequence\n// is one of the two statements (with config) that take no doc\n// comment.\nsequence invoice_number = 1000;"}</script>
@@ -244,7 +248,7 @@
 <li><a href="lint.html">The linter</a> — the valueless-param warning.</li>
 </ul>
 <script type="application/json" id="surform-keywords">["access","after","algorithm","all","allinside","alter","always","analyzer","and","andkw","any","anyinside","api","ar","ara","arabic","array","as","asc","ascending","ascii","assert","async","at","audience","authenticate","auto","backend","batch","bearer","before","begin","blank","bm25","bool","break","bucket","by","bytes","camel","cancel","capacity","cascade","changefeed","changes","chebyshev","chinese","class","collate","collection","columns","comment","commit","compact","computed","concurrently","config","contains","containsall","containsany","containsnone","containsnot","content","context","continue","cosine","cosine_normalized","count","create","da","dan","danish","database","datetime","db","de","decimal","default","define","delete","desc","descending","deu","diff","dimension","dist","distance","drop","duplicate","duration","dutch","eddsa","edgengram","edges","efc","el","ell","else","en","end","enforced","eng","english","es","es256","es384","es512","euclidean","event","exclude","exists","expired","explain","expunge","extend_candidates","f16","f32","f64","false","feature","fetch","fi","field","fields","file","filters","fin","finnish","flex","flexi","flexible","float","fn","for","fr","fra","french","from","full","fulltext","function","functions","geometry","german","get","grant","graphql","graphql_alias","graphql_deprecated","greek","group","hamming","hashed_vector","headers","highlights","hnsw","hs256","hs384","hs512","hu","hun","hungarian","i16","i32","i64","i8","if","ignore","in","include","index","info","inline","inner_product","insert","inside","int","intersects","into","is","issuer","it","ita","italian","jaccard","japanese","jwks","jwt","keep_pruned_connections","key","kill","korean","kv","let","lightweight","limit","line","live","lm","lowercase","m","m0","manhattan","mapper","maxdepth","merge","middleware","minkowski","ml","mod","model","module","multiline","multipoint","multipolygon","namespace","ngram","nl","nld","no","noindex","none","noneinside","nor","normal","norwegian","not","notinside","ns","null","number","numeric","object","omit","on","only","option","or","order","original","out","outside","overwrite","parallel","param","passhash","passscram","password","patch","pearson","permissions","point","polygon","por","portuguese","post","postings_cache","postings_order","prepare","ps256","ps384","ps512","pt","punct","purge","put","rand","range","readonly","rebuild","record","reference","references","refresh","regex","reject","relate","relation","remove","replace","retry","return","revoke","revoked","ro","roles","romanian","ron","root","rs256","rs384","rs512","ru","rus","russian","sc","schemaful","schemafull","schemaless","segment","select","sequence","session","set","show","signin","signup","silo","since","sleep","snowball","spa","spanish","split","start","strict","string","structure","sv","swe","swedish","system","ta","table","tables","tam","tamil","tb","tempfiles","terms_cache","terms_order","then","throw","timeout","to","token","tokenizers","tr","trace","transaction","true","tur","turkish","type","u8","ulid","unique","unset","unsigned","update","uppercase","upsert","url","use","user","uuid","value","values","version","vs","when","where","with"]</script>
-<script type="module" src="assets/editor/editor.0df5d5f3.js"></script>
+<script type="module" src="assets/editor/editor.1418c286.js"></script>
 
   </article>
   <div class="pager" id="pager"></div>
@@ -258,7 +262,7 @@
 </div>
 <footer class="footer">
   <span>Surform is an independent open-source tool for <a href="https://surrealdb.com">SurrealDB</a> — not affiliated with SurrealDB Ltd.</span>
-  <span>Built from commit af5cff3 · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/params.md">Edit this page</a></span>
+  <span>Built from commit f2a246d · examples ran against SurrealDB 3.3.0 when the site was built. <a class="edit" href="https://github.com/jquesada2016/surform/blob/main/docs/content/params.md">Edit this page</a></span>
 </footer>
 <script src="search-index.js" defer></script>
 <script src="assets/site.js" defer></script>
