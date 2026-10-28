@@ -29,9 +29,13 @@ Working with Surform is the infrastructure-as-code loop:
    anything it doesn't understand, with a pointer at the line.
 3. **Build & apply** — `surform build schema.surdl` emits DDL. Run it
    through `surreal sql`, your SDK, or any migration runner. Every
-   emitted `DEFINE` carries `OVERWRITE` (a credential-less user
-   defines once), so applying again is safe: the database *converges*
-   to the file.
+   emitted `DEFINE` carries `OVERWRITE`, with two define-once
+   exceptions — a user declared without a secret, and a sequence
+   (whose counter is live state) — so applying again is safe: the
+   database *converges* to the file. A sequence's declared start only
+   seeds a fresh database, and a define-once clause changed later does
+   not converge (the repair is manual, and the migration script names
+   it).
 4. **Converge** — later, `surform migrate generate schema.surdl
    --info …` compares the file with the database's INFO output and
    prints both the drift and the script that converges the database

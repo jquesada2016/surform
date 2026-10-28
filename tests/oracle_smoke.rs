@@ -44,22 +44,29 @@ fn oracle_accepts_emitted_namespace_shapes() {
 /// expressions in every slot.
 #[test]
 fn oracle_accepts_emitted_sequence_shapes() {
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE row_ids;");
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE invoice_number START 1000;");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS row_ids;");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS invoice_number START 1000;");
     assert_oracle_accepts(
-        "DEFINE SEQUENCE OVERWRITE order_number BATCH 100 START 5000 TIMEOUT 5s;",
+        "DEFINE SEQUENCE IF NOT EXISTS order_number BATCH 100 START 5000 TIMEOUT 5s;",
     );
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE `table`;");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS `table`;");
     // Probe-verified: TIMEOUT takes a full expression, and
     // the `none` sentinel (spellable in SDL, elided by the server's
     // own printer) re-parses and stores as the same absent sentinel.
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE n TIMEOUT time::now();");
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE n START { 1; 2 };");
-    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE n TIMEOUT NONE;");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS n TIMEOUT time::now();");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS n START { 1; 2 };");
+    assert_oracle_accepts("DEFINE SEQUENCE IF NOT EXISTS n TIMEOUT NONE;");
+    // The operator's repositioning form is valid SurrealQL too; the
+    // emitted DDL only ever spells the define-once prefix (the
+    // reader's prefix stripping is pinned in src/info/read.rs).
+    assert_oracle_accepts("DEFINE SEQUENCE OVERWRITE n START 1000;");
     // The pipeline end-to-end for the sentinel: SDL → DDL → oracle.
     let (file, diags) = parse_file("sequence n { timeout: none; };");
     assert!(diags.is_empty(), "{diags:?}");
-    assert_eq!(emit(&file), "DEFINE SEQUENCE OVERWRITE n TIMEOUT NONE;\n");
+    assert_eq!(
+        emit(&file),
+        "DEFINE SEQUENCE IF NOT EXISTS n TIMEOUT NONE;\n"
+    );
 }
 
 /// The clause order is FIXED in SurrealQL: `START` before `BATCH` is

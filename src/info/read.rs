@@ -6029,24 +6029,30 @@ mod tests {
 
     #[test]
     fn splits_sequence() {
-        // Defaults materialize — the read result carries them.
-        let entry = split_ok(split_sequence, "DEFINE SEQUENCE bare BATCH 1000 START 0;");
-        assert_eq!(
-            entry.stmt,
-            Stmt::Sequence(Sequence {
-                name: Ident::new("bare"),
-                start: Some(Expr {
-                    canon: "0".to_string()
-                }),
-                batch: Some(Expr {
-                    canon: "1000".to_string()
-                }),
-                timeout: None,
-                comments: Vec::new(),
-                trailing_comments: Vec::new(),
-                clause_comments: Vec::new(),
-            })
-        );
+        // Defaults materialize — the read result carries them — and
+        // the emission's define-once prefix strips like every kind
+        // prefix (spec/README.md rule 2): both spellings read as the
+        // same canonical SDL sequence.
+        let expected = Stmt::Sequence(Sequence {
+            name: Ident::new("bare"),
+            start: Some(Expr {
+                canon: "0".to_string(),
+            }),
+            batch: Some(Expr {
+                canon: "1000".to_string(),
+            }),
+            timeout: None,
+            comments: Vec::new(),
+            trailing_comments: Vec::new(),
+            clause_comments: Vec::new(),
+        });
+        for header in [
+            "DEFINE SEQUENCE bare BATCH 1000 START 0;",
+            "DEFINE SEQUENCE IF NOT EXISTS bare BATCH 1000 START 0;",
+        ] {
+            let entry = split_ok(split_sequence, header);
+            assert_eq!(entry.stmt, expected, "{header}");
+        }
         // TIMEOUT NONE stores as the absent clause.
         let entry = split_ok(
             split_sequence,

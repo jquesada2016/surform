@@ -162,10 +162,17 @@ per-statement pages show each one.
 ## The apply model: convergence, not migration
 
 Applying a built file is **safe to repeat**. Every emitted `DEFINE`
-carries `OVERWRITE` (a credential-less user defines once), so the
-database converges to the file instead of erroring on the second run.
-What convergence does *not* do is delete: definitions that exist in
-the database but not in your file are left alone.
+carries `OVERWRITE`, with two define-once exceptions: a user declared
+without a secret (redefining would wipe the stored credential) and a
+sequence (the redefining form restarts the counter). So the database
+converges to the file instead of erroring on the second run — except a
+changed define-once clause, which the emission leaves alone: a
+sequence's start only seeds a fresh database (repositioning a live one
+is a manual step — see [Params and sequences](params.html)), and a
+secret-less user's roles, durations, and comment need an in-place
+`ALTER USER`. What convergence does *not* do is
+delete: definitions that exist in the database but not in your file are
+left alone.
 
 That gap is a feature with a tool attached:
 
@@ -173,9 +180,9 @@ That gap is a feature with a tool attached:
   `INFO` output and prints every difference — including definitions
   that exist only in the database, each one a candidate for removal.
 - It also prints the ready-to-run **convergence script**: the
-  SDL-only and drifted definitions as `DEFINE … OVERWRITE`, then the
-  removals — one transaction per scope section, converging the
-  database to the file.
+  SDL-only and drifted definitions as `DEFINE … OVERWRITE` (the
+  define-once families as `IF NOT EXISTS`), then the removals — one
+  transaction per scope section, converging the database to the file.
 
 The full walkthrough — including a live drift demo — is on
 [Schema migration](migrate.html).

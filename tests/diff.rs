@@ -818,7 +818,7 @@ async fn the_convergence_script_converges_the_database() {
              {}\n\
              -- ## Defines - the state the schema file describes\n\
              --\n\
-             -- Each define carries OVERWRITE: a re-run redefines it.\n\
+             -- Each typed define carries OVERWRITE: a re-run redefines it.\n\
              \n\
              DEFINE PARAM OVERWRITE $p VALUE 2;\n\
              \n\

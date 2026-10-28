@@ -96,6 +96,28 @@ database shop;
 sequence row_ids;
 ```
 
+A sequence definition is **bootstrap-only**: the emitted form is
+`DEFINE SEQUENCE IF NOT EXISTS`, so applying your build to a fresh
+database seeds the counter at the declared start, and applying it
+again leaves a running counter alone. That is deliberate — the
+redefining form restarts the counter, re-issuing numbers already
+handed out. The same holds for `batch:` and `timeout:`: changing them
+in the file does not reconfigure a sequence that already exists.
+Repositioning a live counter is a manual, destructive step that must
+spell every clause you want to keep — an omitted clause falls back to
+its default (`start` 0, `batch` 1000, `timeout` none):
+
+```sql
+DEFINE SEQUENCE OVERWRITE invoice_number BATCH 1000 START 5000;
+```
+
+A `timeout:`-only change has a non-destructive repair that leaves the
+counter running:
+
+```sql
+ALTER SEQUENCE invoice_number TIMEOUT 5s;
+```
+
 One rule to remember: **`sequence` has no COMMENT clause in
 SurrealQL**, so a `///` doc comment above one is rejected — use a
 plain `//` line instead:

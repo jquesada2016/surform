@@ -243,7 +243,8 @@ shapes (probe-pinned 2026-09-25).
    legal. Three failure classes remain: the same family + name defined
    TWICE — any file, any position — is an error (SDL-E1062; the one
    chosen loss of the model is last-wins overrides between
-   definitions; `OVERWRITE` survives only as the emitted DDL's
+   definitions; the define-kind prefix (`OVERWRITE` / `IF NOT
+   EXISTS`) survives only as the emitted DDL's
    re-apply default); a define-time CYCLE — a view chain reading
    itself, a param chain feeding itself — is SDL-E0015 with the
    chain named, because no application order exists; and a
@@ -501,7 +502,8 @@ shapes (probe-pinned 2026-09-25).
   clause skeleton is itself one width-fitting group — the surql-fmt
   `shouldStatementBreak`/clause-per-line model. The statement head is
   glued (keyword, name, and the header clauses: ON/TYPE — a relation's
-  sides and a view's `AS SELECT` included — FIELDS, OVERWRITE, and
+  sides and a view's `AS SELECT` included — FIELDS, the define-kind
+  prefix (`OVERWRITE` / `IF NOT EXISTS`), and
   SDL's flag riders); every other top-level clause is a break
   candidate. A statement whose one-line spelling fits the budget
   emits byte-identical to the old glue; one past it lays
@@ -546,19 +548,29 @@ shapes (probe-pinned 2026-09-25).
    standalone-runnable (`surreal sql -e … < file.surql`) and correct
    when a file crosses ns/db boundaries.
    Recommended layout remains one namespace + one database per file.
-2. **`OVERWRITE` is the default for every emitted `DEFINE`.** SDL is the
-   declared desired state — applying an SDL file *converges* every
-   definition it contains to match it (verified: plain `DEFINE` errors
-   on re-apply — `The table 'x' already exists`; `OVERWRITE` redefines
-   cleanly). `CONFIG` mandates `OVERWRITE` for its singletons. Sole
-   exception: **define-once users** (see [user.md](user.md)). Emit
-   templates and examples in the per-statement files **omit the
-   `OVERWRITE` prefix for readability — implementations always emit
-   it** (positioned after the statement keyword, before the name).
-   *(The 2026-10-06 migration tooling kept this rule
-   unchanged: `migrate generate`'s defines are `OVERWRITE`
-   unconditionally — no `IF NOT EXISTS` or plain-`DEFINE` codegen
-   flag exists.)*
+2. **`DEFINE … OVERWRITE` is the default; the define-once families emit
+   `IF NOT EXISTS`.** SDL is the declared desired state — applying an
+   SDL file *converges* every definition it contains to match it
+   (verified: plain `DEFINE` errors on re-apply — `The table 'x'
+   already exists`; `OVERWRITE` redefines cleanly). `CONFIG` mandates
+   `OVERWRITE` for its singletons. Two exceptions, both families whose
+   live state must survive a re-apply: **define-once users** (a
+   secret-less user's stored credential; see [user.md](user.md)) and
+   **sequences** (the counter — `OVERWRITE` deletes the sequence's
+   stored cursor rows). They emit `IF NOT EXISTS`. A sequence's `START`
+   is therefore a bootstrap value: it seeds a fresh database and never
+   repositions a live sequence, and a changed `start`/`batch`/`timeout`
+   does not apply in place (spec/sequence.md, "Apply semantics").
+   Emit templates and examples in the per-statement files **omit the
+   `OVERWRITE` prefix for readability — implementations always emit the
+   kind prefix** (positioned after the statement keyword, before the
+   name); `IF NOT EXISTS` is written out, because it carries the
+   semantics.
+   *(The 2026-10-06 migration tooling note — `migrate generate`'s
+   defines are `OVERWRITE` unconditionally — is superseded by the
+   2026-10-28 sequence amendment: migration scripts follow the same
+   per-family prefix rule as codegen, and their Defines region says so
+   when a define-once definition rides the script.)*
    **Mixin expansion precedes emission** ([mixin.md](mixin.md)): a
    spread expands to its member statements in place at the spread's
    position — explicitly overshadowed members and members a later
@@ -600,7 +612,8 @@ shapes (probe-pinned 2026-09-25).
    removes definitions absent from the SDL; the migration tool
    compares SDL against `INFO` and emits BOTH directions as one
    script — the SDL-only and drifted definitions as `DEFINE …
-   OVERWRITE` from the authored SDL side (defines first), the
+   OVERWRITE` from the authored SDL side (defines first; the
+   define-once families as `IF NOT EXISTS`, rule 2), the
    database-only ones as removals (last).
    *(Implemented 2026-09-24 (the removal half) and 2026-10-06 (the
    convergence emitter, retiring `surform diff` for `surform migrate

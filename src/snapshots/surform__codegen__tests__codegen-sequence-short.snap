@@ -1,6 +1,5 @@
 ---
 source: src/codegen.rs
-assertion_line: 716
 expression: ddl
 ---
-DEFINE SEQUENCE OVERWRITE invoice_number START 1000;
+DEFINE SEQUENCE IF NOT EXISTS invoice_number START 1000;

@@ -22,7 +22,7 @@ DEFINE NAMESPACE OVERWRITE acme COMMENT 'Acme Corporation';
 USE NS acme;
 DEFINE NAMESPACE OVERWRITE staging;
 USE NS staging;
-DEFINE SEQUENCE OVERWRITE invoice_number START 1000;
+DEFINE SEQUENCE IF NOT EXISTS invoice_number START 1000;
 DEFINE PARAM OVERWRITE $default_limit VALUE 50 COMMENT 'Default page size for list endpoints';
 ";
 
@@ -56,7 +56,7 @@ DEFINE DATABASE OVERWRITE app
     STRICT
     COMMENT 'Primary application database';
 USE NS acme DB app;
-DEFINE SEQUENCE OVERWRITE invoice_number START 1000;
+DEFINE SEQUENCE IF NOT EXISTS invoice_number START 1000;
 DEFINE PARAM OVERWRITE $default_limit VALUE 50 COMMENT 'Default page size for list endpoints';
 DEFINE USER OVERWRITE deployer ON NAMESPACE
     PASSHASH '$argon2id$v=19$'
@@ -1247,7 +1247,7 @@ fn migrate_defines_the_sdl_only_side() {
                 "{}\n\
                  -- ## Defines - the state the schema file describes\n\
                  --\n\
-                 -- Each define carries OVERWRITE: a re-run redefines it.\n\
+                 -- Each typed define carries OVERWRITE: a re-run redefines it.\n\
                  \n\
                  DEFINE TABLE OVERWRITE pending TYPE NORMAL SCHEMALESS;\n",
                 surform::info::script::RULE,

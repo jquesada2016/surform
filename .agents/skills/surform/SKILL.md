@@ -244,10 +244,18 @@ byte-for-byte; validation is advisory (the linter flags bodies the
 parser rejects, SDL-L0012); no doc comment.
 
 **Convergence, not migration — until you ask for the migration.**
-Every emitted `DEFINE` carries
-`OVERWRITE` (sole exception: a credential-less user defines once),
-so applying a built file is safe to repeat — the database
-converges to the file. Applying never *removes*: definitions the file
+Every emitted `DEFINE` carries `OVERWRITE`, with two define-once
+exceptions: a credential-less user (redefining would wipe the stored
+hash) and a sequence (redefining restarts its counter). Applying a
+built file is therefore safe to repeat — the database converges to the
+file, and a sequence's start only seeds a fresh database (reposition a
+live one manually with `DEFINE SEQUENCE OVERWRITE <name> BATCH <b>
+START <n> TIMEOUT <t>`, spelling every clause to keep — omitted ones
+fall back to defaults; a changed start/batch/timeout on an existing
+sequence does not apply). A secret-less user's roles/durations/comment
+changes do not re-apply either — use `ALTER USER <name> ON <level> ...`
+(the credential stays).
+Applying never *removes*: definitions the file
 lacks stay. Removal — and the whole converge-the-database script — is
 `surform migrate generate`'s (below).
 
@@ -463,7 +471,8 @@ declare compare ordinarily.
   database-only, `+` SDL-only → apply-pending, `·` expected-unmanaged
   → informational) then the convergence script: defines first
   (SdlOnly + drifted definitions as `DEFINE … OVERWRITE` from the
-  file's side, in the compiler's emission order — a standalone
+  file's side, define-once families — secret-less users, sequences —
+  as `IF NOT EXISTS`, in the compiler's emission order — a standalone
   field/event/index define renders inside its host table's emission,
   after the host's `DEFINE TABLE` and before the nested members, a
   raw define slots through its header's `ON <table>` the same way

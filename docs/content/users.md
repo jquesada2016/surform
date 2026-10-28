@@ -58,7 +58,12 @@ user analyst {
 
 The emitted DDL carries `IF NOT EXISTS` instead of `OVERWRITE`. The
 linter still flags the secret-less user (`SDL-L0003`) — usually it is
-a placeholder you meant to fill in.
+a placeholder you meant to fill in. Because the define is define-once,
+a later role, duration, or comment change in your file does not apply
+on re-apply: change it in place with `ALTER USER <name> ON <level>
+ROLES …` (the stored credential stays). Sequences are the other
+define-once family: their counters are live state, never desired state
+([Params and sequences](params.html)).
 
 ## Provisioned SCRAM verifiers
 

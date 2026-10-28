@@ -387,8 +387,9 @@ pub enum Role {
 /// diagnosed and the statement dropped. Absent `roles` is SurrealQL's
 /// `VIEWER` default and elides at emission; absent durations elide
 /// (the server's `1h`/`none` defaults apply) — a `duration` block
-/// with neither side present folds to `None`. The codegen model's
-/// sole `OVERWRITE` exception rides the secret clauses: a secret-less
+/// with neither side present folds to `None`. One of the codegen
+/// model's two `OVERWRITE` exceptions rides the secret clauses (the
+/// other is the sequence, spec/sequence.md): a secret-less
 /// user is define-once (`IF NOT EXISTS`), a secret-carrying one
 /// emits `OVERWRITE`.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -835,9 +835,16 @@ sequence order_number {
 };
 ```
 
-Gotchas: SurrealQL's own clause order is fixed (`BATCH` before
-`START` before `TIMEOUT`) — SDL's block is free-ordered and codegen
-emits the canonical order, so author freely.
+Gotchas: SurrealQL's clause order is fixed (`BATCH` before `START`
+before `TIMEOUT`) — SDL's block is free-ordered and codegen emits the
+canonical order, so author freely. A sequence is **define-once**
+(`DEFINE SEQUENCE IF NOT EXISTS`): re-applying a build never rewinds a
+live counter, and a changed `start`/`batch`/`timeout` does NOT
+reconfigure an existing sequence. Repositioning one is the manual,
+destructive form `DEFINE SEQUENCE OVERWRITE <name> BATCH <b> START <n>
+TIMEOUT <t>;`, spelling every clause to keep (omitted ones fall back to
+the defaults). A `timeout:`-only change has a safe in-place form:
+`ALTER SEQUENCE <name> TIMEOUT <t>;` (no counter reset).
 
 ## api
 

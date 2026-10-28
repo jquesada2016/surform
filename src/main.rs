@@ -128,8 +128,10 @@ enum Command {
     ///
     /// `generate` prints the drift report to stdout, followed by the
     /// full convergence script — defines (SDL-only and drifted
-    /// definitions) as `DEFINE … OVERWRITE` from the authored SDL
-    /// side in the compiler's emission order, then the database-only
+    /// definitions) from the authored SDL side in the compiler's
+    /// emission order (`OVERWRITE`; the define-once families — a
+    /// secret-less user, a sequence — emit `IF NOT EXISTS`), then the
+    /// database-only
     /// removals (`IF EXISTS`, children before parents, the
     /// data-destroying classes carrying `SURFORM WARNING` anchors).
     /// One transaction per scope section, each section's `USE`

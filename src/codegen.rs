@@ -1,5 +1,7 @@
-//! SDL→DDL emission: the canonical DDL writer (OVERWRITE default,
-//! normalized clause order), with expression clauses re-printed from
+//! SDL→DDL emission: the canonical DDL writer (`OVERWRITE` default;
+//! the two define-once families — a secret-less user and a sequence —
+//! emit `IF NOT EXISTS`, spec/README.md rule 2), with normalized
+//! clause order and expression clauses re-printed from
 //! the embedded official parser's AST.
 //!
 //! Emission mirrors the engine's own writers byte for byte where the
@@ -57,6 +59,19 @@ pub fn emit(file: &SdlFile) -> String {
     let mut lowered = crate::expand::expand(file);
     crate::order::emission_order(&mut lowered);
     emit_lowered(&lowered, true)
+}
+
+/// The two define-once families (spec/README.md rule 2): a secret-less
+/// user and a sequence. Their live state — a stored credential hash, a
+/// sequence counter — must survive a re-apply, so emission uses
+/// `IF NOT EXISTS` for them instead of `OVERWRITE`; the migration
+/// script's Defines region says so where one rides the script.
+pub(crate) fn is_define_once(stmt: &Stmt) -> bool {
+    match stmt {
+        Stmt::User(user) => user.pass.is_none() && user.scram.is_none(),
+        Stmt::Sequence(_) => true,
+        _ => false,
+    }
 }
 
 /// The emission proper, over an already-expanded file ([`emit`] runs
@@ -178,7 +193,14 @@ fn emit_lowered(file: &SdlFile, session_lines: bool) -> String {
             Stmt::Sequence(seq) => {
                 let mut sk = crate::pretty::Skeleton::new();
                 let mut head = String::new();
-                head.push_str("DEFINE SEQUENCE OVERWRITE ");
+                // The second define-once family (spec/sequence.md). A
+                // sequence's START is a bootstrap value and its counter is
+                // accumulated state: `OVERWRITE` deletes the sequence's
+                // stored cursor rows, so re-applying would rewind every
+                // mint back to the declared start. `IF NOT EXISTS` seeds a
+                // fresh database and leaves an existing sequence — and its
+                // counter — untouched.
+                head.push_str("DEFINE SEQUENCE IF NOT EXISTS ");
                 emit_ident(&mut head, &seq.name);
                 sk.push_head_text(&head);
                 // SurrealQL's fixed clause order: BATCH → START →
@@ -223,21 +245,21 @@ fn emit_lowered(file: &SdlFile, session_lines: bool) -> String {
                 out.push('\n');
             }
             Stmt::User(user) => {
-                // The codegen model's sole `OVERWRITE` exception
-                // (spec/user.md's secrets protocol): a secret-less
-                // user is define-once — re-applying with `OVERWRITE`
-                // would CLEAR the stored credential (`PASSWORD 'x'`
-                // → `PASSHASH ''`); a secret-carrying one converges
-                // normally with `OVERWRITE`. A `passscram` verifier
-                // is a secret (INFO redacts it) — scram-only users
-                // re-apply safely (the hash clears, the verifier
+                // One of the codegen model's two `OVERWRITE` exceptions
+                // (spec/README.md rule 2; the other is the sequence):
+                // a secret-less user is define-once — re-applying with
+                // `OVERWRITE` would CLEAR the stored credential
+                // (`PASSWORD 'x'` → `PASSHASH ''`); a secret-carrying
+                // one converges normally with `OVERWRITE`. A `passscram`
+                // verifier is a secret (INFO redacts it) — scram-only
+                // users re-apply safely (the hash clears, the verifier
                 // updates; probed 2026-09-25).
                 let mut sk = crate::pretty::Skeleton::new();
                 let mut head = String::new();
-                if user.pass.is_some() || user.scram.is_some() {
-                    head.push_str("DEFINE USER OVERWRITE ");
-                } else {
+                if is_define_once(stmt) {
                     head.push_str("DEFINE USER IF NOT EXISTS ");
+                } else {
+                    head.push_str("DEFINE USER OVERWRITE ");
                 }
                 emit_ident(&mut head, &user.name);
                 // The spec's canonical order: ON → pass → PASSSCRAM →
@@ -2454,8 +2476,9 @@ mod tests {
         );
     }
 
-    /// spec/user.md: the define-once example — the codegen model's
-    /// sole `OVERWRITE` exception: no secret ⇒ `IF NOT EXISTS`
+    /// spec/user.md: the define-once example — one of the codegen
+    /// model's two `OVERWRITE` exceptions (the other is the sequence,
+    /// spec/sequence.md): no secret ⇒ `IF NOT EXISTS`
     /// between `USER` and the name.
     #[test]
     fn golden_user_define_once() {
@@ -2984,7 +3007,7 @@ mod tests {
         };
         assert_eq!(
             emit(&file),
-            "DEFINE SEQUENCE OVERWRITE order_number;\nDEFINE PARAM OVERWRITE $after VALUE 1;\n"
+            "DEFINE SEQUENCE IF NOT EXISTS order_number;\nDEFINE PARAM OVERWRITE $after VALUE 1;\n"
         );
     }
 

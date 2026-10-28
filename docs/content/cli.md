@@ -147,7 +147,8 @@ and `migrate generate` reports drift on the member itself.
 
 `migrate generate` compares the file with the database's rendered
 `INFO` and prints two sections: the drift report and the convergence
-script — defines first (`DEFINE … OVERWRITE` from your file's side),
+script — defines first (`DEFINE … OVERWRITE` from your file's side,
+`IF NOT EXISTS` for the define-once families),
 removals last (`IF EXISTS`, the data-destroying lines under
 `SURFORM WARNING` blocks), one transaction per scope section with the
 `USE` switches outside the frames. It exits

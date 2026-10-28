@@ -88,6 +88,89 @@ sequence timed {
     Ok(())
 }
 
+/// The apply invariant: a sequence define BOOTSTRAPS a fresh database —
+/// applying the same build again must never move a live counter
+/// backwards. The emission is `IF NOT EXISTS`, and the engine's define
+/// returns early on an existing sequence, so a second apply leaves both
+/// the counter and the stored clauses alone. `OVERWRITE` is pinned in
+/// its destructive shape — it deletes the sequence's cursor rows and
+/// restarts at the declared start — the rewind this emission removes
+/// from the default path (and the hand-run repositioning form).
+#[tokio::test]
+async fn re_applying_a_sequence_define_never_rewinds_the_counter()
+-> Result<(), Box<dyn std::error::Error>> {
+    let sdl = "sequence invoice_number = 1000;\n";
+    let (file, diags) = surform::parser::parse_file(sdl);
+    assert!(diags.is_empty(), "{diags:?}");
+    let ddl = surform::codegen::emit(&file);
+    assert!(
+        ddl.contains("DEFINE SEQUENCE IF NOT EXISTS invoice_number"),
+        "the emission is define-once: {ddl}"
+    );
+
+    let db = Surreal::new::<Mem>(()).await?;
+    db.use_ns("sdl_test").use_db("scratch").await?;
+    db.query(&ddl).await?.check()?;
+
+    use surrealdb::types::ToSql;
+    let first: surrealdb::types::Value = db
+        .query("RETURN sequence::nextval('invoice_number')")
+        .await?
+        .take(0)?;
+    assert_eq!(first.to_sql(), "1000", "the declared start seeds it");
+    let second: surrealdb::types::Value = db
+        .query("RETURN sequence::nextval('invoice_number')")
+        .await?
+        .take(0)?;
+    assert_eq!(second.to_sql(), "1001", "the counter advances");
+
+    // The second apply of the SAME build: the counter continues.
+    db.query(&ddl).await?.check()?;
+    let third: surrealdb::types::Value = db
+        .query("RETURN sequence::nextval('invoice_number')")
+        .await?
+        .take(0)?;
+    assert_eq!(
+        third.to_sql(),
+        "1002",
+        "re-applying a build must not rewind"
+    );
+
+    // A later definition that changes BATCH does not apply either: the
+    // define is bootstrap-only, never a convergence statement.
+    let (rebatch, diags) =
+        surform::parser::parse_file("sequence invoice_number { start: 1000; batch: 250; };");
+    assert!(diags.is_empty(), "{diags:?}");
+    db.query(surform::codegen::emit(&rebatch)).await?.check()?;
+    let info: surrealdb::types::Value = db.query("INFO FOR DB").await?.take(0)?;
+    let info = info.to_sql();
+    assert!(
+        info.contains("DEFINE SEQUENCE invoice_number BATCH 1000 START 1000"),
+        "the existing definition is untouched: {info}"
+    );
+    let fourth: surrealdb::types::Value = db
+        .query("RETURN sequence::nextval('invoice_number')")
+        .await?
+        .take(0)?;
+    assert_eq!(fourth.to_sql(), "1003", "and the counter keeps running");
+
+    // The repositioning escape hatch stays available — and stays
+    // destructive: a hand-run `OVERWRITE` restarts at the declared start.
+    db.query("DEFINE SEQUENCE OVERWRITE invoice_number START 1000;")
+        .await?
+        .check()?;
+    let rewound: surrealdb::types::Value = db
+        .query("RETURN sequence::nextval('invoice_number')")
+        .await?
+        .take(0)?;
+    assert_eq!(
+        rewound.to_sql(),
+        "1000",
+        "OVERWRITE is the operator's reseed, never the emitter's default"
+    );
+    Ok(())
+}
+
 /// Params land in the catalog with their values, comments, and
 /// permissions intact — including the define-time evaluation of the
 /// value expression (the stored value is the RESULT, spec/param.md).

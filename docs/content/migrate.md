@@ -6,7 +6,8 @@ database's rendered `INFO` output (or one schema version against the
 next, [below](#from-one-schema-version-to-the-next)), prints the
 differences, and generates the one script that converges the database
 to your file — defines and removals, per scope section, each in its
-own runnable transaction.
+own runnable transaction (a changed define-once clause is the one
+exception: its note names the manual repair).
 The script can stay a pipe (printed to stdout, run today), or become
 a migration FILE — numbered, saved, filled, committed, self-recording
 — [the pipeline below](#saving-drafts-and-committing-them).
@@ -42,7 +43,8 @@ the target).
 
 Definitions in your file that the database hasn't got are *apply
 pending* in the report (`+`) — and the script closes that direction
-too: it defines them from your file's side, `DEFINE … OVERWRITE`, in
+too: it defines them from your file's side (`DEFINE … OVERWRITE`, or
+`IF NOT EXISTS` for the define-once families), in
 the same dependency-aware order `surform build` emits under. There is
 no separate "apply by hand" step anymore; the script is the whole
 migration.
@@ -120,7 +122,7 @@ and every later migration descends from it.
 The recipe is the bare-FILE input: hand `migrate generate` one file
 and the file is the TO side of a migration whose FROM side is empty -
 every definition rides apply-pending (`+`) and lands as
-`DEFINE … OVERWRITE`:
+`DEFINE … OVERWRITE` (`IF NOT EXISTS` for the define-once families):
 
 ```sh
 surform migrate generate schema.surdl --save
@@ -143,12 +145,15 @@ artifacts are the same files the tests execute):
 - **No slots.** An empty from side removes nothing, so nothing can
   orphan data — the draft carries no `SURFORM REQUIRED` regions and
   commits as-is.
-- **The apply is a no-op on the schema.** Every line re-defines from
-  the file's side (`DEFINE … OVERWRITE`), so applying it over the
-  converged database redefines what is already there and changes
-  nothing — and if the database has quietly drifted, the baseline
-  converges that drift too. The re-run is a no-op as with any
-  OVERWRITE script.
+- **The apply is a no-op on the schema.** Every line re-states the
+  file's side (`DEFINE … OVERWRITE`; a sequence define is
+  `IF NOT EXISTS` and skips an existing counter altogether), so
+  applying it over the converged database redefines what is already
+  there and changes nothing — and if the database has quietly
+  drifted, the baseline converges that drift too, except a
+  define-once clause change, which the define-once form cannot apply.
+  The re-run
+  is a no-op as with any OVERWRITE script.
 - **The ledger row is the only new thing.** The push (or applying the
   committed file through any SurrealDB tooling) lands row `0001` —
   `migrate status` then reports directory and ledger in agreement,
@@ -299,9 +304,17 @@ surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --check \
   section opens with the relaxed shell, the kind relaxes, and the
   `SURFORM REQUIRED` data sections ([above](#staged-migrations-re-keying-a-field-over-live-rows))
   — the engine's own order — before the defines half.
-- **Defines first.** Every SDL-only and drifted definition renders as
-  `DEFINE … OVERWRITE` from your file's side — the desired state,
-  wholesale. A standalone field/event/index define renders inside its
+- **Defines first.** Every SDL-only and drifted definition renders its
+  define statement from your file's side — `DEFINE … OVERWRITE`, the
+  desired state, wholesale. The define-once families render
+  `IF NOT EXISTS` instead: a secret-less user keeps its stored
+  credential, and a sequence keeps its live counter — applying a build
+  never rewinds one, so an authored change to its
+  `start`/`batch`/`timeout` does not apply in place. A drifted
+  define-once definition carries a `-- note:` naming the manual repair
+  (for a sequence, `DEFINE SEQUENCE OVERWRITE <name> BATCH <b> START
+  <n> TIMEOUT <t>`, spelling every authored clause; the counter
+  restarts). A standalone field/event/index define renders inside its
   host table's emission, after the host's `DEFINE TABLE` and before
   the nested members that name it. Both halves of that placement are
   load-bearing: a migration can hold a table in a form the engine
@@ -320,8 +333,9 @@ surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --check \
   reader, the target, or both are raw. (A param read before its raw
   define rolls the migration back; an access `url:` read before it
   silently stores `NONE`.)
-  `OVERWRITE` redefines cleanly and creates if absent, so the
-  defines are idempotent too — re-runs are safe for typed statements
+  `OVERWRITE` redefines and `IF NOT EXISTS` leaves existing state
+  alone, so the defines are idempotent too — re-runs are safe for
+  typed statements
   and single-statement raw bodies, while a multi-statement raw block
   re-pairs by its first header alone and its unpaired tail
   statements re-drift on re-runs (a known, tracked corner).
@@ -359,12 +373,20 @@ surform migrate generate schema.surdl --info db=acme/shop=info-db.txt --check \
   re-keyed table — with a runnable example line. Everything else
   (events, analyzers, plain clause retypes) carries neither block:
   nothing is lost.
-- **`SURFORM NOTE` blocks** are advice, commented out and never
+- **`SURFORM NOTE` blocks are advice**, commented out and never
   executed — today, the staged table's index-rebuild offers (above).
   So is the one-line note above any UNIQUE index define whose table
   already exists database-side: the unique build is the one
   row-validating define (it fails if any two rows collide), and the
-  note says when the index's fields cover re-keyed fields.
+  note says when the index's fields cover re-keyed fields. A drifted
+  define-once definition (a sequence, a secret-less user) carries a
+  `-- note:` naming its manual repair for the same reason: the
+  emission leaves the live definition alone, and the note is where
+  the fix is stated.
+- **The defines region says which families define once.** When a
+  secret-less user or a sequence rides the script, the `## Defines`
+  header explains that they emit `IF NOT EXISTS` and that live state
+  (a credential hash, a counter) is never overwritten.
 - **The header and the sections read as one page.** The script is
   laid out in ASCII markdown comments: a short header — what
   generated the script, the re-run safety, the marker vocabulary —

@@ -6,7 +6,7 @@ DEFINE DATABASE OVERWRITE app
     STRICT
     COMMENT 'Primary application database';
 USE NS acme DB app;
-DEFINE SEQUENCE OVERWRITE invoice_number START 1000;
+DEFINE SEQUENCE IF NOT EXISTS invoice_number START 1000;
 DEFINE PARAM OVERWRITE $default_limit VALUE 50 COMMENT 'Default page size for list endpoints';
 DEFINE USER OVERWRITE deployer ON NAMESPACE
     PASSHASH '$argon2id$v=19$'

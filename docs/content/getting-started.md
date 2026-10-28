@@ -73,12 +73,18 @@ diagnostics.
 
 Two conventions the output relies on:
 
-- Every emitted `DEFINE` carries **`OVERWRITE`** (one exception: a
-  user with no credential defines once —
-  [Users & roles](users.html)). Applying the script
+- Every emitted `DEFINE` carries **`OVERWRITE`**, with two define-once
+  exceptions: a user with no credential (redefining would wipe the
+  stored hash — [Users & roles](users.html)) and a sequence
+  (redefining would restart its counter; desired state must never move
+  a live counter backwards). Applying the script
   twice — or applying it over a database that already has some of the
   definitions — redefines cleanly instead of erroring. Your schema file
-  is the *desired state*; applying it converges the database to it.
+  is the *desired state*; applying it converges the database to it —
+  except a changed define-once clause (a sequence's
+  `start`/`batch`/`timeout`, a secret-less user's roles, durations, or
+  comment), which the define-once form leaves alone (the migration
+  script's note names the manual repair).
 - After each `DEFINE NAMESPACE` / `DEFINE DATABASE` the compiler emits
   the matching **`USE`** line, so one script crosses namespace and
   database boundaries safely (a database with no preceding namespace

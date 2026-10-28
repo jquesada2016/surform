@@ -1,6 +1,5 @@
 ---
 source: src/codegen.rs
-assertion_line: 716
 expression: ddl
 ---
-DEFINE SEQUENCE OVERWRITE row_ids;
+DEFINE SEQUENCE IF NOT EXISTS row_ids;
